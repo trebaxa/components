@@ -1,3 +1,50 @@
+<a name="19.2.0-rc.0"></a>
+# 19.2.0-rc.0 "rutherfordium-rotor" (2025-02-19)
+### cdk
+| Commit | Type | Description |
+| -- | -- | -- |
+| [26765a4c7](https://github.com/angular/components/commit/26765a4c7cbfd9c731b4550ac1adc109b623e098) | fix | **drag-drop:** avoid retaining destroyed items until next drag ([#30514](https://github.com/angular/components/pull/30514)) |
+| [7f9970fb1](https://github.com/angular/components/commit/7f9970fb1880d498e6dfe0edbe35e2e31b3a12d5) | perf | **table:** Short circuit _removeStickyStyle calls against elements with no sticky styles ([#30471](https://github.com/angular/components/pull/30471)) |
+### material
+| Commit | Type | Description |
+| -- | -- | -- |
+| [f0d665826](https://github.com/angular/components/commit/f0d6658263083fe8737a8ebd9299c90106faad8b) | fix | **checkbox:** ensure native control receives clicks ([#30511](https://github.com/angular/components/pull/30511)) |
+| [f2cf22987](https://github.com/angular/components/commit/f2cf22987220ac087c665524708fd95f5da15119) | fix | **paginator:** disabled buttons not visible in high contrast mode ([#30505](https://github.com/angular/components/pull/30505)) |
+| [657885e89](https://github.com/angular/components/commit/657885e893f4693197d428c51bf74ec80f662f26) | fix | **slide-toggle:** rendering issue in Safari 18.3 ([#30490](https://github.com/angular/components/pull/30490)) |
+| [3d7f2714a](https://github.com/angular/components/commit/3d7f2714afd4a8acdbb292296a491b1992dc5088) | fix | **snack-bar:** snack-bar action button does not follow material guidelines ([#27769](https://github.com/angular/components/pull/27769)) |
+| [68b267dd5](https://github.com/angular/components/commit/68b267dd59f3addf92a3b9f8ce9e8baa479df7f4) | fix | **tooltip:** regression when injecting ViewContainerRef ([#30500](https://github.com/angular/components/pull/30500)) |
+| [6bd31f978](https://github.com/angular/components/commit/6bd31f978613bfdf49ca4f811708dd9893de6585) | perf | **radio:** Optimize costly css selectors. ([#30470](https://github.com/angular/components/pull/30470)) |
+### youtube-player
+| Commit | Type | Description |
+| -- | -- | -- |
+| [d6fd2768a](https://github.com/angular/components/commit/d6fd2768a4c0f860f3a040febd3293c401a2d439) | feat | add API to put the player in fullscreen mode ([#30491](https://github.com/angular/components/pull/30491)) |
+### material-angular-io
+| Commit | Type | Description |
+| -- | -- | -- |
+| [30673c63d](https://github.com/angular/components/commit/30673c63dd19c2a382db70cb4b07afa06bb6474c) | fix | remove animations dependency |
+| [71b896368](https://github.com/angular/components/commit/71b896368cddbccf2940864bc1ac401e25f153e9) | fix | remove docs data from critical path |
+
+<!-- CHANGELOG SPLIT MARKER -->
+
+<a name="19.1.5"></a>
+# 19.1.5 "bromine-bread" (2025-02-19)
+### cdk
+| Commit | Type | Description |
+| -- | -- | -- |
+| [719e67d29](https://github.com/angular/components/commit/719e67d2948d2a0e7a4c7f4fd8a87704fee5f5ce) | fix | **drag-drop:** avoid retaining destroyed items until next drag ([#30514](https://github.com/angular/components/pull/30514)) |
+| [c24b17955](https://github.com/angular/components/commit/c24b1795550c1a591f0d19123951c6a83cd6c554) | perf | **table:** Short circuit _removeStickyStyle calls against elements with no sticky styles ([#30471](https://github.com/angular/components/pull/30471)) |
+### material
+| Commit | Type | Description |
+| -- | -- | -- |
+| [90ac6134d](https://github.com/angular/components/commit/90ac6134d9bf3fdcb98a77a889641f1e89f8b84b) | fix | **checkbox:** ensure native control receives clicks ([#30511](https://github.com/angular/components/pull/30511)) |
+| [2eb6424b2](https://github.com/angular/components/commit/2eb6424b2331d1cf4ce873d5a270ee9af5adb9ab) | fix | **paginator:** disabled buttons not visible in high contrast mode ([#30505](https://github.com/angular/components/pull/30505)) |
+| [96d7d87c8](https://github.com/angular/components/commit/96d7d87c801c6e0b6e8800b45331d97934f1761c) | fix | **slide-toggle:** rendering issue in Safari 18.3 ([#30490](https://github.com/angular/components/pull/30490)) |
+| [16593f1dc](https://github.com/angular/components/commit/16593f1dcd0cc85f7795febb5ff334dec69a3632) | fix | **snack-bar:** snack-bar action button does not follow material guidelines ([#27769](https://github.com/angular/components/pull/27769)) |
+| [76f28469f](https://github.com/angular/components/commit/76f28469f67c0e23dd99f716538aff6f45917c1d) | fix | **tooltip:** regression when injecting ViewContainerRef ([#30500](https://github.com/angular/components/pull/30500)) |
+| [c2b363ea6](https://github.com/angular/components/commit/c2b363ea6b354560bb51c3783eb64595bda4e787) | perf | **radio:** Optimize costly css selectors. ([#30470](https://github.com/angular/components/pull/30470)) |
+
+<!-- CHANGELOG SPLIT MARKER -->
+
 <a name="19.2.0-next.4"></a>
 # 19.2.0-next.4 "papercrete-zither" (2025-02-12)
 ### cdk
