@@ -3,11 +3,12 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
+import {_IdGenerator, CdkTrapFocus} from '@angular/cdk/a11y';
 import {Directionality} from '@angular/cdk/bidi';
-import {BooleanInput, coerceBooleanProperty, coerceStringArray} from '@angular/cdk/coercion';
+import {coerceStringArray} from '@angular/cdk/coercion';
 import {
   DOWN_ARROW,
   ESCAPE,
@@ -20,65 +21,71 @@ import {
   UP_ARROW,
 } from '@angular/cdk/keycodes';
 import {
+  FlexibleConnectedPositionStrategy,
   Overlay,
   OverlayConfig,
   OverlayRef,
   ScrollStrategy,
-  FlexibleConnectedPositionStrategy,
 } from '@angular/cdk/overlay';
-import {ComponentPortal, ComponentType, TemplatePortal} from '@angular/cdk/portal';
+import {_getFocusedElementPierceShadowDom} from '@angular/cdk/platform';
+import {CdkPortalOutlet, ComponentPortal, ComponentType, TemplatePortal} from '@angular/cdk/portal';
+import {DOCUMENT} from '@angular/common';
 import {
+  afterNextRender,
   AfterViewInit,
+  ANIMATION_MODULE_TYPE,
+  booleanAttribute,
   ChangeDetectionStrategy,
+  ChangeDetectorRef,
   Component,
   ComponentRef,
+  Directive,
   ElementRef,
   EventEmitter,
-  Inject,
+  inject,
   InjectionToken,
+  Injector,
   Input,
   NgZone,
+  OnChanges,
   OnDestroy,
-  Optional,
   Output,
+  Renderer2,
+  SimpleChanges,
   ViewChild,
   ViewContainerRef,
   ViewEncapsulation,
-  ChangeDetectorRef,
-  Directive,
-  OnChanges,
-  SimpleChanges,
-  OnInit,
-  inject,
 } from '@angular/core';
-import {CanColor, DateAdapter, mixinColor, ThemePalette} from '@angular/material/core';
-import {AnimationEvent} from '@angular/animations';
-import {merge, Subject, Observable, Subscription} from 'rxjs';
+import {MatButton} from '@angular/material/button';
+import {DateAdapter, ThemePalette} from '@angular/material/core';
+import {merge, Observable, Subject, Subscription} from 'rxjs';
 import {filter, take} from 'rxjs/operators';
-import {_getFocusedElementPierceShadowDom} from '@angular/cdk/platform';
 import {MatCalendar, MatCalendarView} from './calendar';
-import {matDatepickerAnimations} from './datepicker-animations';
-import {createMissingDateImplError} from './datepicker-errors';
-import {MatCalendarUserEvent, MatCalendarCellClassFunction} from './calendar-body';
-import {DateFilterFn} from './datepicker-input-base';
-import {
-  ExtractDateTypeFromSelection,
-  MatDateSelectionModel,
-  DateRange,
-} from './date-selection-model';
+import {MatCalendarCellClassFunction, MatCalendarUserEvent} from './calendar-body';
 import {
   MAT_DATE_RANGE_SELECTION_STRATEGY,
   MatDateRangeSelectionStrategy,
 } from './date-range-selection-strategy';
+import {
+  DateRange,
+  ExtractDateTypeFromSelection,
+  MatDateSelectionModel,
+} from './date-selection-model';
+import {createMissingDateImplError} from './datepicker-errors';
+import {DateFilterFn} from './datepicker-input-base';
 import {MatDatepickerIntl} from './datepicker-intl';
-import {DOCUMENT} from '@angular/common';
-
-/** Used to generate a unique ID for each datepicker instance. */
-let datepickerUid = 0;
+import {_CdkPrivateStyleLoader, _VisuallyHiddenLoader} from '@angular/cdk/private';
 
 /** Injection token that determines the scroll handling while the calendar is open. */
 export const MAT_DATEPICKER_SCROLL_STRATEGY = new InjectionToken<() => ScrollStrategy>(
   'mat-datepicker-scroll-strategy',
+  {
+    providedIn: 'root',
+    factory: () => {
+      const overlay = inject(Overlay);
+      return () => overlay.scrollStrategies.reposition();
+    },
+  },
 );
 
 /** @docs-private */
@@ -99,14 +106,6 @@ export const MAT_DATEPICKER_SCROLL_STRATEGY_FACTORY_PROVIDER = {
   useFactory: MAT_DATEPICKER_SCROLL_STRATEGY_FACTORY,
 };
 
-// Boilerplate for applying mixins to MatDatepickerContent.
-/** @docs-private */
-const _MatDatepickerContentBase = mixinColor(
-  class {
-    constructor(public _elementRef: ElementRef) {}
-  },
-);
-
 /**
  * Component used as the content for the datepicker overlay. We use this instead of using
  * MatCalendar directly as the content so we can control the initial focus. This also gives us a
@@ -117,28 +116,49 @@ const _MatDatepickerContentBase = mixinColor(
 @Component({
   selector: 'mat-datepicker-content',
   templateUrl: 'datepicker-content.html',
-  styleUrls: ['datepicker-content.css'],
+  styleUrl: 'datepicker-content.css',
   host: {
     'class': 'mat-datepicker-content',
-    '[@transformPanel]': '_animationState',
-    '(@transformPanel.start)': '_handleAnimationEvent($event)',
-    '(@transformPanel.done)': '_handleAnimationEvent($event)',
+    '[class]': 'color ? "mat-" + color : ""',
     '[class.mat-datepicker-content-touch]': 'datepicker.touchUi',
+    '[class.mat-datepicker-content-animations-enabled]': '!_animationsDisabled',
   },
-  animations: [matDatepickerAnimations.transformPanel, matDatepickerAnimations.fadeInCalendar],
   exportAs: 'matDatepickerContent',
   encapsulation: ViewEncapsulation.None,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  inputs: ['color'],
+  imports: [CdkTrapFocus, MatCalendar, CdkPortalOutlet, MatButton],
 })
 export class MatDatepickerContent<S, D = ExtractDateTypeFromSelection<S>>
-  extends _MatDatepickerContentBase
-  implements OnInit, AfterViewInit, OnDestroy, CanColor
+  implements AfterViewInit, OnDestroy
 {
-  private _subscriptions = new Subscription();
+  protected _elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
+  protected _animationsDisabled =
+    inject(ANIMATION_MODULE_TYPE, {optional: true}) === 'NoopAnimations';
+  private _changeDetectorRef = inject(ChangeDetectorRef);
+  private _globalModel = inject<MatDateSelectionModel<S, D>>(MatDateSelectionModel);
+  private _dateAdapter = inject<DateAdapter<D>>(DateAdapter)!;
+  private _ngZone = inject(NgZone);
+  private _rangeSelectionStrategy = inject<MatDateRangeSelectionStrategy<D>>(
+    MAT_DATE_RANGE_SELECTION_STRATEGY,
+    {optional: true},
+  );
+
+  private _stateChanges: Subscription | undefined;
   private _model: MatDateSelectionModel<S, D>;
+  private _eventCleanups: (() => void)[] | undefined;
+  private _animationFallback: ReturnType<typeof setTimeout> | undefined;
+
   /** Reference to the internal calendar component. */
   @ViewChild(MatCalendar) _calendar: MatCalendar<D>;
+
+  /**
+   * Theme color of the internal calendar. This API is supported in M2 themes
+   * only, it has no effect in M3 themes. For color customization in M3, see https://material.angular.io/components/datepicker/styling.
+   *
+   * For information on applying color variants in M3, see
+   * https://material.angular.io/guide/material-2-theming#optional-add-backwards-compatibility-styles-for-color-variants
+   */
+  @Input() color: ThemePalette;
 
   /** Reference to the datepicker that created the overlay. */
   datepicker: MatDatepickerBase<any, S, D>;
@@ -158,9 +178,6 @@ export class MatDatepickerContent<S, D = ExtractDateTypeFromSelection<S>>
   /** Whether the datepicker is above or below the input. */
   _isAbove: boolean;
 
-  /** Current state of the animation. */
-  _animationState: 'enter-dropdown' | 'enter-dialog' | 'void';
-
   /** Emits when an animation has finished. */
   readonly _animationDone = new Subject<void>();
 
@@ -179,35 +196,35 @@ export class MatDatepickerContent<S, D = ExtractDateTypeFromSelection<S>>
   /** Id of the label for the `role="dialog"` element. */
   _dialogLabelId: string | null;
 
-  constructor(
-    elementRef: ElementRef,
-    private _changeDetectorRef: ChangeDetectorRef,
-    private _globalModel: MatDateSelectionModel<S, D>,
-    private _dateAdapter: DateAdapter<D>,
-    @Optional()
-    @Inject(MAT_DATE_RANGE_SELECTION_STRATEGY)
-    private _rangeSelectionStrategy: MatDateRangeSelectionStrategy<D>,
-    intl: MatDatepickerIntl,
-  ) {
-    super(elementRef);
-    this._closeButtonText = intl.closeCalendarLabel;
-  }
+  constructor(...args: unknown[]);
 
-  ngOnInit() {
-    this._animationState = this.datepicker.touchUi ? 'enter-dialog' : 'enter-dropdown';
+  constructor() {
+    inject(_CdkPrivateStyleLoader).load(_VisuallyHiddenLoader);
+    this._closeButtonText = inject(MatDatepickerIntl).closeCalendarLabel;
+
+    if (!this._animationsDisabled) {
+      const element = this._elementRef.nativeElement;
+      const renderer = inject(Renderer2);
+
+      this._eventCleanups = this._ngZone.runOutsideAngular(() => [
+        renderer.listen(element, 'animationstart', this._handleAnimationEvent),
+        renderer.listen(element, 'animationend', this._handleAnimationEvent),
+        renderer.listen(element, 'animationcancel', this._handleAnimationEvent),
+      ]);
+    }
   }
 
   ngAfterViewInit() {
-    this._subscriptions.add(
-      this.datepicker.stateChanges.subscribe(() => {
-        this._changeDetectorRef.markForCheck();
-      }),
-    );
+    this._stateChanges = this.datepicker.stateChanges.subscribe(() => {
+      this._changeDetectorRef.markForCheck();
+    });
     this._calendar.focusActiveCell();
   }
 
   ngOnDestroy() {
-    this._subscriptions.unsubscribe();
+    clearTimeout(this._animationFallback);
+    this._eventCleanups?.forEach(cleanup => cleanup());
+    this._stateChanges?.unsubscribe();
     this._animationDone.complete();
   }
 
@@ -246,17 +263,38 @@ export class MatDatepickerContent<S, D = ExtractDateTypeFromSelection<S>>
   }
 
   _startExitAnimation() {
-    this._animationState = 'void';
-    this._changeDetectorRef.markForCheck();
+    this._elementRef.nativeElement.classList.add('mat-datepicker-content-exit');
+
+    if (this._animationsDisabled) {
+      this._animationDone.next();
+    } else {
+      // Some internal apps disable animations in tests using `* {animation: none !important}`.
+      // If that happens, the animation events won't fire and we'll never clean up the overlay.
+      // Add a fallback that will fire if the animation doesn't run in a certain amount of time.
+      clearTimeout(this._animationFallback);
+      this._animationFallback = setTimeout(() => {
+        if (!this._isAnimating) {
+          this._animationDone.next();
+        }
+      }, 200);
+    }
   }
 
-  _handleAnimationEvent(event: AnimationEvent) {
-    this._isAnimating = event.phaseName === 'start';
+  private _handleAnimationEvent = (event: AnimationEvent) => {
+    const element = this._elementRef.nativeElement;
+
+    if (event.target !== element || !event.animationName.startsWith('_mat-datepicker-content')) {
+      return;
+    }
+
+    clearTimeout(this._animationFallback);
+    this._isAnimating = event.type === 'animationstart';
+    element.classList.toggle('mat-datepicker-content-animating', this._isAnimating);
 
     if (!this._isAnimating) {
       this._animationDone.next();
     }
-  }
+  };
 
   _getSelected() {
     return this._model.selection as unknown as D | DateRange<D> | null;
@@ -310,7 +348,13 @@ export interface MatDatepickerPanel<
 > {
   /** Stream that emits whenever the date picker is closed. */
   closedStream: EventEmitter<void>;
-  /** Color palette to use on the datepicker's calendar. */
+  /**
+   * Color palette to use on the datepicker's calendar. This API is supported in M2 themes only, it
+   * has no effect in M3 themes. For color customization in M3, see https://material.angular.io/components/datepicker/styling.
+   *
+   * For information on applying color variants in M3, see
+   * https://material.angular.io/guide/material-2-theming#optional-add-backwards-compatibility-styles-for-color-variants
+   */
   color: ThemePalette;
   /** The input element the datepicker is associated with. */
   datepickerInput: C;
@@ -333,12 +377,19 @@ export interface MatDatepickerPanel<
 /** Base class for a datepicker. */
 @Directive()
 export abstract class MatDatepickerBase<
-  C extends MatDatepickerControl<D>,
-  S,
-  D = ExtractDateTypeFromSelection<S>,
-> implements MatDatepickerPanel<C, S, D>, OnDestroy, OnChanges
+    C extends MatDatepickerControl<D>,
+    S,
+    D = ExtractDateTypeFromSelection<S>,
+  >
+  implements MatDatepickerPanel<C, S, D>, OnDestroy, OnChanges
 {
-  private _scrollStrategy: () => ScrollStrategy;
+  private _overlay = inject(Overlay);
+  private _viewContainerRef = inject(ViewContainerRef);
+  private _dateAdapter = inject<DateAdapter<D>>(DateAdapter, {optional: true})!;
+  private _dir = inject(Directionality, {optional: true});
+  private _model = inject<MatDateSelectionModel<S, D>>(MatDateSelectionModel);
+
+  private _scrollStrategy = inject(MAT_DATEPICKER_SCROLL_STRATEGY);
   private _inputStateChanges = Subscription.EMPTY;
   private _document = inject(DOCUMENT);
 
@@ -360,7 +411,13 @@ export abstract class MatDatepickerBase<
   /** The view that the calendar should start in. */
   @Input() startView: 'month' | 'year' | 'multi-year' = 'month';
 
-  /** Color palette to use on the datepicker's calendar. */
+  /**
+   * Theme color of the datepicker's calendar. This API is supported in M2 themes only, it
+   * has no effect in M3 themes. For color customization in M3, see https://material.angular.io/components/datepicker/styling.
+   *
+   * For information on applying color variants in M3, see
+   * https://material.angular.io/guide/material-2-theming#optional-add-backwards-compatibility-styles-for-color-variants
+   */
   @Input()
   get color(): ThemePalette {
     return (
@@ -376,27 +433,19 @@ export abstract class MatDatepickerBase<
    * Whether the calendar UI is in touch mode. In touch mode the calendar opens in a dialog rather
    * than a dropdown and elements have more padding to allow for bigger touch targets.
    */
-  @Input()
-  get touchUi(): boolean {
-    return this._touchUi;
-  }
-  set touchUi(value: BooleanInput) {
-    this._touchUi = coerceBooleanProperty(value);
-  }
-  private _touchUi = false;
+  @Input({transform: booleanAttribute})
+  touchUi: boolean = false;
 
   /** Whether the datepicker pop-up should be disabled. */
-  @Input()
+  @Input({transform: booleanAttribute})
   get disabled(): boolean {
     return this._disabled === undefined && this.datepickerInput
       ? this.datepickerInput.disabled
       : !!this._disabled;
   }
-  set disabled(value: BooleanInput) {
-    const newValue = coerceBooleanProperty(value);
-
-    if (newValue !== this._disabled) {
-      this._disabled = newValue;
+  set disabled(value: boolean) {
+    if (value !== this._disabled) {
+      this._disabled = value;
       this.stateChanges.next(undefined);
     }
   }
@@ -415,14 +464,8 @@ export abstract class MatDatepickerBase<
    * Note that automatic focus restoration is an accessibility feature and it is recommended that
    * you provide your own equivalent, if you decide to turn it off.
    */
-  @Input()
-  get restoreFocus(): boolean {
-    return this._restoreFocus;
-  }
-  set restoreFocus(value: BooleanInput) {
-    this._restoreFocus = coerceBooleanProperty(value);
-  }
-  private _restoreFocus = true;
+  @Input({transform: booleanAttribute})
+  restoreFocus: boolean = true;
 
   /**
    * Emits selected year in multiyear view.
@@ -452,10 +495,7 @@ export abstract class MatDatepickerBase<
   /** Emits when the datepicker has been closed. */
   @Output('closed') readonly closedStream = new EventEmitter<void>();
 
-  /**
-   * Classes to be passed to the date picker panel.
-   * Supports string and string array values, similar to `ngClass`.
-   */
+  /** Classes to be passed to the date picker panel. */
   @Input()
   get panelClass(): string | string[] {
     return this._panelClass;
@@ -466,17 +506,21 @@ export abstract class MatDatepickerBase<
   private _panelClass: string[];
 
   /** Whether the calendar is open. */
-  @Input()
+  @Input({transform: booleanAttribute})
   get opened(): boolean {
     return this._opened;
   }
-  set opened(value: BooleanInput) {
-    coerceBooleanProperty(value) ? this.open() : this.close();
+  set opened(value: boolean) {
+    if (value) {
+      this.open();
+    } else {
+      this.close();
+    }
   }
   private _opened = false;
 
   /** The id for the datepicker calendar. */
-  id: string = `mat-datepicker-${datepickerUid++}`;
+  id: string = inject(_IdGenerator).getId('mat-datepicker-');
 
   /** The minimum selectable date. */
   _getMinDate(): D | null {
@@ -513,20 +557,20 @@ export abstract class MatDatepickerBase<
   /** Emits when the datepicker's state changes. */
   readonly stateChanges = new Subject<void>();
 
-  constructor(
-    private _overlay: Overlay,
-    private _ngZone: NgZone,
-    private _viewContainerRef: ViewContainerRef,
-    @Inject(MAT_DATEPICKER_SCROLL_STRATEGY) scrollStrategy: any,
-    @Optional() private _dateAdapter: DateAdapter<D>,
-    @Optional() private _dir: Directionality,
-    private _model: MatDateSelectionModel<S, D>,
-  ) {
+  private _injector = inject(Injector);
+
+  private readonly _changeDetectorRef = inject(ChangeDetectorRef);
+
+  constructor(...args: unknown[]);
+
+  constructor() {
     if (!this._dateAdapter && (typeof ngDevMode === 'undefined' || ngDevMode)) {
       throw createMissingDateImplError('DateAdapter');
     }
 
-    this._scrollStrategy = scrollStrategy;
+    this._model.selectionChanged.subscribe(() => {
+      this._changeDetectorRef.markForCheck();
+    });
   }
 
   ngOnChanges(changes: SimpleChanges) {
@@ -639,7 +683,7 @@ export abstract class MatDatepickerBase<
     }
 
     const canRestoreFocus =
-      this._restoreFocus &&
+      this.restoreFocus &&
       this._focusedElementBeforeOpen &&
       typeof this._focusedElementBeforeOpen.focus === 'function';
 
@@ -654,7 +698,6 @@ export abstract class MatDatepickerBase<
 
     if (this._componentRef) {
       const {instance, location} = this._componentRef;
-      instance._startExitAnimation();
       instance._animationDone.pipe(take(1)).subscribe(() => {
         const activeElement = this._document.activeElement;
 
@@ -672,6 +715,7 @@ export abstract class MatDatepickerBase<
         this._focusedElementBeforeOpen = null;
         this._destroyOverlay();
       });
+      instance._startExitAnimation();
     }
 
     if (canRestoreFocus) {
@@ -716,7 +760,7 @@ export abstract class MatDatepickerBase<
           isDialog ? 'cdk-overlay-dark-backdrop' : 'mat-overlay-transparent-backdrop',
           this._backdropHarnessClass,
         ],
-        direction: this._dir,
+        direction: this._dir || 'ltr',
         scrollStrategy: isDialog ? this._overlay.scrollStrategies.block() : this._scrollStrategy(),
         panelClass: `mat-datepicker-${isDialog ? 'dialog' : 'popup'}`,
       }),
@@ -753,7 +797,12 @@ export abstract class MatDatepickerBase<
 
     // Update the position once the calendar has rendered. Only relevant in dropdown mode.
     if (!isDialog) {
-      this._ngZone.onStable.pipe(take(1)).subscribe(() => overlayRef.updatePosition());
+      afterNextRender(
+        () => {
+          overlayRef.updatePosition();
+        },
+        {injector: this._injector},
+      );
     }
   }
 

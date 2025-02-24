@@ -5,36 +5,36 @@
 ```ts
 
 import { AfterContentInit } from '@angular/core';
-import { BooleanInput } from '@angular/cdk/coercion';
 import { ElementRef } from '@angular/core';
 import { EventEmitter } from '@angular/core';
 import * as i0 from '@angular/core';
-import { NgZone } from '@angular/core';
 import { NumberInput } from '@angular/cdk/coercion';
 import { Observable } from 'rxjs';
 import { OnDestroy } from '@angular/core';
 
 // @public
 export class CdkObserveContent implements AfterContentInit, OnDestroy {
-    constructor(_contentObserver: ContentObserver, _elementRef: ElementRef<HTMLElement>, _ngZone: NgZone);
+    constructor(...args: unknown[]);
     get debounce(): number;
     set debounce(value: NumberInput);
     get disabled(): boolean;
-    set disabled(value: BooleanInput);
+    set disabled(value: boolean);
     readonly event: EventEmitter<MutationRecord[]>;
+    // (undocumented)
+    static ngAcceptInputType_disabled: unknown;
     // (undocumented)
     ngAfterContentInit(): void;
     // (undocumented)
     ngOnDestroy(): void;
     // (undocumented)
-    static ɵdir: i0.ɵɵDirectiveDeclaration<CdkObserveContent, "[cdkObserveContent]", ["cdkObserveContent"], { "disabled": "cdkObserveContentDisabled"; "debounce": "debounce"; }, { "event": "cdkObserveContent"; }, never, never, false, never>;
+    static ɵdir: i0.ɵɵDirectiveDeclaration<CdkObserveContent, "[cdkObserveContent]", ["cdkObserveContent"], { "disabled": { "alias": "cdkObserveContentDisabled"; "required": false; }; "debounce": { "alias": "debounce"; "required": false; }; }, { "event": "cdkObserveContent"; }, never, never, true, never>;
     // (undocumented)
     static ɵfac: i0.ɵɵFactoryDeclaration<CdkObserveContent, never>;
 }
 
 // @public
 export class ContentObserver implements OnDestroy {
-    constructor(_mutationObserverFactory: MutationObserverFactory);
+    constructor(...args: unknown[]);
     // (undocumented)
     ngOnDestroy(): void;
     observe(element: Element): Observable<MutationRecord[]>;
@@ -62,7 +62,7 @@ export class ObserversModule {
     // (undocumented)
     static ɵinj: i0.ɵɵInjectorDeclaration<ObserversModule>;
     // (undocumented)
-    static ɵmod: i0.ɵɵNgModuleDeclaration<ObserversModule, [typeof CdkObserveContent], never, [typeof CdkObserveContent]>;
+    static ɵmod: i0.ɵɵNgModuleDeclaration<ObserversModule, never, [typeof CdkObserveContent], [typeof CdkObserveContent]>;
 }
 
 // (No @packageDocumentation comment for this package)

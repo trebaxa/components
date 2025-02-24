@@ -3,12 +3,12 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {InjectionToken} from '@angular/core';
 import {Observable} from 'rxjs';
-import {CdkVirtualScrollViewport} from './virtual-scroll-viewport';
+import type {CdkVirtualScrollViewport} from './virtual-scroll-viewport';
 
 /** The injection token used to specify the virtual scrolling strategy. */
 export const VIRTUAL_SCROLL_STRATEGY = new InjectionToken<VirtualScrollStrategy>(

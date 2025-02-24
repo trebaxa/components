@@ -3,12 +3,12 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {normalizePassiveListenerOptions} from '@angular/cdk/platform';
-import {Component, ElementRef, NgZone, ViewChild} from '@angular/core';
-import {ComponentFixture, inject, TestBed} from '@angular/core/testing';
+import {Component, ElementRef, ViewChild} from '@angular/core';
+import {ComponentFixture, TestBed, inject} from '@angular/core/testing';
 import {EMPTY} from 'rxjs';
 import {AutofillEvent, AutofillMonitor} from './autofill';
 import {TextFieldModule} from './text-field-module';
@@ -22,9 +22,8 @@ describe('AutofillMonitor', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      imports: [TextFieldModule],
-      declarations: [Inputs],
-    }).compileComponents();
+      imports: [TextFieldModule, Inputs],
+    });
   });
 
   beforeEach(inject([AutofillMonitor], (afm: AutofillMonitor) => {
@@ -154,22 +153,6 @@ describe('AutofillMonitor', () => {
     expect(spy).toHaveBeenCalled();
   });
 
-  it('should emit on stream inside the NgZone', () => {
-    const inputEl = testComponent.input1.nativeElement;
-    let animationStartCallback: Function = () => {};
-    inputEl.addEventListener.and.callFake(
-      (_: string, cb: Function) => (animationStartCallback = cb),
-    );
-    const autofillStream = autofillMonitor.monitor(inputEl);
-    const spy = jasmine.createSpy('autofill spy');
-
-    autofillStream.subscribe(() => spy(NgZone.isInAngularZone()));
-    expect(spy).not.toHaveBeenCalled();
-
-    animationStartCallback({animationName: 'cdk-text-field-autofill-start', target: inputEl});
-    expect(spy).toHaveBeenCalledWith(true);
-  });
-
   it('should not emit on init if input is unfilled', () => {
     const inputEl = testComponent.input1.nativeElement;
     let animationStartCallback: Function = () => {};
@@ -191,9 +174,8 @@ describe('cdkAutofill', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      imports: [TextFieldModule],
-      declarations: [InputWithCdkAutofilled],
-    }).compileComponents();
+      imports: [TextFieldModule, InputWithCdkAutofilled],
+    });
   });
 
   beforeEach(inject([AutofillMonitor], (afm: AutofillMonitor) => {
@@ -222,6 +204,7 @@ describe('cdkAutofill', () => {
     <input #input2>
     <input #input3>
   `,
+  imports: [TextFieldModule],
 })
 class Inputs {
   // Cast to `any` so we can stub out some methods in the tests.
@@ -232,6 +215,7 @@ class Inputs {
 
 @Component({
   template: `<input #input cdkAutofill>`,
+  imports: [TextFieldModule],
 })
 class InputWithCdkAutofilled {
   // Cast to `any` so we can stub out some methods in the tests.

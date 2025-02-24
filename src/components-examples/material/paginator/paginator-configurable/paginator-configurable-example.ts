@@ -1,5 +1,10 @@
 import {Component} from '@angular/core';
-import {PageEvent} from '@angular/material/paginator';
+import {PageEvent, MatPaginatorModule} from '@angular/material/paginator';
+import {JsonPipe} from '@angular/common';
+import {MatSlideToggleModule} from '@angular/material/slide-toggle';
+import {FormsModule} from '@angular/forms';
+import {MatInputModule} from '@angular/material/input';
+import {MatFormFieldModule} from '@angular/material/form-field';
 
 /**
  * @title Configurable paginator
@@ -7,7 +12,15 @@ import {PageEvent} from '@angular/material/paginator';
 @Component({
   selector: 'paginator-configurable-example',
   templateUrl: 'paginator-configurable-example.html',
-  styleUrls: ['paginator-configurable-example.css'],
+  styleUrl: 'paginator-configurable-example.css',
+  imports: [
+    MatFormFieldModule,
+    MatInputModule,
+    FormsModule,
+    MatSlideToggleModule,
+    MatPaginatorModule,
+    JsonPipe,
+  ],
 })
 export class PaginatorConfigurableExample {
   length = 50;

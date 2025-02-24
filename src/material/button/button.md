@@ -12,25 +12,14 @@ There are several button variants, each applied as an attribute:
 
 | Attribute            | Description                                                              |
 |----------------------|--------------------------------------------------------------------------|
-| `mat-button`         | Rectangular text button w/ no elevation                                  |
-| `mat-raised-button`  | Rectangular contained button w/ elevation                                |
-| `mat-flat-button`    | Rectangular contained button w/ no elevation                             |
-| `mat-stroked-button` | Rectangular outlined button w/ no elevation                              |
+| `mat-button`         | Rectangular text button w/ no elevation and rounded corners                                 |
+| `mat-raised-button`  | Rectangular contained button w/ elevation and rounded corners                               |
+| `mat-flat-button`    | Rectangular contained button w/ no elevation and rounded corners                            |
+| `mat-stroked-button` | Rectangular outlined button w/ no elevation and rounded corners                             |
 | `mat-icon-button`    | Circular button with a transparent background, meant to contain an icon  |
-| `mat-fab`            | Circular button w/ elevation, defaults to theme's accent color           |
+| `mat-fab`            | Square button w/ elevation and rounded corners, meant to contain an icon. Can be [extended](https://material.angular.io/components/button/overview#extended-fab-buttons) to a rectangle to also fit a label           |
 | `mat-mini-fab`       | Same as `mat-fab` but smaller                                            |
 
-
-### Theming
-Buttons can be colored in terms of the current theme using the `color` property to set the
-background color to `primary`, `accent`, or `warn`.
-
-### Capitalization
-According to the Material design spec button text has to be capitalized, however we have opted not
-to capitalize buttons automatically via `text-transform: uppercase`, because it can cause issues in
-certain locales. It is also worth noting that using ALL CAPS in the text itself causes issues for
-screen-readers, which will read the text character-by-character. We leave the decision of how to
-approach this to the consuming app.
 
 ### Extended fab buttons
 Traditional fab buttons are circular and only have space for a single icon. However, you can add the
@@ -45,11 +34,29 @@ not.
 </button>
 ```
 
+### Interactive disabled buttons
+Native disabled `<button>` elements cannot receive focus and do not dispatch any events. This can
+be problematic in some cases because it can prevent the app from telling the user why the button is
+disabled. You can use the `disabledInteractive` input to style the button as disabled but allow for
+it to receive focus and dispatch events. The button will have `aria-disabled="true"` for assistive
+technology. The behavior can be configured globally through the `MAT_BUTTON_CONFIG` injection token.
+
+**Note:** Using the `disabledInteractive` input can result in buttons that previously prevented
+actions to no longer do so, for example a submit button in a form. When using this input, you should
+guard against such cases in your component.
+
+<!-- example(button-disabled-interactive) -->
+
 ### Accessibility
 Angular Material uses native `<button>` and `<a>` elements to ensure an accessible experience by
 default. A `<button>` element should be used for any interaction that _performs an action on the
 current page_. An `<a>` element should be used for any interaction that _navigates to another
 URL_. All standard accessibility best practices for buttons and anchors apply to `MatButton`.
+
+#### Capitalization
+Using ALL CAPS in the button text itself causes issues for screen-readers, which
+will read the text character-by-character. It can also cause issues for localization.
+We recommend not changing the default capitalization for the button text.
 
 #### Disabling anchors
 `MatAnchor` supports disabling an anchor in addition to the features provided by the native
@@ -61,7 +68,7 @@ with any assistive technology your application supports.
 Buttons or links containing only icons (such as `mat-fab`, `mat-mini-fab`, and `mat-icon-button`)
 should be given a meaningful label via `aria-label` or `aria-labelledby`. [See the documentation
 for `MatIcon`](https://material.angular.io/components/icon) for more
-information on using icons in buttons.
+information on using icons in buttons. Additionally, to be fully accessible the icon should have a minimum touch-target of 48x48 to ensure that the icon is easily clickable particularly on mobile devices and small screens.
 
 #### Toggle buttons
 [See the documentation for `MatButtonToggle`](https://material.angular.io/components/button-toggle)

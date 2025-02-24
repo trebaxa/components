@@ -3,45 +3,38 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {Directionality} from '@angular/cdk/bidi';
-import {
-  BooleanInput,
-  coerceBooleanProperty,
-  coerceNumberProperty,
-  NumberInput,
-} from '@angular/cdk/coercion';
 import {Platform} from '@angular/cdk/platform';
 import {
   AfterViewInit,
+  booleanAttribute,
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
   ContentChild,
   ContentChildren,
   ElementRef,
-  Inject,
+  inject,
   Input,
   NgZone,
+  numberAttribute,
   OnDestroy,
-  Optional,
   QueryList,
   ViewChild,
   ViewChildren,
   ViewEncapsulation,
+  ANIMATION_MODULE_TYPE,
 } from '@angular/core';
 import {
-  CanDisableRipple,
+  _StructuralStylesLoader,
   MAT_RIPPLE_GLOBAL_OPTIONS,
-  mixinColor,
-  mixinDisableRipple,
   RippleGlobalOptions,
+  ThemePalette,
 } from '@angular/material/core';
-import {ANIMATION_MODULE_TYPE} from '@angular/platform-browser/animations';
 import {Subscription} from 'rxjs';
-import {take} from 'rxjs/operators';
 import {
   _MatThumb,
   _MatTickMark,
@@ -54,21 +47,13 @@ import {
   MAT_SLIDER,
   MAT_SLIDER_VISUAL_THUMB,
 } from './slider-interface';
+import {MatSliderVisualThumb} from './slider-thumb';
+import {_CdkPrivateStyleLoader} from '@angular/cdk/private';
 
 // TODO(wagnermaciel): maybe handle the following edge case:
 // 1. start dragging discrete slider
 // 2. tab to disable checkbox
 // 3. without ending drag, disable the slider
-
-// Boilerplate for applying mixins to MatSlider.
-const _MatSliderMixinBase = mixinColor(
-  mixinDisableRipple(
-    class {
-      constructor(public _elementRef: ElementRef<HTMLElement>) {}
-    },
-  ),
-  'primary',
-);
 
 /**
  * Allows users to select from a range of values by moving the slider thumb. It is similar in
@@ -77,9 +62,10 @@ const _MatSliderMixinBase = mixinColor(
 @Component({
   selector: 'mat-slider',
   templateUrl: 'slider.html',
-  styleUrls: ['slider.css'],
+  styleUrl: 'slider.css',
   host: {
     'class': 'mat-mdc-slider mdc-slider',
+    '[class]': '"mat-" + (color || "primary")',
     '[class.mdc-slider--range]': '_isRange',
     '[class.mdc-slider--disabled]': 'disabled',
     '[class.mdc-slider--discrete]': 'discrete',
@@ -89,13 +75,18 @@ const _MatSliderMixinBase = mixinColor(
   exportAs: 'matSlider',
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
-  inputs: ['color', 'disableRipple'],
   providers: [{provide: MAT_SLIDER, useExisting: MatSlider}],
+  imports: [MatSliderVisualThumb],
 })
-export class MatSlider
-  extends _MatSliderMixinBase
-  implements AfterViewInit, CanDisableRipple, OnDestroy, _MatSlider
-{
+export class MatSlider implements AfterViewInit, OnDestroy, _MatSlider {
+  readonly _ngZone = inject(NgZone);
+  readonly _cdr = inject(ChangeDetectorRef);
+  readonly _elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
+  readonly _dir = inject(Directionality, {optional: true});
+  readonly _globalRippleOptions = inject<RippleGlobalOptions>(MAT_RIPPLE_GLOBAL_OPTIONS, {
+    optional: true,
+  });
+
   /** The active portion of the slider track. */
   @ViewChild('trackActive') _trackActive: ElementRef<HTMLElement>;
 
@@ -110,12 +101,12 @@ export class MatSlider
   _inputs: QueryList<_MatSliderRangeThumb>;
 
   /** Whether the slider is disabled. */
-  @Input()
+  @Input({transform: booleanAttribute})
   get disabled(): boolean {
     return this._disabled;
   }
-  set disabled(v: BooleanInput) {
-    this._disabled = coerceBooleanProperty(v);
+  set disabled(v: boolean) {
+    this._disabled = v;
     const endInput = this._getInput(_MatThumb.END);
     const startInput = this._getInput(_MatThumb.START);
 
@@ -129,38 +120,46 @@ export class MatSlider
   private _disabled: boolean = false;
 
   /** Whether the slider displays a numeric value label upon pressing the thumb. */
-  @Input()
+  @Input({transform: booleanAttribute})
   get discrete(): boolean {
     return this._discrete;
   }
-  set discrete(v: BooleanInput) {
-    this._discrete = coerceBooleanProperty(v);
+  set discrete(v: boolean) {
+    this._discrete = v;
     this._updateValueIndicatorUIs();
   }
   private _discrete: boolean = false;
 
   /** Whether the slider displays tick marks along the slider track. */
-  @Input()
-  get showTickMarks(): boolean {
-    return this._showTickMarks;
-  }
-  set showTickMarks(v: BooleanInput) {
-    this._showTickMarks = coerceBooleanProperty(v);
-  }
-  private _showTickMarks: boolean = false;
+  @Input({transform: booleanAttribute})
+  showTickMarks: boolean = false;
 
   /** The minimum value that the slider can have. */
-  @Input()
+  @Input({transform: numberAttribute})
   get min(): number {
     return this._min;
   }
-  set min(v: NumberInput) {
-    const min = coerceNumberProperty(v, this._min);
+  set min(v: number) {
+    const min = isNaN(v) ? this._min : v;
     if (this._min !== min) {
       this._updateMin(min);
     }
   }
   private _min: number = 0;
+
+  /**
+   * Theme color of the slider. This API is supported in M2 themes only, it
+   * has no effect in M3 themes. For color customization in M3, see https://material.angular.io/components/slider/styling.
+   *
+   * For information on applying color variants in M3, see
+   * https://material.angular.io/guide/material-2-theming#optional-add-backwards-compatibility-styles-for-color-variants
+   */
+  @Input()
+  color: ThemePalette;
+
+  /** Whether ripples are disabled in the slider. */
+  @Input({transform: booleanAttribute})
+  disableRipple: boolean = false;
 
   private _updateMin(min: number): void {
     const prevMin = this._min;
@@ -212,12 +211,12 @@ export class MatSlider
   }
 
   /** The maximum value that the slider can have. */
-  @Input()
+  @Input({transform: numberAttribute})
   get max(): number {
     return this._max;
   }
-  set max(v: NumberInput) {
-    const max = coerceNumberProperty(v, this._max);
+  set max(v: number) {
+    const max = isNaN(v) ? this._max : v;
     if (this._max !== max) {
       this._updateMax(max);
     }
@@ -274,17 +273,17 @@ export class MatSlider
   }
 
   /** The values at which the thumb will snap. */
-  @Input()
+  @Input({transform: numberAttribute})
   get step(): number {
     return this._step;
   }
-  set step(v: NumberInput) {
-    const step = coerceNumberProperty(v, this._step);
+  set step(v: number) {
+    const step = isNaN(v) ? this._step : v;
     if (this._step !== step) {
       this._updateStep(step);
     }
   }
-  private _step: number = 0;
+  private _step: number = 1;
 
   private _updateStep(step: number): void {
     this._step = step;
@@ -405,28 +404,25 @@ export class MatSlider
 
   private _resizeTimer: null | ReturnType<typeof setTimeout> = null;
 
-  constructor(
-    readonly _ngZone: NgZone,
-    readonly _cdr: ChangeDetectorRef,
-    readonly _platform: Platform,
-    elementRef: ElementRef<HTMLElement>,
-    @Optional() readonly _dir: Directionality,
-    @Optional()
-    @Inject(MAT_RIPPLE_GLOBAL_OPTIONS)
-    readonly _globalRippleOptions?: RippleGlobalOptions,
-    @Optional() @Inject(ANIMATION_MODULE_TYPE) animationMode?: string,
-  ) {
-    super(elementRef);
+  private _platform = inject(Platform);
+
+  constructor(...args: unknown[]);
+
+  constructor() {
+    inject(_CdkPrivateStyleLoader).load(_StructuralStylesLoader);
+    const animationMode = inject(ANIMATION_MODULE_TYPE, {optional: true});
     this._noopAnimations = animationMode === 'NoopAnimations';
-    this._dirChangeSubscription = this._dir.change.subscribe(() => this._onDirChange());
-    this._isRtl = this._dir.value === 'rtl';
+
+    if (this._dir) {
+      this._dirChangeSubscription = this._dir.change.subscribe(() => this._onDirChange());
+      this._isRtl = this._dir.value === 'rtl';
+    }
   }
 
   /** The radius of the native slider's knob. AFAIK there is no way to avoid hardcoding this. */
   _knobRadius: number = 8;
 
   _inputPadding: number;
-  _inputOffset: number;
 
   ngAfterViewInit(): void {
     if (this._platform.isBrowser) {
@@ -441,7 +437,7 @@ export class MatSlider
     if (typeof ngDevMode === 'undefined' || ngDevMode) {
       _validateInputs(
         this._isRange,
-        this._getInput(_MatThumb.END)!,
+        this._getInput(_MatThumb.END),
         this._getInput(_MatThumb.START),
       );
     }
@@ -449,7 +445,6 @@ export class MatSlider
     const thumb = this._getThumb(_MatThumb.END);
     this._rippleRadius = thumb._ripple.radius;
     this._inputPadding = this._rippleRadius - this._knobRadius;
-    this._inputOffset = this._knobRadius;
 
     this._isRange
       ? this._initUIRange(eInput as _MatSliderRangeThumb, sInput as _MatSliderRangeThumb)
@@ -502,7 +497,7 @@ export class MatSlider
 
   /** Handles updating the slider ui after a dir change. */
   private _onDirChange(): void {
-    this._isRtl = this._dir.value === 'rtl';
+    this._isRtl = this._dir?.value === 'rtl';
     this._isRange ? this._onDirChangeRange() : this._onDirChangeNonRange();
     this._updateTickMarkUI();
   }
@@ -585,28 +580,18 @@ export class MatSlider
     transformOrigin: string;
   }): void {
     const trackStyle = this._trackActive.nativeElement.style;
-    const animationOriginChanged =
-      styles.left !== trackStyle.left && styles.right !== trackStyle.right;
 
     trackStyle.left = styles.left;
     trackStyle.right = styles.right;
     trackStyle.transformOrigin = styles.transformOrigin;
-
-    if (animationOriginChanged) {
-      this._elementRef.nativeElement.classList.add('mat-mdc-slider-disable-track-animation');
-      this._ngZone.onStable.pipe(take(1)).subscribe(() => {
-        this._elementRef.nativeElement.classList.remove('mat-mdc-slider-disable-track-animation');
-        trackStyle.transform = styles.transform;
-      });
-    } else {
-      trackStyle.transform = styles.transform;
-    }
+    trackStyle.transform = styles.transform;
   }
 
   /** Returns the translateX positioning for a tick mark based on it's index. */
   _calcTickMarkTransform(index: number): string {
     // TODO(wagnermaciel): See if we can avoid doing this and just using flex to position these.
-    const translateX = index * (this._tickMarkTrackWidth / (this._tickMarks.length - 1));
+    const offset = index * (this._tickMarkTrackWidth / (this._tickMarks.length - 1));
+    const translateX = this._isRtl ? this._cachedWidth - 6 - offset : offset;
     return `translateX(${translateX}px`;
   }
 
@@ -757,7 +742,7 @@ export class MatSlider
     const valuetext = this.displayWith(source.value);
 
     this._hasViewInitialized
-      ? (source._valuetext = valuetext)
+      ? source._valuetext.set(valuetext)
       : source._hostElement.setAttribute('aria-valuetext', valuetext);
 
     if (this.discrete) {
@@ -804,7 +789,7 @@ export class MatSlider
     const step = this._step && this._step > 0 ? this._step : 1;
     const maxValue = Math.floor(this.max / step) * step;
     const percentage = (maxValue - this.min) / (this.max - this.min);
-    this._tickMarkTrackWidth = this._cachedWidth * percentage - 6;
+    this._tickMarkTrackWidth = (this._cachedWidth - 6) * percentage;
   }
 
   // Track active update conditions
@@ -893,16 +878,12 @@ export class MatSlider
     }
     const step = this.step > 0 ? this.step : 1;
     this._isRange ? this._updateTickMarkUIRange(step) : this._updateTickMarkUINonRange(step);
-
-    if (this._isRtl) {
-      this._tickMarks.reverse();
-    }
   }
 
   private _updateTickMarkUINonRange(step: number): void {
     const value = this._getValue();
-    let numActive = Math.max(Math.round((value - this.min) / step), 0);
-    let numInactive = Math.max(Math.round((this.max - value) / step), 0);
+    let numActive = Math.max(Math.round((value - this.min) / step), 0) + 1;
+    let numInactive = Math.max(Math.round((this.max - value) / step), 0) - 1;
     this._isRtl ? numActive++ : numInactive++;
 
     this._tickMarks = Array(numActive)
@@ -913,9 +894,10 @@ export class MatSlider
   private _updateTickMarkUIRange(step: number): void {
     const endValue = this._getValue();
     const startValue = this._getValue(_MatThumb.START);
-    const numInactiveBeforeStartThumb = Math.max(Math.floor((startValue - this.min) / step), 0);
-    const numActive = Math.max(Math.floor((endValue - startValue) / step) + 1, 0);
-    const numInactiveAfterEndThumb = Math.max(Math.floor((this.max - endValue) / step), 0);
+
+    const numInactiveBeforeStartThumb = Math.max(Math.round((startValue - this.min) / step), 0);
+    const numActive = Math.max(Math.round((endValue - startValue) / step) + 1, 0);
+    const numInactiveAfterEndThumb = Math.max(Math.round((this.max - endValue) / step), 0);
     this._tickMarks = Array(numInactiveBeforeStartThumb)
       .fill(_MatTickMark.INACTIVE)
       .concat(
@@ -941,23 +923,33 @@ export class MatSlider
   }
 
   _setTransition(withAnimation: boolean): void {
-    this._hasAnimation = withAnimation && !this._noopAnimations;
+    this._hasAnimation = !this._platform.IOS && withAnimation && !this._noopAnimations;
     this._elementRef.nativeElement.classList.toggle(
       'mat-mdc-slider-with-animation',
       this._hasAnimation,
     );
+  }
+
+  /** Whether the given pointer event occurred within the bounds of the slider pointer's DOM Rect. */
+  _isCursorOnSliderThumb(event: PointerEvent, rect: DOMRect) {
+    const radius = rect.width / 2;
+    const centerX = rect.x + radius;
+    const centerY = rect.y + radius;
+    const dx = event.clientX - centerX;
+    const dy = event.clientY - centerY;
+    return Math.pow(dx, 2) + Math.pow(dy, 2) < Math.pow(radius, 2);
   }
 }
 
 /** Ensures that there is not an invalid configuration for the slider thumb inputs. */
 function _validateInputs(
   isRange: boolean,
-  endInputElement: _MatSliderThumb | _MatSliderRangeThumb,
-  startInputElement?: _MatSliderThumb,
+  endInputElement: _MatSliderThumb | _MatSliderRangeThumb | undefined,
+  startInputElement: _MatSliderThumb | undefined,
 ): void {
   const startValid =
     !isRange || startInputElement?._hostElement.hasAttribute('matSliderStartThumb');
-  const endValid = endInputElement._hostElement.hasAttribute(
+  const endValid = endInputElement?._hostElement.hasAttribute(
     isRange ? 'matSliderEndThumb' : 'matSliderThumb',
   );
 

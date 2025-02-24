@@ -1,20 +1,26 @@
-import {TestBed, ComponentFixture} from '@angular/core/testing';
-import {ApplicationRef, Component, DebugElement, Provider, Type} from '@angular/core';
+import {dispatchFakeEvent} from '@angular/cdk/testing/private';
+import {
+  ApplicationRef,
+  Component,
+  DebugElement,
+  EnvironmentProviders,
+  Provider,
+  Type,
+} from '@angular/core';
+import {ComponentFixture, TestBed} from '@angular/core/testing';
 import {By} from '@angular/platform-browser';
-import {dispatchFakeEvent} from '../../cdk/testing/private';
-import {MatProgressBarModule, MAT_PROGRESS_BAR_DEFAULT_OPTIONS} from './index';
+import {MAT_PROGRESS_BAR_DEFAULT_OPTIONS, MatProgressBarModule} from './index';
 import {MatProgressBar} from './progress-bar';
 
-describe('MDC-based MatProgressBar', () => {
+describe('MatProgressBar', () => {
   function createComponent<T>(
     componentType: Type<T>,
-    providers: Provider[] = [],
+    providers: (Provider | EnvironmentProviders)[] = [],
   ): ComponentFixture<T> {
     TestBed.configureTestingModule({
-      imports: [MatProgressBarModule],
-      declarations: [componentType],
+      imports: [MatProgressBarModule, componentType],
       providers,
-    }).compileComponents();
+    });
 
     return TestBed.createComponent<T>(componentType);
   }
@@ -322,15 +328,20 @@ describe('MDC-based MatProgressBar', () => {
         // On animation end, output should be emitted.
         dispatchFakeEvent(primaryValueBar.nativeElement, 'transitionend', true);
 
-        expect(appRef.tick).toHaveBeenCalled();
         expect(animationEndSpy).toHaveBeenCalledWith({value: 40});
       });
     });
   });
 });
 
-@Component({template: '<mat-progress-bar></mat-progress-bar>'})
+@Component({
+  template: '<mat-progress-bar></mat-progress-bar>',
+  imports: [MatProgressBar],
+})
 class BasicProgressBar {}
 
-@Component({template: '<mat-progress-bar mode="buffer"></mat-progress-bar>'})
+@Component({
+  template: '<mat-progress-bar mode="buffer"></mat-progress-bar>',
+  imports: [MatProgressBar],
+})
 class BufferProgressBar {}

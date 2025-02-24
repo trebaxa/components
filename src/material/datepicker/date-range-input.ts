@@ -3,49 +3,40 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
+import {_IdGenerator, CdkMonitorFocus, FocusOrigin} from '@angular/cdk/a11y';
 import {
-  Component,
-  ChangeDetectionStrategy,
-  ViewEncapsulation,
-  Input,
-  Optional,
-  OnDestroy,
-  ContentChild,
   AfterContentInit,
+  ChangeDetectionStrategy,
   ChangeDetectorRef,
-  Self,
+  Component,
   ElementRef,
-  Inject,
+  Input,
   OnChanges,
+  OnDestroy,
   SimpleChanges,
+  ViewEncapsulation,
+  booleanAttribute,
+  signal,
+  inject,
 } from '@angular/core';
-import {MatFormFieldControl, MAT_FORM_FIELD} from '@angular/material/form-field';
-import {ThemePalette, DateAdapter} from '@angular/material/core';
-import {NgControl, ControlContainer} from '@angular/forms';
-import {Subject, merge, Subscription} from 'rxjs';
-import {FocusOrigin} from '@angular/cdk/a11y';
-import {coerceBooleanProperty, BooleanInput} from '@angular/cdk/coercion';
-import {
-  MatStartDate,
-  MatEndDate,
-  MatDateRangeInputParent,
-  MAT_DATE_RANGE_INPUT_PARENT,
-} from './date-range-input-parts';
-import {MatDatepickerControl, MatDatepickerPanel} from './datepicker-base';
-import {createMissingDateImplError} from './datepicker-errors';
-import {DateFilterFn, dateInputsHaveChanged, _MatFormFieldPartial} from './datepicker-input-base';
+import {ControlContainer, NgControl, Validators} from '@angular/forms';
+import {DateAdapter, ThemePalette} from '@angular/material/core';
+import {MAT_FORM_FIELD, MatFormFieldControl} from '@angular/material/form-field';
+import {Subject, Subscription, merge} from 'rxjs';
+import type {MatEndDate, MatStartDate} from './date-range-input-parts';
 import {MatDateRangePickerInput} from './date-range-picker';
 import {DateRange, MatDateSelectionModel} from './date-selection-model';
-
-let nextUniqueId = 0;
+import {MatDatepickerControl, MatDatepickerPanel} from './datepicker-base';
+import {createMissingDateImplError} from './datepicker-errors';
+import {DateFilterFn, _MatFormFieldPartial, dateInputsHaveChanged} from './datepicker-input-base';
 
 @Component({
   selector: 'mat-date-range-input',
   templateUrl: 'date-range-input.html',
-  styleUrls: ['date-range-input.css'],
+  styleUrl: 'date-range-input.css',
   exportAs: 'matDateRangeInput',
   host: {
     'class': 'mat-date-range-input',
@@ -61,22 +52,28 @@ let nextUniqueId = 0;
   },
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
-  providers: [
-    {provide: MatFormFieldControl, useExisting: MatDateRangeInput},
-    {provide: MAT_DATE_RANGE_INPUT_PARENT, useExisting: MatDateRangeInput},
-  ],
+  providers: [{provide: MatFormFieldControl, useExisting: MatDateRangeInput}],
+  imports: [CdkMonitorFocus],
 })
 export class MatDateRangeInput<D>
   implements
     MatFormFieldControl<DateRange<D>>,
     MatDatepickerControl<D>,
-    MatDateRangeInputParent<D>,
     MatDateRangePickerInput<D>,
     AfterContentInit,
     OnChanges,
     OnDestroy
 {
+  private _changeDetectorRef = inject(ChangeDetectorRef);
+  private _elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
+  private _dateAdapter = inject<DateAdapter<D>>(DateAdapter, {optional: true})!;
+  private _formField = inject<_MatFormFieldPartial>(MAT_FORM_FIELD, {optional: true});
+
   private _closedSubscription = Subscription.EMPTY;
+  private _openedSubscription = Subscription.EMPTY;
+
+  _startInput: MatStartDate<D>;
+  _endInput: MatEndDate<D>;
 
   /** Current value of the range input. */
   get value() {
@@ -84,7 +81,7 @@ export class MatDateRangeInput<D>
   }
 
   /** Unique ID for the group. */
-  id = `mat-date-range-input-${nextUniqueId++}`;
+  id: string = inject(_IdGenerator).getId('mat-date-range-input-');
 
   /** Whether the control is focused. */
   focused = false;
@@ -118,24 +115,39 @@ export class MatDateRangeInput<D>
       this._model = rangePicker.registerInput(this);
       this._rangePicker = rangePicker;
       this._closedSubscription.unsubscribe();
+      this._openedSubscription.unsubscribe();
+      this._ariaOwns.set(this.rangePicker.opened ? rangePicker.id : null);
       this._closedSubscription = rangePicker.closedStream.subscribe(() => {
         this._startInput?._onTouched();
         this._endInput?._onTouched();
+        this._ariaOwns.set(null);
+      });
+      this._openedSubscription = rangePicker.openedStream.subscribe(() => {
+        this._ariaOwns.set(rangePicker.id);
       });
       this._registerModel(this._model!);
     }
   }
   private _rangePicker: MatDatepickerPanel<MatDatepickerControl<D>, DateRange<D>, D>;
 
+  /** The id of the panel owned by this input. */
+  _ariaOwns = signal<string | null>(null);
+
   /** Whether the input is required. */
-  @Input()
+  @Input({transform: booleanAttribute})
   get required(): boolean {
-    return !!this._required;
+    return (
+      this._required ??
+      (this._isTargetRequired(this) ||
+        this._isTargetRequired(this._startInput) ||
+        this._isTargetRequired(this._endInput)) ??
+      false
+    );
   }
-  set required(value: BooleanInput) {
-    this._required = coerceBooleanProperty(value);
+  set required(value: boolean) {
+    this._required = value;
   }
-  private _required: boolean;
+  private _required: boolean | undefined;
 
   /** Function that can be used to filter out dates within the date range picker. */
   @Input()
@@ -190,17 +202,15 @@ export class MatDateRangeInput<D>
   private _max: D | null;
 
   /** Whether the input is disabled. */
-  @Input()
+  @Input({transform: booleanAttribute})
   get disabled(): boolean {
     return this._startInput && this._endInput
       ? this._startInput.disabled && this._endInput.disabled
       : this._groupDisabled;
   }
-  set disabled(value: BooleanInput) {
-    const newValue = coerceBooleanProperty(value);
-
-    if (newValue !== this._groupDisabled) {
-      this._groupDisabled = newValue;
+  set disabled(value: boolean) {
+    if (value !== this._groupDisabled) {
+      this._groupDisabled = value;
       this.stateChanges.next(undefined);
     }
   }
@@ -237,9 +247,6 @@ export class MatDateRangeInput<D>
   /** End of the comparison range that should be shown in the calendar. */
   @Input() comparisonEnd: D | null = null;
 
-  @ContentChild(MatStartDate) _startInput: MatStartDate<D>;
-  @ContentChild(MatEndDate) _endInput: MatEndDate<D>;
-
   /**
    * Implemented as a part of `MatFormFieldControl`.
    * TODO(crisbeto): change type to `AbstractControlDirective` after #18206 lands.
@@ -250,27 +257,31 @@ export class MatDateRangeInput<D>
   /** Emits when the input's state has changed. */
   readonly stateChanges = new Subject<void>();
 
-  constructor(
-    private _changeDetectorRef: ChangeDetectorRef,
-    private _elementRef: ElementRef<HTMLElement>,
-    @Optional() @Self() control: ControlContainer,
-    @Optional() private _dateAdapter: DateAdapter<D>,
-    @Optional() @Inject(MAT_FORM_FIELD) private _formField?: _MatFormFieldPartial,
-  ) {
-    if (!_dateAdapter && (typeof ngDevMode === 'undefined' || ngDevMode)) {
+  /**
+   * Disable the automatic labeling to avoid issues like #27241.
+   * @docs-private
+   */
+  readonly disableAutomaticLabeling = true;
+
+  constructor(...args: unknown[]);
+
+  constructor() {
+    if (!this._dateAdapter && (typeof ngDevMode === 'undefined' || ngDevMode)) {
       throw createMissingDateImplError('DateAdapter');
     }
 
     // The datepicker module can be used both with MDC and non-MDC form fields. We have
     // to conditionally add the MDC input class so that the range picker looks correctly.
-    if (_formField?._elementRef.nativeElement.classList.contains('mat-mdc-form-field')) {
-      const classList = _elementRef.nativeElement.classList;
-      classList.add('mat-mdc-input-element');
-      classList.add('mat-mdc-form-field-input-control');
+    if (this._formField?._elementRef.nativeElement.classList.contains('mat-mdc-form-field')) {
+      this._elementRef.nativeElement.classList.add(
+        'mat-mdc-input-element',
+        'mat-mdc-form-field-input-control',
+        'mdc-text-field__input',
+      );
     }
 
     // TODO(crisbeto): remove `as any` after #18206 lands.
-    this.ngControl = control as any;
+    this.ngControl = inject(ControlContainer, {optional: true, self: true}) as any;
   }
 
   /**
@@ -325,6 +336,7 @@ export class MatDateRangeInput<D>
 
   ngOnDestroy() {
     this._closedSubscription.unsubscribe();
+    this._openedSubscription.unsubscribe();
     this.stateChanges.complete();
   }
 
@@ -421,5 +433,10 @@ export class MatDateRangeInput<D>
     if (this._endInput) {
       this._endInput._registerModel(model);
     }
+  }
+
+  /** Checks whether a specific range input directive is required. */
+  private _isTargetRequired(target: {ngControl: NgControl | null} | null): boolean | undefined {
+    return target?.ngControl?.control?.hasValidator(Validators.required);
   }
 }

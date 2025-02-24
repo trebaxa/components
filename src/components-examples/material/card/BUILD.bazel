@@ -19,10 +19,10 @@ ng_module(
         "//src/material/button/testing",
         "//src/material/card",
         "//src/material/card/testing",
+        "//src/material/chips",
         "//src/material/divider",
         "//src/material/progress-bar",
         "@npm//@angular/platform-browser",
-        "@npm//@angular/platform-browser-dynamic",
         "@npm//@types/jasmine",
     ],
 )
@@ -46,7 +46,6 @@ ng_test_library(
         "//src/material/button/testing",
         "//src/material/card",
         "//src/material/card/testing",
-        "@npm//@angular/platform-browser-dynamic",
     ],
 )
 

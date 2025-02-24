@@ -3,33 +3,33 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {CdkMenuGroup} from './menu-group';
+import {_IdGenerator, FocusKeyManager, FocusMonitor, FocusOrigin} from '@angular/cdk/a11y';
+import {Directionality} from '@angular/cdk/bidi';
 import {
   AfterContentInit,
   ContentChildren,
   Directive,
   ElementRef,
-  inject,
   Input,
   NgZone,
   OnDestroy,
   QueryList,
+  Renderer2,
+  computed,
+  inject,
+  signal,
 } from '@angular/core';
-import {FocusKeyManager, FocusOrigin} from '@angular/cdk/a11y';
-import {CdkMenuItem} from './menu-item';
-import {merge, Subject} from 'rxjs';
-import {Directionality} from '@angular/cdk/bidi';
+import {Subject, merge} from 'rxjs';
 import {mapTo, mergeAll, mergeMap, startWith, switchMap, takeUntil} from 'rxjs/operators';
-import {MENU_STACK, MenuStack, MenuStackItem} from './menu-stack';
-import {Menu} from './menu-interface';
-import {PointerFocusTracker} from './pointer-focus-tracker';
 import {MENU_AIM} from './menu-aim';
-
-/** Counter used to create unique IDs for menus. */
-let nextId = 0;
+import {CdkMenuGroup} from './menu-group';
+import {Menu} from './menu-interface';
+import {CdkMenuItem} from './menu-item';
+import {MENU_STACK, MenuStack, MenuStackItem} from './menu-stack';
+import {PointerFocusTracker} from './pointer-focus-tracker';
 
 /**
  * Abstract directive that implements shared logic common to all menus.
@@ -43,7 +43,6 @@ let nextId = 0;
     '[id]': 'id',
     '[attr.aria-orientation]': 'orientation',
     '[attr.data-cdk-menu-stack-id]': 'menuStack.id',
-    '(focus)': 'focusFirstItem()',
     '(focusin)': 'menuStack.setHasFocus(true)',
     '(focusout)': 'menuStack.setHasFocus(false)',
   },
@@ -52,11 +51,12 @@ export abstract class CdkMenuBase
   extends CdkMenuGroup
   implements Menu, AfterContentInit, OnDestroy
 {
+  private _focusMonitor = inject(FocusMonitor);
+  protected ngZone = inject(NgZone);
+  private _renderer = inject(Renderer2);
+
   /** The menu's native DOM host element. */
   readonly nativeElement: HTMLElement = inject(ElementRef).nativeElement;
-
-  /** The Angular zone. */
-  protected ngZone = inject(NgZone);
 
   /** The stack of menus this menu belongs to. */
   readonly menuStack: MenuStack = inject(MENU_STACK);
@@ -68,7 +68,7 @@ export abstract class CdkMenuBase
   protected readonly dir = inject(Directionality, {optional: true});
 
   /** The id of the menu's host element. */
-  @Input() id = `cdk-menu-${nextId++}`;
+  @Input() id: string = inject(_IdGenerator).getId('cdk-menu-');
 
   /** All child MenuItem elements nested in this Menu. */
   @ContentChildren(CdkMenuItem, {descendants: true})
@@ -96,13 +96,19 @@ export abstract class CdkMenuBase
   protected pointerTracker?: PointerFocusTracker<CdkMenuItem>;
 
   /** Whether this menu's menu stack has focus. */
-  private _menuStackHasFocus = false;
+  private _menuStackHasFocus = signal(false);
+
+  private _tabIndexSignal = computed(() => {
+    const tabindexIfInline = this._menuStackHasFocus() ? -1 : 0;
+    return this.isInline ? tabindexIfInline : null;
+  });
 
   ngAfterContentInit() {
     if (!this.isInline) {
       this.menuStack.push(this);
     }
     this._setKeyManager();
+    this._handleFocus();
     this._subscribeToMenuStackHasFocus();
     this._subscribeToMenuOpen();
     this._subscribeToMenuStackClosed();
@@ -110,6 +116,7 @@ export abstract class CdkMenuBase
   }
 
   ngOnDestroy() {
+    this._focusMonitor.stopMonitoring(this.nativeElement);
     this.keyManager?.destroy();
     this.destroyed.next();
     this.destroyed.complete();
@@ -136,8 +143,7 @@ export abstract class CdkMenuBase
 
   /** Gets the tabindex for this menu. */
   _getTabIndex() {
-    const tabindexIfInline = this._menuStackHasFocus ? -1 : 0;
-    return this.isInline ? tabindexIfInline : null;
+    return this._tabIndexSignal();
   }
 
   /**
@@ -210,7 +216,7 @@ export abstract class CdkMenuBase
   private _subscribeToMenuStackHasFocus() {
     if (this.isInline) {
       this.menuStack.hasFocus.pipe(takeUntil(this.destroyed)).subscribe(hasFocus => {
-        this._menuStackHasFocus = hasFocus;
+        this._menuStackHasFocus.set(hasFocus);
       });
     }
   }
@@ -222,9 +228,23 @@ export abstract class CdkMenuBase
   private _setUpPointerTracker() {
     if (this.menuAim) {
       this.ngZone.runOutsideAngular(() => {
-        this.pointerTracker = new PointerFocusTracker(this.items);
+        this.pointerTracker = new PointerFocusTracker(this._renderer, this.items);
       });
       this.menuAim.initialize(this, this.pointerTracker!);
     }
+  }
+
+  /** Handles focus landing on the host element of the menu. */
+  private _handleFocus() {
+    this._focusMonitor
+      .monitor(this.nativeElement, false)
+      .pipe(takeUntil(this.destroyed))
+      .subscribe(origin => {
+        // Don't forward focus on mouse interactions, because it can
+        // mess with the user's scroll position. See #30130.
+        if (origin !== null && origin !== 'mouse') {
+          this.focusFirstItem(origin);
+        }
+      });
   }
 }

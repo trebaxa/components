@@ -1,8 +1,7 @@
-load("//src/e2e-app:test_suite.bzl", "e2e_test_suite")
 load(
     "//tools:defaults.bzl",
+    "extract_tokens",
     "markdown_to_html",
-    "ng_e2e_test_library",
     "ng_module",
     "ng_test_library",
     "ng_web_test_suite",
@@ -33,7 +32,6 @@ sass_library(
     name = "progress_spinner_scss_lib",
     srcs = glob(["**/_*.scss"]),
     deps = [
-        "//:mdc_sass_lib",
         "//src/material/core:core_scss_lib",
     ],
 )
@@ -42,7 +40,6 @@ sass_binary(
     name = "progress_spinner_scss",
     src = "progress-spinner.scss",
     deps = [
-        "//:mdc_sass_lib",
         "//src/material:sass_lib",
         "//src/material/core:core_scss_lib",
     ],
@@ -52,7 +49,6 @@ ng_test_library(
     name = "progress_spinner_tests_lib",
     srcs = glob(
         ["**/*.spec.ts"],
-        exclude = ["**/*.e2e.spec.ts"],
     ),
     deps = [
         ":progress-spinner",
@@ -69,25 +65,14 @@ ng_web_test_suite(
     ],
 )
 
-ng_e2e_test_library(
-    name = "e2e_test_sources",
-    srcs = glob(["**/*.e2e.spec.ts"]),
-    deps = [
-        "//src/cdk/testing/private/e2e",
-    ],
-)
-
-e2e_test_suite(
-    name = "e2e_tests",
-    deps = [
-        ":e2e_test_sources",
-        "//src/cdk/testing/private/e2e",
-    ],
-)
-
 markdown_to_html(
     name = "overview",
     srcs = [":progress-spinner.md"],
+)
+
+extract_tokens(
+    name = "tokens",
+    srcs = [":progress_spinner_scss_lib"],
 )
 
 filegroup(

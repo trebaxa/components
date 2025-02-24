@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -12,8 +12,6 @@ import {
   ViewEncapsulation,
   ElementRef,
   NgZone,
-  Optional,
-  Inject,
   Input,
   Output,
   EventEmitter,
@@ -22,11 +20,12 @@ import {
   ChangeDetectorRef,
   InjectionToken,
   inject,
+  numberAttribute,
+  ANIMATION_MODULE_TYPE,
+  Renderer2,
 } from '@angular/core';
 import {DOCUMENT} from '@angular/common';
-import {CanColor, mixinColor, ThemePalette} from '@angular/material/core';
-import {ANIMATION_MODULE_TYPE} from '@angular/platform-browser/animations';
-import {coerceNumberProperty, NumberInput} from '@angular/cdk/coercion';
+import {ThemePalette} from '@angular/material/core';
 
 /** Last animation end data. */
 export interface ProgressAnimationEnd {
@@ -35,7 +34,13 @@ export interface ProgressAnimationEnd {
 
 /** Default `mat-progress-bar` options that can be overridden. */
 export interface MatProgressBarDefaultOptions {
-  /** Default color of the progress bar. */
+  /**
+   * Default theme color of the progress bar. This API is supported in M2 themes only,
+   * it has no effect in M3 themes. For color customization in M3, see https://material.angular.io/components/progress-bar/styling.
+   *
+   * For information on applying color variants in M3, see
+   * https://material.angular.io/guide/material-2-theming#optional-add-backwards-compatibility-styles-for-color-variants
+   */
   color?: ThemePalette;
 
   /** Default mode of the progress bar. */
@@ -77,15 +82,6 @@ export function MAT_PROGRESS_BAR_LOCATION_FACTORY(): MatProgressBarLocation {
   };
 }
 
-// Boilerplate for applying mixins to MatProgressBar.
-/** @docs-private */
-const _MatProgressBarBase = mixinColor(
-  class {
-    constructor(public _elementRef: ElementRef<HTMLElement>) {}
-  },
-  'primary',
-);
-
 export type ProgressBarMode = 'determinate' | 'indeterminate' | 'buffer' | 'query';
 
 @Component({
@@ -101,35 +97,36 @@ export type ProgressBarMode = 'determinate' | 'indeterminate' | 'buffer' | 'quer
     '[attr.aria-valuenow]': '_isIndeterminate() ? null : value',
     '[attr.mode]': 'mode',
     'class': 'mat-mdc-progress-bar mdc-linear-progress',
+    '[class]': '"mat-" + color',
     '[class._mat-animation-noopable]': '_isNoopAnimation',
     '[class.mdc-linear-progress--animation-ready]': '!_isNoopAnimation',
     '[class.mdc-linear-progress--indeterminate]': '_isIndeterminate()',
   },
-  inputs: ['color'],
   templateUrl: 'progress-bar.html',
-  styleUrls: ['progress-bar.css'],
+  styleUrl: 'progress-bar.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
 })
-export class MatProgressBar
-  extends _MatProgressBarBase
-  implements AfterViewInit, OnDestroy, CanColor
-{
-  constructor(
-    elementRef: ElementRef<HTMLElement>,
-    private _ngZone: NgZone,
-    private _changeDetectorRef: ChangeDetectorRef,
-    @Optional() @Inject(ANIMATION_MODULE_TYPE) public _animationMode?: string,
-    @Optional()
-    @Inject(MAT_PROGRESS_BAR_DEFAULT_OPTIONS)
-    defaults?: MatProgressBarDefaultOptions,
-  ) {
-    super(elementRef);
-    this._isNoopAnimation = _animationMode === 'NoopAnimations';
+export class MatProgressBar implements AfterViewInit, OnDestroy {
+  readonly _elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
+  private _ngZone = inject(NgZone);
+  private _changeDetectorRef = inject(ChangeDetectorRef);
+  private _renderer = inject(Renderer2);
+  private _cleanupTransitionEnd: (() => void) | undefined;
+  _animationMode? = inject(ANIMATION_MODULE_TYPE, {optional: true});
+
+  constructor(...args: unknown[]);
+
+  constructor() {
+    const defaults = inject<MatProgressBarDefaultOptions>(MAT_PROGRESS_BAR_DEFAULT_OPTIONS, {
+      optional: true,
+    });
+
+    this._isNoopAnimation = this._animationMode === 'NoopAnimations';
 
     if (defaults) {
       if (defaults.color) {
-        this.color = this.defaultColor = defaults.color;
+        this.color = this._defaultColor = defaults.color;
       }
 
       this.mode = defaults.mode || this.mode;
@@ -139,24 +136,42 @@ export class MatProgressBar
   /** Flag that indicates whether NoopAnimations mode is set to true. */
   _isNoopAnimation = false;
 
-  /** Value of the progress bar. Defaults to zero. Mirrored to aria-valuenow. */
+  // TODO: should be typed as `ThemePalette` but internal apps pass in arbitrary strings.
+  /**
+   * Theme color of the progress bar. This API is supported in M2 themes only, it
+   * has no effect in M3 themes. For color customization in M3, see https://material.angular.io/components/progress-bar/styling.
+   *
+   * For information on applying color variants in M3, see
+   * https://material.angular.io/guide/material-2-theming#optional-add-backwards-compatibility-styles-for-color-variants
+   */
   @Input()
+  get color() {
+    return this._color || this._defaultColor;
+  }
+  set color(value: string | null | undefined) {
+    this._color = value;
+  }
+  private _color: string | null | undefined;
+  private _defaultColor: ThemePalette = 'primary';
+
+  /** Value of the progress bar. Defaults to zero. Mirrored to aria-valuenow. */
+  @Input({transform: numberAttribute})
   get value(): number {
     return this._value;
   }
-  set value(v: NumberInput) {
-    this._value = clamp(coerceNumberProperty(v));
+  set value(v: number) {
+    this._value = clamp(v || 0);
     this._changeDetectorRef.markForCheck();
   }
   private _value = 0;
 
   /** Buffer value of the progress bar. Defaults to zero. */
-  @Input()
+  @Input({transform: numberAttribute})
   get bufferValue(): number {
     return this._bufferValue || 0;
   }
-  set bufferValue(v: NumberInput) {
-    this._bufferValue = clamp(coerceNumberProperty(v));
+  set bufferValue(v: number) {
+    this._bufferValue = clamp(v || 0);
     this._changeDetectorRef.markForCheck();
   }
   private _bufferValue = 0;
@@ -191,12 +206,16 @@ export class MatProgressBar
     // Run outside angular so change detection didn't get triggered on every transition end
     // instead only on the animation that we care about (primary value bar's transitionend)
     this._ngZone.runOutsideAngular(() => {
-      this._elementRef.nativeElement.addEventListener('transitionend', this._transitionendHandler);
+      this._cleanupTransitionEnd = this._renderer.listen(
+        this._elementRef.nativeElement,
+        'transitionend',
+        this._transitionendHandler,
+      );
     });
   }
 
   ngOnDestroy() {
-    this._elementRef.nativeElement.removeEventListener('transitionend', this._transitionendHandler);
+    this._cleanupTransitionEnd?.();
   }
 
   /** Gets the transform style that should be applied to the primary bar. */

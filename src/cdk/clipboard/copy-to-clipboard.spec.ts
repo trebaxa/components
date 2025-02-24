@@ -1,5 +1,5 @@
 import {Component} from '@angular/core';
-import {ComponentFixture, fakeAsync, TestBed, tick} from '@angular/core/testing';
+import {ComponentFixture, TestBed, fakeAsync, tick} from '@angular/core/testing';
 
 import {Clipboard} from './clipboard';
 import {ClipboardModule} from './clipboard-module';
@@ -14,6 +14,7 @@ const COPY_CONTENT = 'copy content';
     [cdkCopyToClipboard]="content"
     [cdkCopyToClipboardAttempts]="attempts"
     (cdkCopyToClipboardCopied)="copied($event)"></button>`,
+  imports: [ClipboardModule],
 })
 class CopyToClipboardHost {
   content = '';
@@ -27,11 +28,8 @@ describe('CdkCopyToClipboard', () => {
 
   beforeEach(fakeAsync(() => {
     TestBed.configureTestingModule({
-      declarations: [CopyToClipboardHost],
-      imports: [ClipboardModule],
+      imports: [ClipboardModule, CopyToClipboardHost],
     });
-
-    TestBed.compileComponents();
   }));
 
   beforeEach(() => {
@@ -40,6 +38,7 @@ describe('CdkCopyToClipboard', () => {
     const host = fixture.componentInstance;
     host.content = COPY_CONTENT;
     clipboard = TestBed.inject(Clipboard);
+    fixture.changeDetectorRef.markForCheck();
     fixture.detectChanges();
   });
 
@@ -72,6 +71,7 @@ describe('CdkCopyToClipboard', () => {
       destroy: () => {},
     } as PendingCopy);
     fixture.componentInstance.attempts = maxAttempts;
+    fixture.changeDetectorRef.markForCheck();
     fixture.detectChanges();
 
     fixture.nativeElement.querySelector('button')!.click();
@@ -94,6 +94,7 @@ describe('CdkCopyToClipboard', () => {
       destroy: () => {},
     } as PendingCopy);
     fixture.componentInstance.attempts = maxAttempts;
+    fixture.changeDetectorRef.markForCheck();
     fixture.detectChanges();
 
     fixture.nativeElement.querySelector('button')!.click();
@@ -112,6 +113,7 @@ describe('CdkCopyToClipboard', () => {
     } as PendingCopy;
 
     fixture.componentInstance.attempts = 10;
+    fixture.changeDetectorRef.markForCheck();
     fixture.detectChanges();
 
     spyOn(clipboard, 'beginCopy').and.returnValue(fakeCopy);

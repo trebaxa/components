@@ -3,15 +3,16 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {OverlayRef} from '@angular/cdk/overlay';
 import {ESCAPE, hasModifierKey} from '@angular/cdk/keycodes';
-import {Observable, Subject} from 'rxjs';
+import {Observable, Subject, Subscription} from 'rxjs';
 import {DialogConfig} from './dialog-config';
 import {FocusOrigin} from '@angular/cdk/a11y';
 import {BasePortalOutlet} from '@angular/cdk/portal';
+import {ComponentRef} from '@angular/core';
 
 /** Additional options that can be passed in when closing a dialog. */
 export interface DialogCloseOptions {
@@ -28,6 +29,12 @@ export class DialogRef<R = unknown, C = unknown> {
    * null when the dialog is opened using a `TemplateRef`.
    */
   readonly componentInstance: C | null;
+
+  /**
+   * `ComponentRef` of the component opened into the dialog. Will be
+   * null when the dialog is opened using a `TemplateRef`.
+   */
+  readonly componentRef: ComponentRef<C> | null;
 
   /** Instance of the container that is rendering out the dialog content. */
   readonly containerInstance: BasePortalOutlet & {_closeInteractionType?: FocusOrigin};
@@ -49,6 +56,9 @@ export class DialogRef<R = unknown, C = unknown> {
 
   /** Unique ID for the dialog. */
   readonly id: string;
+
+  /** Subscription to external detachments of the dialog. */
+  private _detachSubscription: Subscription;
 
   constructor(
     readonly overlayRef: OverlayRef,
@@ -72,6 +82,13 @@ export class DialogRef<R = unknown, C = unknown> {
         this.close(undefined, {focusOrigin: 'mouse'});
       }
     });
+
+    this._detachSubscription = overlayRef.detachments().subscribe(() => {
+      // Check specifically for `false`, because we want `undefined` to be treated like `true`.
+      if (config.closeOnOverlayDetachments !== false) {
+        this.close();
+      }
+    });
   }
 
   /**
@@ -83,6 +100,9 @@ export class DialogRef<R = unknown, C = unknown> {
     if (this.containerInstance) {
       const closedSubject = this.closed as Subject<R | undefined>;
       this.containerInstance._closeInteractionType = options?.focusOrigin || 'program';
+      // Drop the detach subscription first since it can be triggered by the
+      // `dispose` call and override the result of this closing sequence.
+      this._detachSubscription.unsubscribe();
       this.overlayRef.dispose();
       closedSubject.next(result);
       closedSubject.complete();

@@ -1,5 +1,11 @@
 import {Component} from '@angular/core';
-import {CdkDragDrop, moveItemInArray, transferArrayItem, CdkDrag} from '@angular/cdk/drag-drop';
+import {
+  CdkDragDrop,
+  moveItemInArray,
+  transferArrayItem,
+  CdkDrag,
+  CdkDropList,
+} from '@angular/cdk/drag-drop';
 
 /**
  * @title Drag&Drop enter predicate
@@ -7,7 +13,8 @@ import {CdkDragDrop, moveItemInArray, transferArrayItem, CdkDrag} from '@angular
 @Component({
   selector: 'cdk-drag-drop-enter-predicate-example',
   templateUrl: 'cdk-drag-drop-enter-predicate-example.html',
-  styleUrls: ['cdk-drag-drop-enter-predicate-example.css'],
+  styleUrl: 'cdk-drag-drop-enter-predicate-example.css',
+  imports: [CdkDropList, CdkDrag],
 })
 export class CdkDragDropEnterPredicateExample {
   all = [1, 2, 3, 4, 5, 6, 7, 8, 9];

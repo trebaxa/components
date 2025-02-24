@@ -4,19 +4,14 @@
 
 ```ts
 
-import { _AbstractConstructor } from '@angular/material/core';
 import { AfterContentInit } from '@angular/core';
 import { AfterViewInit } from '@angular/core';
-import { BooleanInput } from '@angular/cdk/coercion';
-import { CanDisableRipple } from '@angular/material/core';
-import { ChangeDetectorRef } from '@angular/core';
-import { _Constructor } from '@angular/material/core';
 import { ControlValueAccessor } from '@angular/forms';
+import { Direction } from '@angular/cdk/bidi';
 import { ElementRef } from '@angular/core';
 import { EventEmitter } from '@angular/core';
-import { FocusMonitor } from '@angular/cdk/a11y';
 import * as i0 from '@angular/core';
-import * as i2 from '@angular/material/core';
+import * as i1 from '@angular/material/core';
 import { InjectionToken } from '@angular/core';
 import { OnDestroy } from '@angular/core';
 import { OnInit } from '@angular/core';
@@ -28,12 +23,15 @@ export const MAT_BUTTON_TOGGLE_DEFAULT_OPTIONS: InjectionToken<MatButtonToggleDe
 // @public
 export const MAT_BUTTON_TOGGLE_GROUP: InjectionToken<MatButtonToggleGroup>;
 
+// @public (undocumented)
+export function MAT_BUTTON_TOGGLE_GROUP_DEFAULT_OPTIONS_FACTORY(): MatButtonToggleDefaultOptions;
+
 // @public
 export const MAT_BUTTON_TOGGLE_GROUP_VALUE_ACCESSOR: any;
 
 // @public
-export class MatButtonToggle extends _MatButtonToggleBase implements OnInit, AfterViewInit, CanDisableRipple, OnDestroy {
-    constructor(toggleGroup: MatButtonToggleGroup, _changeDetectorRef: ChangeDetectorRef, _elementRef: ElementRef<HTMLElement>, _focusMonitor: FocusMonitor, defaultTabIndex: string, defaultOptions?: MatButtonToggleDefaultOptions);
+export class MatButtonToggle implements OnInit, AfterViewInit, OnDestroy {
+    constructor(...args: unknown[]);
     get appearance(): MatButtonToggleAppearance;
     set appearance(value: MatButtonToggleAppearance);
     ariaLabel: string;
@@ -43,14 +41,26 @@ export class MatButtonToggle extends _MatButtonToggleBase implements OnInit, Aft
     buttonToggleGroup: MatButtonToggleGroup;
     readonly change: EventEmitter<MatButtonToggleChange>;
     get checked(): boolean;
-    set checked(value: BooleanInput);
+    set checked(value: boolean);
     get disabled(): boolean;
-    set disabled(value: BooleanInput);
+    set disabled(value: boolean);
+    get disabledInteractive(): boolean;
+    set disabledInteractive(value: boolean);
+    disableRipple: boolean;
     focus(options?: FocusOptions): void;
     _getButtonName(): string | null;
     id: string;
+    isSingleSelector(): boolean;
     _markForCheck(): void;
     name: string;
+    // (undocumented)
+    static ngAcceptInputType_checked: unknown;
+    // (undocumented)
+    static ngAcceptInputType_disabled: unknown;
+    // (undocumented)
+    static ngAcceptInputType_disabledInteractive: unknown;
+    // (undocumented)
+    static ngAcceptInputType_disableRipple: unknown;
     // (undocumented)
     ngAfterViewInit(): void;
     // (undocumented)
@@ -58,12 +68,13 @@ export class MatButtonToggle extends _MatButtonToggleBase implements OnInit, Aft
     // (undocumented)
     ngOnInit(): void;
     _onButtonClick(): void;
-    tabIndex: number | null;
+    get tabIndex(): number | null;
+    set tabIndex(value: number | null);
     value: any;
     // (undocumented)
-    static ɵcmp: i0.ɵɵComponentDeclaration<MatButtonToggle, "mat-button-toggle", ["matButtonToggle"], { "disableRipple": "disableRipple"; "ariaLabel": "aria-label"; "ariaLabelledby": "aria-labelledby"; "id": "id"; "name": "name"; "value": "value"; "tabIndex": "tabIndex"; "appearance": "appearance"; "checked": "checked"; "disabled": "disabled"; }, { "change": "change"; }, never, ["*"], false, never>;
+    static ɵcmp: i0.ɵɵComponentDeclaration<MatButtonToggle, "mat-button-toggle", ["matButtonToggle"], { "ariaLabel": { "alias": "aria-label"; "required": false; }; "ariaLabelledby": { "alias": "aria-labelledby"; "required": false; }; "id": { "alias": "id"; "required": false; }; "name": { "alias": "name"; "required": false; }; "value": { "alias": "value"; "required": false; }; "tabIndex": { "alias": "tabIndex"; "required": false; }; "disableRipple": { "alias": "disableRipple"; "required": false; }; "appearance": { "alias": "appearance"; "required": false; }; "checked": { "alias": "checked"; "required": false; }; "disabled": { "alias": "disabled"; "required": false; }; "disabledInteractive": { "alias": "disabledInteractive"; "required": false; }; }, { "change": "change"; }, never, ["*"], true, never>;
     // (undocumented)
-    static ɵfac: i0.ɵɵFactoryDeclaration<MatButtonToggle, [{ optional: true; }, null, null, null, { attribute: "tabindex"; }, { optional: true; }]>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<MatButtonToggle, never>;
 }
 
 // @public
@@ -81,24 +92,47 @@ export class MatButtonToggleChange {
 // @public
 export interface MatButtonToggleDefaultOptions {
     appearance?: MatButtonToggleAppearance;
+    disabledInteractive?: boolean;
+    hideMultipleSelectionIndicator?: boolean;
+    hideSingleSelectionIndicator?: boolean;
 }
 
 // @public
 export class MatButtonToggleGroup implements ControlValueAccessor, OnInit, AfterContentInit {
-    constructor(_changeDetector: ChangeDetectorRef, defaultOptions?: MatButtonToggleDefaultOptions);
+    constructor(...args: unknown[]);
     appearance: MatButtonToggleAppearance;
     _buttonToggles: QueryList<MatButtonToggle>;
     readonly change: EventEmitter<MatButtonToggleChange>;
     _controlValueAccessorChangeFn: (value: any) => void;
+    get dir(): Direction;
     get disabled(): boolean;
-    set disabled(value: BooleanInput);
+    set disabled(value: boolean);
+    get disabledInteractive(): boolean;
+    set disabledInteractive(value: boolean);
     _emitChangeEvent(toggle: MatButtonToggle): void;
+    get hideMultipleSelectionIndicator(): boolean;
+    set hideMultipleSelectionIndicator(value: boolean);
+    get hideSingleSelectionIndicator(): boolean;
+    set hideSingleSelectionIndicator(value: boolean);
     _isPrechecked(toggle: MatButtonToggle): boolean;
     _isSelected(toggle: MatButtonToggle): boolean;
+    protected _keydown(event: KeyboardEvent): void;
     get multiple(): boolean;
-    set multiple(value: BooleanInput);
+    set multiple(value: boolean);
     get name(): string;
     set name(value: string);
+    // (undocumented)
+    static ngAcceptInputType_disabled: unknown;
+    // (undocumented)
+    static ngAcceptInputType_disabledInteractive: unknown;
+    // (undocumented)
+    static ngAcceptInputType_hideMultipleSelectionIndicator: unknown;
+    // (undocumented)
+    static ngAcceptInputType_hideSingleSelectionIndicator: unknown;
+    // (undocumented)
+    static ngAcceptInputType_multiple: unknown;
+    // (undocumented)
+    static ngAcceptInputType_vertical: unknown;
     // (undocumented)
     ngAfterContentInit(): void;
     // (undocumented)
@@ -115,13 +149,12 @@ export class MatButtonToggleGroup implements ControlValueAccessor, OnInit, After
     get value(): any;
     set value(newValue: any);
     readonly valueChange: EventEmitter<any>;
-    get vertical(): boolean;
-    set vertical(value: BooleanInput);
+    vertical: boolean;
     writeValue(value: any): void;
     // (undocumented)
-    static ɵdir: i0.ɵɵDirectiveDeclaration<MatButtonToggleGroup, "mat-button-toggle-group", ["matButtonToggleGroup"], { "appearance": "appearance"; "name": "name"; "vertical": "vertical"; "value": "value"; "multiple": "multiple"; "disabled": "disabled"; }, { "valueChange": "valueChange"; "change": "change"; }, ["_buttonToggles"], never, false, never>;
+    static ɵdir: i0.ɵɵDirectiveDeclaration<MatButtonToggleGroup, "mat-button-toggle-group", ["matButtonToggleGroup"], { "appearance": { "alias": "appearance"; "required": false; }; "name": { "alias": "name"; "required": false; }; "vertical": { "alias": "vertical"; "required": false; }; "value": { "alias": "value"; "required": false; }; "multiple": { "alias": "multiple"; "required": false; }; "disabled": { "alias": "disabled"; "required": false; }; "disabledInteractive": { "alias": "disabledInteractive"; "required": false; }; "hideSingleSelectionIndicator": { "alias": "hideSingleSelectionIndicator"; "required": false; }; "hideMultipleSelectionIndicator": { "alias": "hideMultipleSelectionIndicator"; "required": false; }; }, { "valueChange": "valueChange"; "change": "change"; }, ["_buttonToggles"], never, true, never>;
     // (undocumented)
-    static ɵfac: i0.ɵɵFactoryDeclaration<MatButtonToggleGroup, [null, { optional: true; }]>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<MatButtonToggleGroup, never>;
 }
 
 // @public (undocumented)
@@ -131,7 +164,7 @@ export class MatButtonToggleModule {
     // (undocumented)
     static ɵinj: i0.ɵɵInjectorDeclaration<MatButtonToggleModule>;
     // (undocumented)
-    static ɵmod: i0.ɵɵNgModuleDeclaration<MatButtonToggleModule, [typeof i1.MatButtonToggleGroup, typeof i1.MatButtonToggle], [typeof i2.MatCommonModule, typeof i2.MatRippleModule], [typeof i2.MatCommonModule, typeof i1.MatButtonToggleGroup, typeof i1.MatButtonToggle]>;
+    static ɵmod: i0.ɵɵNgModuleDeclaration<MatButtonToggleModule, never, [typeof i1.MatCommonModule, typeof i1.MatRippleModule, typeof i2.MatButtonToggleGroup, typeof i2.MatButtonToggle], [typeof i1.MatCommonModule, typeof i2.MatButtonToggleGroup, typeof i2.MatButtonToggle]>;
 }
 
 // @public @deprecated (undocumented)

@@ -3,10 +3,10 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {Directive, ElementRef, Inject, Optional} from '@angular/core';
+import {Directive, ElementRef, inject} from '@angular/core';
 import {LIST_OPTION, ListOption} from './list-option-types';
 
 /**
@@ -20,7 +20,10 @@ import {LIST_OPTION, ListOption} from './list-option-types';
   host: {'class': 'mat-mdc-list-item-title mdc-list-item__primary-text'},
 })
 export class MatListItemTitle {
-  constructor(public _elementRef: ElementRef<HTMLElement>) {}
+  _elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
+
+  constructor(...args: unknown[]);
+  constructor() {}
 }
 
 /**
@@ -34,7 +37,10 @@ export class MatListItemTitle {
   host: {'class': 'mat-mdc-list-item-line mdc-list-item__secondary-text'},
 })
 export class MatListItemLine {
-  constructor(public _elementRef: ElementRef<HTMLElement>) {}
+  _elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
+
+  constructor(...args: unknown[]);
+  constructor() {}
 }
 
 /**
@@ -68,7 +74,10 @@ export class MatListItemMeta {}
   },
 })
 export class _MatListItemGraphicBase {
-  constructor(@Optional() @Inject(LIST_OPTION) public _listOption: ListOption) {}
+  _listOption = inject<ListOption>(LIST_OPTION, {optional: true});
+
+  constructor(...args: unknown[]);
+  constructor() {}
 
   _isAlignedAtStart() {
     // By default, in all list items the graphic is aligned at start. In list options,

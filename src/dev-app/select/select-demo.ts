@@ -3,20 +3,20 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {Component} from '@angular/core';
-import {FormControl, Validators, FormsModule, ReactiveFormsModule} from '@angular/forms';
-import {ErrorStateMatcher, ThemePalette} from '@angular/material/core';
-import {MatSelectChange, MatSelectModule} from '@angular/material/select';
-import {FloatLabelType} from '@angular/material/form-field';
-import {CommonModule} from '@angular/common';
-import {MatCardModule} from '@angular/material/card';
-import {MatIconModule} from '@angular/material/icon';
+import {ChangeDetectionStrategy, Component} from '@angular/core';
+import {JsonPipe} from '@angular/common';
+import {FormControl, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
 import {MatButtonModule} from '@angular/material/button';
-import {MatInputModule} from '@angular/material/input';
+import {MatCardModule} from '@angular/material/card';
 import {MatCheckboxModule} from '@angular/material/checkbox';
+import {ErrorStateMatcher, ThemePalette} from '@angular/material/core';
+import {FloatLabelType} from '@angular/material/form-field';
+import {MatIconModule} from '@angular/material/icon';
+import {MatInputModule} from '@angular/material/input';
+import {MatSelectChange, MatSelectModule} from '@angular/material/select';
 
 /** Error any time control is invalid */
 export class MyErrorStateMatcher implements ErrorStateMatcher {
@@ -28,13 +28,14 @@ export class MyErrorStateMatcher implements ErrorStateMatcher {
   }
 }
 
+type DisableDrinkOption = 'none' | 'first-middle-last' | 'all';
+
 @Component({
   selector: 'select-demo',
   templateUrl: 'select-demo.html',
-  styleUrls: ['select-demo.css'],
-  standalone: true,
+  styleUrl: 'select-demo.css',
   imports: [
-    CommonModule,
+    JsonPipe,
     FormsModule,
     MatButtonModule,
     MatCardModule,
@@ -44,13 +45,14 @@ export class MyErrorStateMatcher implements ErrorStateMatcher {
     MatSelectModule,
     ReactiveFormsModule,
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SelectDemo {
   drinksRequired = false;
   drinkObjectRequired = false;
   pokemonRequired = false;
   drinksDisabled = false;
-  drinksOptionsDisabled = false;
+  drinksOptionsDisabled: DisableDrinkOption = 'none';
   pokemonDisabled = false;
   pokemonOptionsDisabled = false;
   showSelect = false;
@@ -203,5 +205,19 @@ export class SelectDemo {
 
   toggleSelected() {
     this.currentAppearanceValue = this.currentAppearanceValue ? null : this.digimon[0].value;
+  }
+
+  isDrinkOptionDisabled(index: number) {
+    if (this.drinksOptionsDisabled === 'all') {
+      return true;
+    }
+    if (this.drinksOptionsDisabled === 'first-middle-last') {
+      return (
+        index === 0 ||
+        index === this.drinks.length - 1 ||
+        index === Math.floor(this.drinks.length / 2)
+      );
+    }
+    return false;
   }
 }

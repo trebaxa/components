@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {Subject} from 'rxjs';
@@ -94,7 +94,7 @@ export class SelectionModel<T> {
     const newSelectedSet = new Set(values);
     values.forEach(value => this._markSelected(value));
     oldValues
-      .filter(value => !newSelectedSet.has(value))
+      .filter(value => !newSelectedSet.has(this._getConcreteValue(value, newSelectedSet)))
       .forEach(value => this._unmarkSelected(value));
     const changed = this._hasQueuedChanges();
     this._emitChangeEvent();
@@ -131,15 +131,7 @@ export class SelectionModel<T> {
    * Determines whether a value is selected.
    */
   isSelected(value: T): boolean {
-    if (this.compareWith) {
-      for (const otherValue of this._selection) {
-        if (this.compareWith(otherValue, value)) {
-          return true;
-        }
-      }
-      return false;
-    }
-    return this._selection.has(value);
+    return this._selection.has(this._getConcreteValue(value));
   }
 
   /**
@@ -191,6 +183,7 @@ export class SelectionModel<T> {
 
   /** Selects a value. */
   private _markSelected(value: T) {
+    value = this._getConcreteValue(value);
     if (!this.isSelected(value)) {
       if (!this._multiple) {
         this._unmarkAll();
@@ -208,6 +201,7 @@ export class SelectionModel<T> {
 
   /** Deselects a value. */
   private _unmarkSelected(value: T) {
+    value = this._getConcreteValue(value);
     if (this.isSelected(value)) {
       this._selection.delete(value);
 
@@ -237,6 +231,21 @@ export class SelectionModel<T> {
   /** Whether there are queued up change to be emitted. */
   private _hasQueuedChanges() {
     return !!(this._deselectedToEmit.length || this._selectedToEmit.length);
+  }
+
+  /** Returns a value that is comparable to inputValue by applying compareWith function, returns the same inputValue otherwise. */
+  private _getConcreteValue(inputValue: T, selection?: Set<T>): T {
+    if (!this.compareWith) {
+      return inputValue;
+    } else {
+      selection = selection ?? this._selection;
+      for (let selectedValue of selection) {
+        if (this.compareWith!(inputValue, selectedValue)) {
+          return selectedValue;
+        }
+      }
+      return inputValue;
+    }
   }
 }
 

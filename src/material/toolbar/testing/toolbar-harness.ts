@@ -3,14 +3,14 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {ContentContainerComponentHarness, HarnessPredicate, parallel} from '@angular/cdk/testing';
 import {ToolbarHarnessFilters} from './toolbar-harness-filters';
 
 /** Selectors for different sections of the mat-toolbar that contain user content. */
-export const enum MatToolbarSection {
+export enum MatToolbarSection {
   ROW = '.mat-toolbar-row',
 }
 

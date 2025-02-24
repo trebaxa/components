@@ -3,23 +3,22 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {BooleanInput, coerceBooleanProperty} from '@angular/cdk/coercion';
 import {BACKSPACE, hasModifierKey} from '@angular/cdk/keycodes';
 import {
-  AfterContentInit,
   Directive,
   ElementRef,
   EventEmitter,
-  Inject,
   Input,
   OnChanges,
   OnDestroy,
-  Optional,
   Output,
+  booleanAttribute,
+  inject,
 } from '@angular/core';
+import {_IdGenerator} from '@angular/cdk/a11y';
 import {MatFormField, MAT_FORM_FIELD} from '@angular/material/form-field';
 import {MatChipsDefaultOptions, MAT_CHIPS_DEFAULT_OPTIONS} from './tokens';
 import {MatChipGrid} from './chip-grid';
@@ -41,9 +40,6 @@ export interface MatChipInputEvent {
   chipInput: MatChipInput;
 }
 
-// Increasing integer for generating unique ids.
-let nextUniqueId = 0;
-
 /**
  * Directive that adds chip-specific behaviors to an input element inside `<mat-form-field>`.
  * May be placed inside or outside of a `<mat-chip-grid>`.
@@ -57,7 +53,6 @@ let nextUniqueId = 0;
     // the MDC chips were landed initially with it.
     'class': 'mat-mdc-chip-input mat-mdc-input-element mdc-text-field__input mat-input-element',
     '(keydown)': '_keydown($event)',
-    '(keyup)': '_keyup($event)',
     '(blur)': '_blur()',
     '(focus)': '_focus()',
     '(input)': '_onInput()',
@@ -69,34 +64,30 @@ let nextUniqueId = 0;
     '[attr.required]': '_chipGrid && _chipGrid.required || null',
   },
 })
-export class MatChipInput implements MatChipTextControl, AfterContentInit, OnChanges, OnDestroy {
-  /** Used to prevent focus moving to chips while user is holding backspace */
-  private _focusLastChipOnBackspace: boolean;
+export class MatChipInput implements MatChipTextControl, OnChanges, OnDestroy {
+  protected _elementRef = inject<ElementRef<HTMLInputElement>>(ElementRef);
 
   /** Whether the control is focused. */
   focused: boolean = false;
-  _chipGrid: MatChipGrid;
 
   /** Register input for chip list */
   @Input('matChipInputFor')
+  get chipGrid(): MatChipGrid {
+    return this._chipGrid;
+  }
   set chipGrid(value: MatChipGrid) {
     if (value) {
       this._chipGrid = value;
       this._chipGrid.registerInput(this);
     }
   }
+  private _chipGrid: MatChipGrid;
 
   /**
    * Whether or not the chipEnd event will be emitted when the input is blurred.
    */
-  @Input('matChipInputAddOnBlur')
-  get addOnBlur(): boolean {
-    return this._addOnBlur;
-  }
-  set addOnBlur(value: BooleanInput) {
-    this._addOnBlur = coerceBooleanProperty(value);
-  }
-  _addOnBlur: boolean = false;
+  @Input({alias: 'matChipInputAddOnBlur', transform: booleanAttribute})
+  addOnBlur: boolean = false;
 
   /**
    * The list of key codes that will trigger a chipEnd event.
@@ -104,8 +95,7 @@ export class MatChipInput implements MatChipTextControl, AfterContentInit, OnCha
    * Defaults to `[ENTER]`.
    */
   @Input('matChipInputSeparatorKeyCodes')
-  separatorKeyCodes: readonly number[] | ReadonlySet<number> =
-    this._defaultOptions.separatorKeyCodes;
+  separatorKeyCodes: readonly number[] | ReadonlySet<number>;
 
   /** Emitted when a chip is to be added. */
   @Output('matChipInputTokenEnd')
@@ -115,15 +105,15 @@ export class MatChipInput implements MatChipTextControl, AfterContentInit, OnCha
   @Input() placeholder: string = '';
 
   /** Unique id for the input. */
-  @Input() id: string = `mat-mdc-chip-list-input-${nextUniqueId++}`;
+  @Input() id: string = inject(_IdGenerator).getId('mat-mdc-chip-list-input-');
 
   /** Whether the input is disabled. */
-  @Input()
+  @Input({transform: booleanAttribute})
   get disabled(): boolean {
     return this._disabled || (this._chipGrid && this._chipGrid.disabled);
   }
-  set disabled(value: BooleanInput) {
-    this._disabled = coerceBooleanProperty(value);
+  set disabled(value: boolean) {
+    this._disabled = value;
   }
   private _disabled: boolean = false;
 
@@ -135,12 +125,14 @@ export class MatChipInput implements MatChipTextControl, AfterContentInit, OnCha
   /** The native input element to which this directive is attached. */
   readonly inputElement!: HTMLInputElement;
 
-  constructor(
-    protected _elementRef: ElementRef<HTMLInputElement>,
-    @Inject(MAT_CHIPS_DEFAULT_OPTIONS) private _defaultOptions: MatChipsDefaultOptions,
-    @Optional() @Inject(MAT_FORM_FIELD) formField?: MatFormField,
-  ) {
+  constructor(...args: unknown[]);
+
+  constructor() {
+    const defaultOptions = inject<MatChipsDefaultOptions>(MAT_CHIPS_DEFAULT_OPTIONS);
+    const formField = inject<MatFormField>(MAT_FORM_FIELD, {optional: true});
+
     this.inputElement = this._elementRef.nativeElement as HTMLInputElement;
+    this.separatorKeyCodes = defaultOptions.separatorKeyCodes;
 
     if (formField) {
       this.inputElement.classList.add('mat-mdc-form-field-input-control');
@@ -155,36 +147,17 @@ export class MatChipInput implements MatChipTextControl, AfterContentInit, OnCha
     this.chipEnd.complete();
   }
 
-  ngAfterContentInit(): void {
-    this._focusLastChipOnBackspace = this.empty;
-  }
-
   /** Utility method to make host definition/tests more clear. */
-  _keydown(event?: KeyboardEvent) {
-    if (event) {
-      // To prevent the user from accidentally deleting chips when pressing BACKSPACE continuously,
-      // We focus the last chip on backspace only after the user has released the backspace button,
-      // And the input is empty (see behaviour in _keyup)
-      if (event.keyCode === BACKSPACE && this._focusLastChipOnBackspace) {
+  _keydown(event: KeyboardEvent) {
+    if (this.empty && event.keyCode === BACKSPACE) {
+      // Ignore events where the user is holding down backspace
+      // so that we don't accidentally remove too many chips.
+      if (!event.repeat) {
         this._chipGrid._focusLastChip();
-        event.preventDefault();
-        return;
-      } else {
-        this._focusLastChipOnBackspace = false;
       }
-    }
-
-    this._emitChipEnd(event);
-  }
-
-  /**
-   * Pass events to the keyboard manager. Available here for tests.
-   */
-  _keyup(event: KeyboardEvent) {
-    // Allow user to move focus to chips next time he presses backspace
-    if (!this._focusLastChipOnBackspace && event.keyCode === BACKSPACE && this.empty) {
-      this._focusLastChipOnBackspace = true;
       event.preventDefault();
+    } else {
+      this._emitChipEnd(event);
     }
   }
 
@@ -203,13 +176,12 @@ export class MatChipInput implements MatChipTextControl, AfterContentInit, OnCha
 
   _focus() {
     this.focused = true;
-    this._focusLastChipOnBackspace = this.empty;
     this._chipGrid.stateChanges.next();
   }
 
   /** Checks to see if the (chipEnd) event needs to be emitted. */
   _emitChipEnd(event?: KeyboardEvent) {
-    if (!event || this._isSeparatorKey(event)) {
+    if (!event || (this._isSeparatorKey(event) && !event.repeat)) {
       this.chipEnd.emit({
         input: this.inputElement,
         value: this.inputElement.value,
@@ -233,7 +205,6 @@ export class MatChipInput implements MatChipTextControl, AfterContentInit, OnCha
   /** Clears the input */
   clear(): void {
     this.inputElement.value = '';
-    this._focusLastChipOnBackspace = true;
   }
 
   setDescribedByIds(ids: string[]): void {

@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -11,10 +11,9 @@ import {
   ViewEncapsulation,
   Input,
   ChangeDetectionStrategy,
-  Inject,
-  Optional,
+  ANIMATION_MODULE_TYPE,
+  inject,
 } from '@angular/core';
-import {ANIMATION_MODULE_TYPE} from '@angular/platform-browser/animations';
 
 /**
  * Possible states for a pseudo checkbox.
@@ -39,7 +38,7 @@ export type MatPseudoCheckboxState = 'unchecked' | 'checked' | 'indeterminate';
   encapsulation: ViewEncapsulation.None,
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'mat-pseudo-checkbox',
-  styleUrls: ['pseudo-checkbox.css'],
+  styleUrl: 'pseudo-checkbox.css',
   template: '',
   host: {
     'class': 'mat-pseudo-checkbox',
@@ -52,6 +51,8 @@ export type MatPseudoCheckboxState = 'unchecked' | 'checked' | 'indeterminate';
   },
 })
 export class MatPseudoCheckbox {
+  _animationMode? = inject(ANIMATION_MODULE_TYPE, {optional: true});
+
   /** Display state of the checkbox. */
   @Input() state: MatPseudoCheckboxState = 'unchecked';
 
@@ -64,5 +65,6 @@ export class MatPseudoCheckbox {
    */
   @Input() appearance: 'minimal' | 'full' = 'full';
 
-  constructor(@Optional() @Inject(ANIMATION_MODULE_TYPE) public _animationMode?: string) {}
+  constructor(...args: unknown[]);
+  constructor() {}
 }

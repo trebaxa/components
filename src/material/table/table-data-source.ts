@@ -3,9 +3,10 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
+import {MatPaginator, PageEvent} from '@angular/material/paginator';
 import {
   BehaviorSubject,
   combineLatest,
@@ -21,40 +22,25 @@ import {_isNumberValue} from '@angular/cdk/coercion';
 import {map} from 'rxjs/operators';
 
 /**
- * Interface that matches the required API parts for the MatPaginator's PageEvent.
- * Decoupled so that users can depend on either the legacy or MDC-based paginator.
- */
-export interface MatTableDataSourcePageEvent {
-  pageIndex: number;
-  pageSize: number;
-  length: number;
-}
-
-/**
- * Interface that matches the required API parts of the MatPaginator.
- * Decoupled so that users can depend on either the legacy or MDC-based paginator.
- */
-export interface MatTableDataSourcePaginator {
-  page: Subject<MatTableDataSourcePageEvent>;
-  pageIndex: number;
-  initialized: Observable<void>;
-  pageSize: number;
-  length: number;
-  firstPage: () => void;
-  lastPage: () => void;
-}
-
-/**
  * Corresponds to `Number.MAX_SAFE_INTEGER`. Moved out into a variable here due to
  * flaky browser support and the value not being defined in Closure's typings.
  */
 const MAX_SAFE_INTEGER = 9007199254740991;
 
-/** Shared base class with MDC-based implementation. */
-export class _MatTableDataSource<
-  T,
-  P extends MatTableDataSourcePaginator = MatTableDataSourcePaginator,
-> extends DataSource<T> {
+/**
+ * Data source that accepts a client-side data array and includes native support of filtering,
+ * sorting (using MatSort), and pagination (using MatPaginator).
+ *
+ * Allows for sort customization by overriding sortingDataAccessor, which defines how data
+ * properties are accessed. Also allows for filter customization by overriding filterPredicate,
+ * which defines how row data is converted to a string for filter matching.
+ *
+ * **Note:** This class is meant to be a simple data source to help you get started. As such
+ * it isn't equipped to handle some more advanced cases like robust i18n support or server-side
+ * interactions. If your app needs to support more advanced use cases, consider implementing your
+ * own `DataSource`.
+ */
+export class MatTableDataSource<T, P extends MatPaginator = MatPaginator> extends DataSource<T> {
   /** Stream that emits when a new data array is set on the data source. */
   private readonly _data: BehaviorSubject<T[]>;
 
@@ -167,8 +153,8 @@ export class _MatTableDataSource<
     if (_isNumberValue(value)) {
       const numberValue = Number(value);
 
-      // Numbers beyond `MAX_SAFE_INTEGER` can't be compared reliably so we
-      // leave them as strings. For more info: https://goo.gl/y5vbSg
+      // Numbers beyond `MAX_SAFE_INTEGER` can't be compared reliably so we leave them as strings.
+      // See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER
       return numberValue < MAX_SAFE_INTEGER ? numberValue : value;
     }
 
@@ -243,23 +229,12 @@ export class _MatTableDataSource<
    * @returns Whether the filter matches against the data
    */
   filterPredicate: (data: T, filter: string) => boolean = (data: T, filter: string): boolean => {
-    // Transform the data into a lowercase string of all property values.
-    const dataStr = Object.keys(data as unknown as Record<string, any>)
-      .reduce((currentTerm: string, key: string) => {
-        // Use an obscure Unicode character to delimit the words in the concatenated string.
-        // This avoids matches where the values of two columns combined will match the user's query
-        // (e.g. `Flute` and `Stop` will match `Test`). The character is intended to be something
-        // that has a very low chance of being typed in by somebody in a text field. This one in
-        // particular is "White up-pointing triangle with dot" from
-        // https://en.wikipedia.org/wiki/List_of_Unicode_characters
-        return currentTerm + (data as unknown as Record<string, any>)[key] + '◬';
-      }, '')
-      .toLowerCase();
-
     // Transform the filter by converting it to lowercase and removing whitespace.
     const transformedFilter = filter.trim().toLowerCase();
-
-    return dataStr.indexOf(transformedFilter) != -1;
+    // Loops over the values in the array and returns true if any of them match the filter string
+    return Object.values(data as {[key: string]: any}).some(value =>
+      `${value}`.toLowerCase().includes(transformedFilter),
+    );
   };
 
   constructor(initialData: T[] = []) {
@@ -283,12 +258,12 @@ export class _MatTableDataSource<
     const sortChange: Observable<Sort | null | void> = this._sort
       ? (merge(this._sort.sortChange, this._sort.initialized) as Observable<Sort | void>)
       : observableOf(null);
-    const pageChange: Observable<MatTableDataSourcePageEvent | null | void> = this._paginator
+    const pageChange: Observable<PageEvent | null | void> = this._paginator
       ? (merge(
           this._paginator.page,
           this._internalPageChanges,
           this._paginator.initialized,
-        ) as Observable<MatTableDataSourcePageEvent | void>)
+        ) as Observable<PageEvent | void>)
       : observableOf(null);
     const dataStream = this._data;
     // Watch for base data or filter changes to provide a filtered set of data.
@@ -310,12 +285,12 @@ export class _MatTableDataSource<
 
   /**
    * Returns a filtered data array where each filter object contains the filter string within
-   * the result of the filterTermAccessor function. If no filter is set, returns the data array
+   * the result of the filterPredicate function. If no filter is set, returns the data array
    * as provided.
    */
   _filterData(data: T[]) {
     // If there is a filter string, filter out data that does not contain it.
-    // Each data object is converted to a string using the function defined by filterTermAccessor.
+    // Each data object is converted to a string using the function defined by filterPredicate.
     // May be overridden for customization.
     this.filteredData =
       this.filter == null || this.filter === ''
@@ -408,21 +383,3 @@ export class _MatTableDataSource<
     this._renderChangesSubscription = null;
   }
 }
-
-/**
- * Data source that accepts a client-side data array and includes native support of filtering,
- * sorting (using MatSort), and pagination (using MatPaginator).
- *
- * Allows for sort customization by overriding sortingDataAccessor, which defines how data
- * properties are accessed. Also allows for filter customization by overriding filterTermAccessor,
- * which defines how row data is converted to a string for filter matching.
- *
- * **Note:** This class is meant to be a simple data source to help you get started. As such
- * it isn't equipped to handle some more advanced cases like robust i18n support or server-side
- * interactions. If your app needs to support more advanced use cases, consider implementing your
- * own `DataSource`.
- */
-export class MatTableDataSource<
-  T,
-  P extends MatTableDataSourcePaginator = MatTableDataSourcePaginator,
-> extends _MatTableDataSource<T, P> {}

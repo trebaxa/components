@@ -2,11 +2,10 @@ import {ComponentFixture, TestBed} from '@angular/core/testing';
 import {TestbedHarnessEnvironment} from '@angular/cdk/testing/testbed';
 import {MatDatepickerInputHarness} from '@angular/material/datepicker/testing';
 import {HarnessLoader} from '@angular/cdk/testing';
-import {MatDatepickerModule} from '@angular/material/datepicker';
 import {DatepickerHarnessExample} from './datepicker-harness-example';
 import {NoopAnimationsModule} from '@angular/platform-browser/animations';
+import {MatDatepickerModule} from '@angular/material/datepicker';
 import {MatNativeDateModule} from '@angular/material/core';
-import {FormsModule} from '@angular/forms';
 
 describe('DatepickerHarnessExample', () => {
   let fixture: ComponentFixture<DatepickerHarnessExample>;
@@ -14,9 +13,8 @@ describe('DatepickerHarnessExample', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      imports: [MatDatepickerModule, NoopAnimationsModule, MatNativeDateModule, FormsModule],
-      declarations: [DatepickerHarnessExample],
-    }).compileComponents();
+      imports: [MatDatepickerModule, NoopAnimationsModule, MatNativeDateModule],
+    });
     fixture = TestBed.createComponent(DatepickerHarnessExample);
     fixture.detectChanges();
     loader = TestbedHarnessEnvironment.loader(fixture);
@@ -42,7 +40,7 @@ describe('DatepickerHarnessExample', () => {
 
   it('should get the minimum date of the input', async () => {
     const input = await loader.getHarness(MatDatepickerInputHarness);
-    fixture.componentInstance.minDate = new Date(2020, 0, 1, 12, 0, 0);
+    fixture.componentInstance.minDate.set(new Date(2020, 0, 1, 12, 0, 0));
     expect(await input.getMin()).toEqual('2020-01-01');
   });
 

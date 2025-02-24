@@ -24,7 +24,7 @@ rest.
 
 #### Creating items in the viewport
 `*cdkVirtualFor` replaces `*ngFor` inside of a `<cdk-virtual-scroll-viewport>`, supporting the exact
-same API as [`*ngFor`](https://angular.io/api/common/NgForOf). The simplest usage just specifies the
+same API as [`*ngFor`](https://angular.dev/api/common/NgForOf). The simplest usage just specifies the
 list of items (note that the `itemSize` property on the viewport must be set):
 
 <!-- example(cdk-virtual-scroll-overview) -->
@@ -140,7 +140,7 @@ element, apply `cdkVirtualScrollingElement` to the scrolling parent element.
 
 <!-- example(cdk-virtual-scroll-parent-scrolling) -->
 
-Another common scenario is using the window itself as the scrolling element. This often a better
+Another common scenario is using the window itself as the scrolling element. This is often a better
 user experience on mobile devices, as it allows the browser chrome to scroll away. To use the
 window as the scrolling element, add the `scrollWindow` attribute to the 
 `cdk-virtual-scroll-viewport`.

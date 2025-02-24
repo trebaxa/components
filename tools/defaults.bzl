@@ -17,6 +17,7 @@ load("@npm//tsec:index.bzl", _tsec_test = "tsec_test")
 load("//:packages.bzl", "NO_STAMP_NPM_PACKAGE_SUBSTITUTIONS", "NPM_PACKAGE_SUBSTITUTIONS")
 load("//:pkg-externals.bzl", "PKG_EXTERNALS")
 load("//tools/markdown-to-html:index.bzl", _markdown_to_html = "markdown_to_html")
+load("//tools/extract-tokens:index.bzl", _extract_tokens = "extract_tokens")
 load("//tools/angular:index.bzl", "LINKER_PROCESSED_FW_PACKAGES")
 
 _DEFAULT_TSCONFIG_BUILD = "//src:bazel-tsconfig-build.json"
@@ -30,6 +31,7 @@ npmPackageSubstitutions = select({
 # Re-exports to simplify build file load statements
 markdown_to_html = _markdown_to_html
 integration_test = _integration_test
+extract_tokens = _extract_tokens
 esbuild = _esbuild
 esbuild_config = _esbuild_config
 http_server = _http_server
@@ -111,13 +113,13 @@ def ts_library(
         # NodeJS executions, by activating the Bazel NodeJS linker.
         # See: https://github.com/bazelbuild/rules_nodejs/pull/2799.
         package_name = module_name,
-        # For prodmode, the target is set to `ES2020`. `@bazel/typecript` sets `ES2015` by default. Note
+        # For prodmode, the target is set to `ES2022`. `@bazel/typecript` sets `ES2015` by default. Note
         # that this should be in sync with the `ng_module` tsconfig generation to emit proper APF v13.
         # https://github.com/bazelbuild/rules_nodejs/blob/901df3868e3ceda177d3ed181205e8456a5592ea/third_party/github.com/bazelbuild/rules_typescript/internal/common/tsconfig.bzl#L195
-        prodmode_target = prodmode_target if prodmode_target != None else "es2020",
+        prodmode_target = prodmode_target if prodmode_target != None else "es2022",
         # We also set devmode output to the same settings as prodmode as a first step in combining
         # devmode and prodmode output. We will not rely on AMD output anyway due to the linker processing.
-        devmode_target = devmode_target if devmode_target != None else "es2020",
+        devmode_target = devmode_target if devmode_target != None else "es2022",
         devmode_module = devmode_module if devmode_module != None else "esnext",
         tsconfig = tsconfig,
         testonly = testonly,
@@ -143,7 +145,6 @@ def ng_module(
     local_deps = [
         # Add tslib because we use import helpers for all public packages.
         "@npm//tslib",
-        "@npm//@angular/platform-browser",
     ]
 
     # Append given deps only if they're not in the default set of deps
@@ -369,8 +370,8 @@ def ng_web_test_suite(deps = [], static_css = [], exclude_init_script = False, *
         # TODO: Consider adding the legacy patches when testing Saucelabs/Browserstack with Bazel.
         # CLI loads the legacy patches conditionally for ES5 legacy browsers. See:
         # https://github.com/angular/angular-cli/blob/277bad3895cbce6de80aa10a05c349b10d9e09df/packages/angular_devkit/build_angular/src/angular-cli-files/models/webpack-configs/common.ts#L141
-        "@npm//:node_modules/zone.js/dist/zone-evergreen.js",
-        "@npm//:node_modules/zone.js/dist/zone-testing.js",
+        "@npm//:node_modules/zone.js/bundles/zone.umd.js",
+        "@npm//:node_modules/zone.js/bundles/zone-testing.umd.js",
         "@npm//:node_modules/reflect-metadata/Reflect.js",
     ] + kwargs.pop("bootstrap", [])
 
@@ -379,8 +380,7 @@ def ng_web_test_suite(deps = [], static_css = [], exclude_init_script = False, *
     # reduces the amount of setup that is needed to create a test suite Bazel target. Note that the
     # prebuilt theme will be also added to CDK test suites but shouldn't affect anything.
     static_css = static_css + [
-        "//src/material/prebuilt-themes:indigo-pink",
-        "//src/material/legacy-core:indigo_pink_prebuilt",
+        "//src/material/prebuilt-themes:azure-blue",
     ]
 
     # Workaround for https://github.com/bazelbuild/rules_typescript/issues/301

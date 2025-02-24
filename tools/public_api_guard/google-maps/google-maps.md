@@ -7,7 +7,6 @@
 /// <reference types="google.maps" />
 
 import { AfterContentInit } from '@angular/core';
-import { ElementRef } from '@angular/core';
 import { EventEmitter } from '@angular/core';
 import * as i0 from '@angular/core';
 import { NgZone } from '@angular/core';
@@ -18,11 +17,54 @@ import { OnInit } from '@angular/core';
 import { QueryList } from '@angular/core';
 import { SimpleChanges } from '@angular/core';
 
+// @public (undocumented)
+interface Algorithm_2 {
+    calculate: ({ markers, map }: AlgorithmInput) => AlgorithmOutput;
+}
+export { Algorithm_2 as Algorithm }
+
+// @public (undocumented)
+export interface AlgorithmInput {
+    map: google.maps.Map;
+    mapCanvasProjection: google.maps.MapCanvasProjection;
+    markers: Marker[];
+}
+
+// @public (undocumented)
+export interface AlgorithmOptions {
+    // (undocumented)
+    maxZoom?: number;
+}
+
+// @public (undocumented)
+export interface AlgorithmOutput {
+    changed?: boolean;
+    clusters: Cluster[];
+}
+
 // @public
 export type AriaLabelFn = (text: string) => string;
 
 // @public
 export type Calculator = (markers: google.maps.Marker[], clusterIconStylesCount: number) => ClusterIconInfo;
+
+// @public (undocumented)
+export class Cluster {
+    constructor({ markers, position }: ClusterOptions);
+    // (undocumented)
+    get bounds(): google.maps.LatLngBounds | undefined;
+    get count(): number;
+    delete(): void;
+    // (undocumented)
+    marker?: Marker;
+    // (undocumented)
+    readonly markers?: Marker[];
+    // (undocumented)
+    get position(): google.maps.LatLng;
+    // (undocumented)
+    protected _position: google.maps.LatLng;
+    push(marker: Marker): void;
+}
 
 // @public
 export interface ClusterIconStyle {
@@ -56,407 +98,39 @@ export interface ClusterIconStyle {
     width: number;
 }
 
-// @public
-export class GoogleMap implements OnChanges, OnInit, OnDestroy {
-    constructor(_elementRef: ElementRef, _ngZone: NgZone, platformId: Object);
-    readonly authFailure: EventEmitter<void>;
-    readonly boundsChanged: Observable<void>;
+// @public (undocumented)
+export interface ClusterOptions {
     // (undocumented)
-    set center(center: google.maps.LatLngLiteral | google.maps.LatLng);
-    readonly centerChanged: Observable<void>;
-    get controls(): google.maps.MVCArray<Node>[];
-    get data(): google.maps.Data;
-    fitBounds(bounds: google.maps.LatLngBounds | google.maps.LatLngBoundsLiteral, padding?: number | google.maps.Padding): void;
-    getBounds(): google.maps.LatLngBounds | null;
-    getCenter(): google.maps.LatLng | undefined;
-    getClickableIcons(): boolean | undefined;
-    getHeading(): number | undefined;
-    getMapTypeId(): google.maps.MapTypeId | string | undefined;
-    getProjection(): google.maps.Projection | null;
-    getStreetView(): google.maps.StreetViewPanorama;
-    getTilt(): number | undefined;
-    getZoom(): number | undefined;
-    googleMap?: google.maps.Map;
-    readonly headingChanged: Observable<void>;
-    height: string | number | null;
-    readonly idle: Observable<void>;
-    _isBrowser: boolean;
-    readonly mapClick: Observable<google.maps.MapMouseEvent | google.maps.IconMouseEvent>;
-    readonly mapDblclick: Observable<google.maps.MapMouseEvent>;
-    readonly mapDrag: Observable<void>;
-    readonly mapDragend: Observable<void>;
-    readonly mapDragstart: Observable<void>;
-    readonly mapInitialized: EventEmitter<google.maps.Map>;
-    readonly mapMousemove: Observable<google.maps.MapMouseEvent>;
-    readonly mapMouseout: Observable<google.maps.MapMouseEvent>;
-    readonly mapMouseover: Observable<google.maps.MapMouseEvent>;
-    readonly mapRightclick: Observable<google.maps.MapMouseEvent>;
-    mapTypeId: google.maps.MapTypeId | undefined;
-    readonly maptypeidChanged: Observable<void>;
-    get mapTypes(): google.maps.MapTypeRegistry;
+    markers?: Marker[];
     // (undocumented)
-    ngOnChanges(changes: SimpleChanges): void;
-    // (undocumented)
-    ngOnDestroy(): void;
-    // (undocumented)
-    ngOnInit(): void;
-    // (undocumented)
-    set options(options: google.maps.MapOptions);
-    get overlayMapTypes(): google.maps.MVCArray<google.maps.MapType>;
-    panBy(x: number, y: number): void;
-    panTo(latLng: google.maps.LatLng | google.maps.LatLngLiteral): void;
-    panToBounds(latLngBounds: google.maps.LatLngBounds | google.maps.LatLngBoundsLiteral, padding?: number | google.maps.Padding): void;
-    readonly projectionChanged: Observable<void>;
-    readonly tilesloaded: Observable<void>;
-    readonly tiltChanged: Observable<void>;
-    width: string | number | null;
-    // (undocumented)
-    set zoom(zoom: number);
-    readonly zoomChanged: Observable<void>;
-    // (undocumented)
-    static ɵcmp: i0.ɵɵComponentDeclaration<GoogleMap, "google-map", ["googleMap"], { "height": "height"; "width": "width"; "mapTypeId": "mapTypeId"; "center": "center"; "zoom": "zoom"; "options": "options"; }, { "mapInitialized": "mapInitialized"; "authFailure": "authFailure"; "boundsChanged": "boundsChanged"; "centerChanged": "centerChanged"; "mapClick": "mapClick"; "mapDblclick": "mapDblclick"; "mapDrag": "mapDrag"; "mapDragend": "mapDragend"; "mapDragstart": "mapDragstart"; "headingChanged": "headingChanged"; "idle": "idle"; "maptypeidChanged": "maptypeidChanged"; "mapMousemove": "mapMousemove"; "mapMouseout": "mapMouseout"; "mapMouseover": "mapMouseover"; "projectionChanged": "projectionChanged"; "mapRightclick": "mapRightclick"; "tilesloaded": "tilesloaded"; "tiltChanged": "tiltChanged"; "zoomChanged": "zoomChanged"; }, never, ["*"], false, never>;
-    // (undocumented)
-    static ɵfac: i0.ɵɵFactoryDeclaration<GoogleMap, never>;
+    position?: google.maps.LatLng | google.maps.LatLngLiteral;
 }
 
 // @public (undocumented)
-export class GoogleMapsModule {
+export class ClusterStats {
+    constructor(markers: Marker[], clusters: Cluster[]);
     // (undocumented)
-    static ɵfac: i0.ɵɵFactoryDeclaration<GoogleMapsModule, never>;
+    readonly clusters: {
+        count: number;
+        markers: {
+            mean: number;
+            sum: number;
+            min: number;
+            max: number;
+        };
+    };
     // (undocumented)
-    static ɵinj: i0.ɵɵInjectorDeclaration<GoogleMapsModule>;
-    // (undocumented)
-    static ɵmod: i0.ɵɵNgModuleDeclaration<GoogleMapsModule, [typeof i1.GoogleMap, typeof i2.MapBaseLayer, typeof i3.MapBicyclingLayer, typeof i4.MapCircle, typeof i5.MapDirectionsRenderer, typeof i6.MapGroundOverlay, typeof i7.MapInfoWindow, typeof i8.MapKmlLayer, typeof i9.MapMarker, typeof i10.MapMarkerClusterer, typeof i11.MapPolygon, typeof i12.MapPolyline, typeof i13.MapRectangle, typeof i14.MapTrafficLayer, typeof i15.MapTransitLayer, typeof i16.MapHeatmapLayer], never, [typeof i1.GoogleMap, typeof i2.MapBaseLayer, typeof i3.MapBicyclingLayer, typeof i4.MapCircle, typeof i5.MapDirectionsRenderer, typeof i6.MapGroundOverlay, typeof i7.MapInfoWindow, typeof i8.MapKmlLayer, typeof i9.MapMarker, typeof i10.MapMarkerClusterer, typeof i11.MapPolygon, typeof i12.MapPolyline, typeof i13.MapRectangle, typeof i14.MapTrafficLayer, typeof i15.MapTransitLayer, typeof i16.MapHeatmapLayer]>;
-}
-
-// @public
-export type HeatmapData = google.maps.MVCArray<google.maps.LatLng | google.maps.visualization.WeightedLocation | google.maps.LatLngLiteral> | (google.maps.LatLng | google.maps.visualization.WeightedLocation | google.maps.LatLngLiteral)[];
-
-// @public
-export interface MapAnchorPoint {
-    // (undocumented)
-    getAnchor(): google.maps.MVCObject;
-}
-
-// @public (undocumented)
-export class MapBaseLayer implements OnInit, OnDestroy {
-    constructor(_map: GoogleMap, _ngZone: NgZone);
-    // (undocumented)
-    protected _initializeObject(): void;
-    // (undocumented)
-    protected readonly _map: GoogleMap;
-    // (undocumented)
-    ngOnDestroy(): void;
-    // (undocumented)
-    ngOnInit(): void;
-    // (undocumented)
-    protected readonly _ngZone: NgZone;
-    // (undocumented)
-    protected _setMap(): void;
-    // (undocumented)
-    protected _unsetMap(): void;
-    // (undocumented)
-    static ɵdir: i0.ɵɵDirectiveDeclaration<MapBaseLayer, "map-base-layer", ["mapBaseLayer"], {}, {}, never, never, false, never>;
-    // (undocumented)
-    static ɵfac: i0.ɵɵFactoryDeclaration<MapBaseLayer, never>;
-}
-
-// @public
-export class MapBicyclingLayer extends MapBaseLayer {
-    bicyclingLayer?: google.maps.BicyclingLayer;
-    // (undocumented)
-    protected _initializeObject(): void;
-    // (undocumented)
-    protected _setMap(): void;
-    // (undocumented)
-    protected _unsetMap(): void;
-    // (undocumented)
-    static ɵdir: i0.ɵɵDirectiveDeclaration<MapBicyclingLayer, "map-bicycling-layer", ["mapBicyclingLayer"], {}, {}, never, never, false, never>;
-    // (undocumented)
-    static ɵfac: i0.ɵɵFactoryDeclaration<MapBicyclingLayer, never>;
-}
-
-// @public
-export class MapCircle implements OnInit, OnDestroy {
-    constructor(_map: GoogleMap, _ngZone: NgZone);
-    // (undocumented)
-    set center(center: google.maps.LatLng | google.maps.LatLngLiteral);
-    // (undocumented)
-    readonly centerChanged: Observable<void>;
-    circle?: google.maps.Circle;
-    // (undocumented)
-    readonly circleClick: Observable<google.maps.MapMouseEvent>;
-    // (undocumented)
-    readonly circleDblclick: Observable<google.maps.MapMouseEvent>;
-    // (undocumented)
-    readonly circleDrag: Observable<google.maps.MapMouseEvent>;
-    // (undocumented)
-    readonly circleDragend: Observable<google.maps.MapMouseEvent>;
-    // (undocumented)
-    readonly circleDragstart: Observable<google.maps.MapMouseEvent>;
-    // (undocumented)
-    readonly circleMousedown: Observable<google.maps.MapMouseEvent>;
-    // (undocumented)
-    readonly circleMousemove: Observable<google.maps.MapMouseEvent>;
-    // (undocumented)
-    readonly circleMouseout: Observable<google.maps.MapMouseEvent>;
-    // (undocumented)
-    readonly circleMouseover: Observable<google.maps.MapMouseEvent>;
-    // (undocumented)
-    readonly circleMouseup: Observable<google.maps.MapMouseEvent>;
-    // (undocumented)
-    readonly circleRightclick: Observable<google.maps.MapMouseEvent>;
-    // (undocumented)
-    getBounds(): google.maps.LatLngBounds | null;
-    // (undocumented)
-    getCenter(): google.maps.LatLng | null;
-    // (undocumented)
-    getDraggable(): boolean;
-    // (undocumented)
-    getEditable(): boolean;
-    // (undocumented)
-    getRadius(): number;
-    // (undocumented)
-    getVisible(): boolean;
-    // (undocumented)
-    ngOnDestroy(): void;
-    // (undocumented)
-    ngOnInit(): void;
-    // (undocumented)
-    set options(options: google.maps.CircleOptions);
-    // (undocumented)
-    set radius(radius: number);
-    // (undocumented)
-    readonly radiusChanged: Observable<void>;
-    // (undocumented)
-    static ɵdir: i0.ɵɵDirectiveDeclaration<MapCircle, "map-circle", ["mapCircle"], { "options": "options"; "center": "center"; "radius": "radius"; }, { "centerChanged": "centerChanged"; "circleClick": "circleClick"; "circleDblclick": "circleDblclick"; "circleDrag": "circleDrag"; "circleDragend": "circleDragend"; "circleDragstart": "circleDragstart"; "circleMousedown": "circleMousedown"; "circleMousemove": "circleMousemove"; "circleMouseout": "circleMouseout"; "circleMouseover": "circleMouseover"; "circleMouseup": "circleMouseup"; "radiusChanged": "radiusChanged"; "circleRightclick": "circleRightclick"; }, never, never, false, never>;
-    // (undocumented)
-    static ɵfac: i0.ɵɵFactoryDeclaration<MapCircle, never>;
-}
-
-// @public
-export class MapDirectionsRenderer implements OnInit, OnChanges, OnDestroy {
-    constructor(_googleMap: GoogleMap, _ngZone: NgZone);
-    set directions(directions: google.maps.DirectionsResult);
-    readonly directionsChanged: Observable<void>;
-    directionsRenderer?: google.maps.DirectionsRenderer;
-    getDirections(): google.maps.DirectionsResult | null;
-    getPanel(): Node | null;
-    getRouteIndex(): number;
-    // (undocumented)
-    ngOnChanges(changes: SimpleChanges): void;
-    // (undocumented)
-    ngOnDestroy(): void;
-    // (undocumented)
-    ngOnInit(): void;
-    set options(options: google.maps.DirectionsRendererOptions);
-    // (undocumented)
-    static ɵdir: i0.ɵɵDirectiveDeclaration<MapDirectionsRenderer, "map-directions-renderer", ["mapDirectionsRenderer"], { "directions": "directions"; "options": "options"; }, { "directionsChanged": "directionsChanged"; }, never, never, false, never>;
-    // (undocumented)
-    static ɵfac: i0.ɵɵFactoryDeclaration<MapDirectionsRenderer, never>;
+    readonly markers: {
+        sum: number;
+    };
 }
 
 // @public (undocumented)
-export interface MapDirectionsResponse {
-    // (undocumented)
-    result?: google.maps.DirectionsResult;
-    // (undocumented)
-    status: google.maps.DirectionsStatus;
-}
+export const defaultOnClusterClickHandler: onClusterClickHandler;
 
-// @public
-export class MapDirectionsService {
-    constructor(_ngZone: NgZone);
-    route(request: google.maps.DirectionsRequest): Observable<MapDirectionsResponse>;
-    // (undocumented)
-    static ɵfac: i0.ɵɵFactoryDeclaration<MapDirectionsService, never>;
-    // (undocumented)
-    static ɵprov: i0.ɵɵInjectableDeclaration<MapDirectionsService>;
-}
-
-// @public
-export class MapEventManager {
-    constructor(_ngZone: NgZone);
-    destroy(): void;
-    getLazyEmitter<T>(name: string): Observable<T>;
-    setTarget(target: MapEventManagerTarget): void;
-}
-
-// @public
-export class MapGeocoder {
-    constructor(_ngZone: NgZone);
-    geocode(request: google.maps.GeocoderRequest): Observable<MapGeocoderResponse>;
-    // (undocumented)
-    static ɵfac: i0.ɵɵFactoryDeclaration<MapGeocoder, never>;
-    // (undocumented)
-    static ɵprov: i0.ɵɵInjectableDeclaration<MapGeocoder>;
-}
-
-// @public (undocumented)
-export interface MapGeocoderResponse {
-    // (undocumented)
-    results: google.maps.GeocoderResult[];
-    // (undocumented)
-    status: google.maps.GeocoderStatus;
-}
-
-// @public
-export class MapGroundOverlay implements OnInit, OnDestroy {
-    constructor(_map: GoogleMap, _ngZone: NgZone);
-    get bounds(): google.maps.LatLngBounds | google.maps.LatLngBoundsLiteral;
-    set bounds(bounds: google.maps.LatLngBounds | google.maps.LatLngBoundsLiteral);
-    clickable: boolean;
-    getBounds(): google.maps.LatLngBounds | null;
-    getOpacity(): number;
-    getUrl(): string;
-    groundOverlay?: google.maps.GroundOverlay;
-    readonly mapClick: Observable<google.maps.MapMouseEvent>;
-    readonly mapDblclick: Observable<google.maps.MapMouseEvent>;
-    // (undocumented)
-    ngOnDestroy(): void;
-    // (undocumented)
-    ngOnInit(): void;
-    set opacity(opacity: number);
-    set url(url: string);
-    // (undocumented)
-    static ɵdir: i0.ɵɵDirectiveDeclaration<MapGroundOverlay, "map-ground-overlay", ["mapGroundOverlay"], { "url": "url"; "bounds": "bounds"; "clickable": "clickable"; "opacity": "opacity"; }, { "mapClick": "mapClick"; "mapDblclick": "mapDblclick"; }, never, never, false, never>;
-    // (undocumented)
-    static ɵfac: i0.ɵɵFactoryDeclaration<MapGroundOverlay, never>;
-}
-
-// @public
-export class MapHeatmapLayer implements OnInit, OnChanges, OnDestroy {
-    constructor(_googleMap: GoogleMap, _ngZone: NgZone);
-    set data(data: HeatmapData);
-    getData(): HeatmapData;
-    heatmap?: google.maps.visualization.HeatmapLayer;
-    // (undocumented)
-    ngOnChanges(changes: SimpleChanges): void;
-    // (undocumented)
-    ngOnDestroy(): void;
-    // (undocumented)
-    ngOnInit(): void;
-    set options(options: Partial<google.maps.visualization.HeatmapLayerOptions>);
-    // (undocumented)
-    static ɵdir: i0.ɵɵDirectiveDeclaration<MapHeatmapLayer, "map-heatmap-layer", ["mapHeatmapLayer"], { "data": "data"; "options": "options"; }, {}, never, never, false, never>;
-    // (undocumented)
-    static ɵfac: i0.ɵɵFactoryDeclaration<MapHeatmapLayer, never>;
-}
-
-// @public
-export class MapInfoWindow implements OnInit, OnDestroy {
-    constructor(_googleMap: GoogleMap, _elementRef: ElementRef<HTMLElement>, _ngZone: NgZone);
-    close(): void;
-    readonly closeclick: Observable<void>;
-    readonly contentChanged: Observable<void>;
-    readonly domready: Observable<void>;
-    getContent(): string | Node | null;
-    getPosition(): google.maps.LatLng | null;
-    getZIndex(): number;
-    infoWindow?: google.maps.InfoWindow;
-    // (undocumented)
-    ngOnDestroy(): void;
-    // (undocumented)
-    ngOnInit(): void;
-    open(anchor?: MapAnchorPoint, shouldFocus?: boolean): void;
-    // (undocumented)
-    set options(options: google.maps.InfoWindowOptions);
-    // (undocumented)
-    set position(position: google.maps.LatLngLiteral | google.maps.LatLng);
-    readonly positionChanged: Observable<void>;
-    readonly zindexChanged: Observable<void>;
-    // (undocumented)
-    static ɵdir: i0.ɵɵDirectiveDeclaration<MapInfoWindow, "map-info-window", ["mapInfoWindow"], { "options": "options"; "position": "position"; }, { "closeclick": "closeclick"; "contentChanged": "contentChanged"; "domready": "domready"; "positionChanged": "positionChanged"; "zindexChanged": "zindexChanged"; }, never, never, false, never>;
-    // (undocumented)
-    static ɵfac: i0.ɵɵFactoryDeclaration<MapInfoWindow, never>;
-}
-
-// @public
-export class MapKmlLayer implements OnInit, OnDestroy {
-    constructor(_map: GoogleMap, _ngZone: NgZone);
-    readonly defaultviewportChanged: Observable<void>;
-    getDefaultViewport(): google.maps.LatLngBounds | null;
-    getMetadata(): google.maps.KmlLayerMetadata | null;
-    getStatus(): google.maps.KmlLayerStatus;
-    getUrl(): string;
-    getZIndex(): number;
-    readonly kmlClick: Observable<google.maps.KmlMouseEvent>;
-    kmlLayer?: google.maps.KmlLayer;
-    // (undocumented)
-    ngOnDestroy(): void;
-    // (undocumented)
-    ngOnInit(): void;
-    // (undocumented)
-    set options(options: google.maps.KmlLayerOptions);
-    readonly statusChanged: Observable<void>;
-    // (undocumented)
-    set url(url: string);
-    // (undocumented)
-    static ɵdir: i0.ɵɵDirectiveDeclaration<MapKmlLayer, "map-kml-layer", ["mapKmlLayer"], { "options": "options"; "url": "url"; }, { "kmlClick": "kmlClick"; "defaultviewportChanged": "defaultviewportChanged"; "statusChanged": "statusChanged"; }, never, never, false, never>;
-    // (undocumented)
-    static ɵfac: i0.ɵɵFactoryDeclaration<MapKmlLayer, never>;
-}
-
-// @public
-export class MapMarker implements OnInit, OnChanges, OnDestroy, MapAnchorPoint {
-    constructor(_googleMap: GoogleMap, _ngZone: NgZone);
-    readonly animationChanged: Observable<void>;
-    set clickable(clickable: boolean);
-    readonly clickableChanged: Observable<void>;
-    readonly cursorChanged: Observable<void>;
-    readonly draggableChanged: Observable<void>;
-    readonly flatChanged: Observable<void>;
-    getAnchor(): google.maps.MVCObject;
-    getAnimation(): google.maps.Animation | null;
-    getClickable(): boolean;
-    getCursor(): string | null;
-    getDraggable(): boolean;
-    getIcon(): string | google.maps.Icon | google.maps.Symbol | null;
-    getLabel(): google.maps.MarkerLabel | null;
-    getOpacity(): number | null;
-    getPosition(): google.maps.LatLng | null;
-    getShape(): google.maps.MarkerShape | null;
-    getTitle(): string | null;
-    getVisible(): boolean;
-    getZIndex(): number | null;
-    set icon(icon: string | google.maps.Icon | google.maps.Symbol);
-    readonly iconChanged: Observable<void>;
-    set label(label: string | google.maps.MarkerLabel);
-    readonly mapClick: Observable<google.maps.MapMouseEvent>;
-    readonly mapDblclick: Observable<google.maps.MapMouseEvent>;
-    readonly mapDrag: Observable<google.maps.MapMouseEvent>;
-    readonly mapDragend: Observable<google.maps.MapMouseEvent>;
-    readonly mapDragstart: Observable<google.maps.MapMouseEvent>;
-    readonly mapMousedown: Observable<google.maps.MapMouseEvent>;
-    readonly mapMouseout: Observable<google.maps.MapMouseEvent>;
-    readonly mapMouseover: Observable<google.maps.MapMouseEvent>;
-    readonly mapMouseup: Observable<google.maps.MapMouseEvent>;
-    readonly mapRightclick: Observable<google.maps.MapMouseEvent>;
-    marker?: google.maps.Marker;
-    // (undocumented)
-    ngOnChanges(changes: SimpleChanges): void;
-    // (undocumented)
-    ngOnDestroy(): void;
-    // (undocumented)
-    ngOnInit(): void;
-    set options(options: google.maps.MarkerOptions);
-    set position(position: google.maps.LatLngLiteral | google.maps.LatLng);
-    readonly positionChanged: Observable<void>;
-    readonly shapeChanged: Observable<void>;
-    set title(title: string);
-    readonly titleChanged: Observable<void>;
-    set visible(value: boolean);
-    readonly visibleChanged: Observable<void>;
-    readonly zindexChanged: Observable<void>;
-    // (undocumented)
-    static ɵdir: i0.ɵɵDirectiveDeclaration<MapMarker, "map-marker", ["mapMarker"], { "title": "title"; "position": "position"; "label": "label"; "clickable": "clickable"; "options": "options"; "icon": "icon"; "visible": "visible"; }, { "animationChanged": "animationChanged"; "mapClick": "mapClick"; "clickableChanged": "clickableChanged"; "cursorChanged": "cursorChanged"; "mapDblclick": "mapDblclick"; "mapDrag": "mapDrag"; "mapDragend": "mapDragend"; "draggableChanged": "draggableChanged"; "mapDragstart": "mapDragstart"; "flatChanged": "flatChanged"; "iconChanged": "iconChanged"; "mapMousedown": "mapMousedown"; "mapMouseout": "mapMouseout"; "mapMouseover": "mapMouseover"; "mapMouseup": "mapMouseup"; "positionChanged": "positionChanged"; "mapRightclick": "mapRightclick"; "shapeChanged": "shapeChanged"; "titleChanged": "titleChanged"; "visibleChanged": "visibleChanged"; "zindexChanged": "zindexChanged"; }, never, never, false, never>;
-    // (undocumented)
-    static ɵfac: i0.ɵɵFactoryDeclaration<MapMarker, never>;
-}
-
-// @public
-export class MapMarkerClusterer implements OnInit, AfterContentInit, OnChanges, OnDestroy {
-    constructor(_googleMap: GoogleMap, _ngZone: NgZone);
+// @public @deprecated
+export class DeprecatedMapMarkerClusterer implements OnInit, AfterContentInit, OnChanges, OnDestroy {
+    constructor(...args: unknown[]);
     // (undocumented)
     ariaLabelFn: AriaLabelFn;
     // (undocumented)
@@ -469,7 +143,7 @@ export class MapMarkerClusterer implements OnInit, AfterContentInit, OnChanges, 
     set calculator(calculator: Calculator);
     // (undocumented)
     set clusterClass(clusterClass: string);
-    readonly clusterClick: Observable<Cluster>;
+    readonly clusterClick: Observable<Cluster_2>;
     readonly clusteringbegin: Observable<void>;
     readonly clusteringend: Observable<void>;
     // (undocumented)
@@ -485,7 +159,7 @@ export class MapMarkerClusterer implements OnInit, AfterContentInit, OnChanges, 
     // (undocumented)
     getClusterClass(): string;
     // (undocumented)
-    getClusters(): Cluster[];
+    getClusters(): Cluster_2[];
     // (undocumented)
     getEnableRetinaIcons(): boolean;
     // (undocumented)
@@ -524,7 +198,8 @@ export class MapMarkerClusterer implements OnInit, AfterContentInit, OnChanges, 
     set imagePath(imagePath: string);
     // (undocumented)
     set imageSizes(imageSizes: number[]);
-    markerClusterer?: MarkerClusterer;
+    markerClusterer?: MarkerClusterer_2;
+    readonly markerClustererInitialized: EventEmitter<MarkerClusterer_2>;
     // (undocumented)
     _markers: QueryList<MapMarker>;
     // (undocumented)
@@ -550,14 +225,481 @@ export class MapMarkerClusterer implements OnInit, AfterContentInit, OnChanges, 
     // (undocumented)
     set zoomOnClick(zoomOnClick: boolean);
     // (undocumented)
-    static ɵcmp: i0.ɵɵComponentDeclaration<MapMarkerClusterer, "map-marker-clusterer", ["mapMarkerClusterer"], { "ariaLabelFn": "ariaLabelFn"; "averageCenter": "averageCenter"; "batchSize": "batchSize"; "batchSizeIE": "batchSizeIE"; "calculator": "calculator"; "clusterClass": "clusterClass"; "enableRetinaIcons": "enableRetinaIcons"; "gridSize": "gridSize"; "ignoreHidden": "ignoreHidden"; "imageExtension": "imageExtension"; "imagePath": "imagePath"; "imageSizes": "imageSizes"; "maxZoom": "maxZoom"; "minimumClusterSize": "minimumClusterSize"; "styles": "styles"; "title": "title"; "zIndex": "zIndex"; "zoomOnClick": "zoomOnClick"; "options": "options"; }, { "clusteringbegin": "clusteringbegin"; "clusteringend": "clusteringend"; "clusterClick": "clusterClick"; }, ["_markers"], ["*"], false, never>;
+    static ɵcmp: i0.ɵɵComponentDeclaration<DeprecatedMapMarkerClusterer, "deprecated-map-marker-clusterer", ["mapMarkerClusterer"], { "ariaLabelFn": { "alias": "ariaLabelFn"; "required": false; }; "averageCenter": { "alias": "averageCenter"; "required": false; }; "batchSize": { "alias": "batchSize"; "required": false; }; "batchSizeIE": { "alias": "batchSizeIE"; "required": false; }; "calculator": { "alias": "calculator"; "required": false; }; "clusterClass": { "alias": "clusterClass"; "required": false; }; "enableRetinaIcons": { "alias": "enableRetinaIcons"; "required": false; }; "gridSize": { "alias": "gridSize"; "required": false; }; "ignoreHidden": { "alias": "ignoreHidden"; "required": false; }; "imageExtension": { "alias": "imageExtension"; "required": false; }; "imagePath": { "alias": "imagePath"; "required": false; }; "imageSizes": { "alias": "imageSizes"; "required": false; }; "maxZoom": { "alias": "maxZoom"; "required": false; }; "minimumClusterSize": { "alias": "minimumClusterSize"; "required": false; }; "styles": { "alias": "styles"; "required": false; }; "title": { "alias": "title"; "required": false; }; "zIndex": { "alias": "zIndex"; "required": false; }; "zoomOnClick": { "alias": "zoomOnClick"; "required": false; }; "options": { "alias": "options"; "required": false; }; }, { "clusteringbegin": "clusteringbegin"; "clusteringend": "clusteringend"; "clusterClick": "clusterClick"; "markerClustererInitialized": "markerClustererInitialized"; }, ["_markers"], ["*"], true, never>;
+    // (undocumented)
+    static ɵfac: i0.ɵɵFactoryDeclaration<DeprecatedMapMarkerClusterer, never>;
+}
+
+// @public
+export class GoogleMap implements OnChanges, OnInit, OnDestroy {
+    constructor(...args: unknown[]);
+    readonly authFailure: EventEmitter<void>;
+    readonly boundsChanged: Observable<void>;
+    // (undocumented)
+    set center(center: google.maps.LatLngLiteral | google.maps.LatLng);
+    readonly centerChanged: Observable<void>;
+    get controls(): google.maps.MVCArray<Node>[];
+    get data(): google.maps.Data;
+    fitBounds(bounds: google.maps.LatLngBounds | google.maps.LatLngBoundsLiteral, padding?: number | google.maps.Padding): void;
+    getBounds(): google.maps.LatLngBounds | null;
+    getCenter(): google.maps.LatLng | undefined;
+    getClickableIcons(): boolean | undefined;
+    getHeading(): number | undefined;
+    getMapTypeId(): google.maps.MapTypeId | string | undefined;
+    getProjection(): google.maps.Projection | null;
+    getStreetView(): google.maps.StreetViewPanorama;
+    getTilt(): number | undefined;
+    getZoom(): number | undefined;
+    googleMap?: google.maps.Map;
+    readonly headingChanged: Observable<void>;
+    height: string | number | null;
+    readonly idle: Observable<void>;
+    _isBrowser: boolean;
+    readonly mapClick: Observable<google.maps.MapMouseEvent | google.maps.IconMouseEvent>;
+    readonly mapDblclick: Observable<google.maps.MapMouseEvent>;
+    readonly mapDrag: Observable<void>;
+    readonly mapDragend: Observable<void>;
+    readonly mapDragstart: Observable<void>;
+    mapId: string | undefined;
+    readonly mapInitialized: EventEmitter<google.maps.Map>;
+    readonly mapMousemove: Observable<google.maps.MapMouseEvent>;
+    readonly mapMouseout: Observable<google.maps.MapMouseEvent>;
+    readonly mapMouseover: Observable<google.maps.MapMouseEvent>;
+    readonly mapRightclick: Observable<google.maps.MapMouseEvent>;
+    mapTypeId: google.maps.MapTypeId | undefined;
+    readonly maptypeidChanged: Observable<void>;
+    get mapTypes(): google.maps.MapTypeRegistry;
+    // (undocumented)
+    ngOnChanges(changes: SimpleChanges): void;
+    // (undocumented)
+    ngOnDestroy(): void;
+    // (undocumented)
+    ngOnInit(): void;
+    // (undocumented)
+    set options(options: google.maps.MapOptions);
+    get overlayMapTypes(): google.maps.MVCArray<google.maps.MapType | null>;
+    panBy(x: number, y: number): void;
+    panTo(latLng: google.maps.LatLng | google.maps.LatLngLiteral): void;
+    panToBounds(latLngBounds: google.maps.LatLngBounds | google.maps.LatLngBoundsLiteral, padding?: number | google.maps.Padding): void;
+    readonly projectionChanged: Observable<void>;
+    _resolveMap(): Promise<google.maps.Map>;
+    readonly tilesloaded: Observable<void>;
+    readonly tiltChanged: Observable<void>;
+    width: string | number | null;
+    // (undocumented)
+    set zoom(zoom: number);
+    readonly zoomChanged: Observable<void>;
+    // (undocumented)
+    static ɵcmp: i0.ɵɵComponentDeclaration<GoogleMap, "google-map", ["googleMap"], { "height": { "alias": "height"; "required": false; }; "width": { "alias": "width"; "required": false; }; "mapId": { "alias": "mapId"; "required": false; }; "mapTypeId": { "alias": "mapTypeId"; "required": false; }; "center": { "alias": "center"; "required": false; }; "zoom": { "alias": "zoom"; "required": false; }; "options": { "alias": "options"; "required": false; }; }, { "mapInitialized": "mapInitialized"; "authFailure": "authFailure"; "boundsChanged": "boundsChanged"; "centerChanged": "centerChanged"; "mapClick": "mapClick"; "mapDblclick": "mapDblclick"; "mapDrag": "mapDrag"; "mapDragend": "mapDragend"; "mapDragstart": "mapDragstart"; "headingChanged": "headingChanged"; "idle": "idle"; "maptypeidChanged": "maptypeidChanged"; "mapMousemove": "mapMousemove"; "mapMouseout": "mapMouseout"; "mapMouseover": "mapMouseover"; "projectionChanged": "projectionChanged"; "mapRightclick": "mapRightclick"; "tilesloaded": "tilesloaded"; "tiltChanged": "tiltChanged"; "zoomChanged": "zoomChanged"; }, never, ["*"], true, never>;
+    // (undocumented)
+    static ɵfac: i0.ɵɵFactoryDeclaration<GoogleMap, never>;
+}
+
+// @public (undocumented)
+export class GoogleMapsModule {
+    // (undocumented)
+    static ɵfac: i0.ɵɵFactoryDeclaration<GoogleMapsModule, never>;
+    // (undocumented)
+    static ɵinj: i0.ɵɵInjectorDeclaration<GoogleMapsModule>;
+    // (undocumented)
+    static ɵmod: i0.ɵɵNgModuleDeclaration<GoogleMapsModule, never, [typeof i1.GoogleMap, typeof i2.MapBaseLayer, typeof i3.MapBicyclingLayer, typeof i4.MapCircle, typeof i5.MapDirectionsRenderer, typeof i6.MapGroundOverlay, typeof i7.MapHeatmapLayer, typeof i8.MapInfoWindow, typeof i9.MapKmlLayer, typeof i10.MapMarker, typeof i11.MapAdvancedMarker, typeof i12.DeprecatedMapMarkerClusterer, typeof i13.MapPolygon, typeof i14.MapPolyline, typeof i15.MapRectangle, typeof i16.MapTrafficLayer, typeof i17.MapTransitLayer, typeof i18.MapMarkerClusterer], [typeof i1.GoogleMap, typeof i2.MapBaseLayer, typeof i3.MapBicyclingLayer, typeof i4.MapCircle, typeof i5.MapDirectionsRenderer, typeof i6.MapGroundOverlay, typeof i7.MapHeatmapLayer, typeof i8.MapInfoWindow, typeof i9.MapKmlLayer, typeof i10.MapMarker, typeof i11.MapAdvancedMarker, typeof i12.DeprecatedMapMarkerClusterer, typeof i13.MapPolygon, typeof i14.MapPolyline, typeof i15.MapRectangle, typeof i16.MapTrafficLayer, typeof i17.MapTransitLayer, typeof i18.MapMarkerClusterer]>;
+}
+
+// @public
+export type HeatmapData = google.maps.MVCArray<google.maps.LatLng | google.maps.visualization.WeightedLocation | google.maps.LatLngLiteral> | (google.maps.LatLng | google.maps.visualization.WeightedLocation | google.maps.LatLngLiteral)[];
+
+// @public
+export class MapAdvancedMarker implements OnInit, OnChanges, OnDestroy, MapAnchorPoint, MarkerDirective {
+    constructor(...args: unknown[]);
+    advancedMarker: google.maps.marker.AdvancedMarkerElement;
+    set content(content: Node | google.maps.marker.PinElement | null);
+    // (undocumented)
+    getAnchor(): google.maps.marker.AdvancedMarkerElement;
+    set gmpDraggable(draggable: boolean);
+    readonly mapClick: Observable<google.maps.MapMouseEvent>;
+    readonly mapDblclick: Observable<google.maps.MapMouseEvent>;
+    readonly mapDrag: Observable<google.maps.MapMouseEvent>;
+    readonly mapDragend: Observable<google.maps.MapMouseEvent>;
+    readonly mapDragstart: Observable<google.maps.MapMouseEvent>;
+    readonly mapMouseout: Observable<google.maps.MapMouseEvent>;
+    readonly mapMouseover: Observable<google.maps.MapMouseEvent>;
+    readonly mapMouseup: Observable<google.maps.MapMouseEvent>;
+    readonly mapRightclick: Observable<google.maps.MapMouseEvent>;
+    readonly markerInitialized: EventEmitter<google.maps.marker.AdvancedMarkerElement>;
+    // (undocumented)
+    ngOnChanges(changes: SimpleChanges): void;
+    // (undocumented)
+    ngOnDestroy(): void;
+    // (undocumented)
+    ngOnInit(): void;
+    set options(options: google.maps.marker.AdvancedMarkerElementOptions);
+    set position(position: google.maps.LatLngLiteral | google.maps.LatLng | google.maps.LatLngAltitude | google.maps.LatLngAltitudeLiteral);
+    _resolveMarker(): Promise<google.maps.marker.AdvancedMarkerElement>;
+    set title(title: string);
+    set zIndex(zIndex: number);
+    // (undocumented)
+    static ɵdir: i0.ɵɵDirectiveDeclaration<MapAdvancedMarker, "map-advanced-marker", ["mapAdvancedMarker"], { "title": { "alias": "title"; "required": false; }; "position": { "alias": "position"; "required": false; }; "content": { "alias": "content"; "required": false; }; "gmpDraggable": { "alias": "gmpDraggable"; "required": false; }; "options": { "alias": "options"; "required": false; }; "zIndex": { "alias": "zIndex"; "required": false; }; }, { "mapClick": "mapClick"; "mapDblclick": "mapDblclick"; "mapMouseout": "mapMouseout"; "mapMouseover": "mapMouseover"; "mapMouseup": "mapMouseup"; "mapRightclick": "mapRightclick"; "mapDrag": "mapDrag"; "mapDragend": "mapDragend"; "mapDragstart": "mapDragstart"; "markerInitialized": "markerInitialized"; }, never, never, true, never>;
+    // (undocumented)
+    static ɵfac: i0.ɵɵFactoryDeclaration<MapAdvancedMarker, never>;
+}
+
+// @public
+export interface MapAnchorPoint {
+    // (undocumented)
+    getAnchor(): google.maps.MVCObject | google.maps.marker.AdvancedMarkerElement;
+}
+
+// @public (undocumented)
+export class MapBaseLayer implements OnInit, OnDestroy {
+    constructor(...args: unknown[]);
+    // (undocumented)
+    protected _initializeObject(): void;
+    // (undocumented)
+    protected readonly _map: GoogleMap;
+    // (undocumented)
+    ngOnDestroy(): void;
+    // (undocumented)
+    ngOnInit(): void;
+    // (undocumented)
+    protected readonly _ngZone: NgZone;
+    // (undocumented)
+    protected _setMap(): void;
+    // (undocumented)
+    protected _unsetMap(): void;
+    // (undocumented)
+    static ɵdir: i0.ɵɵDirectiveDeclaration<MapBaseLayer, "map-base-layer", ["mapBaseLayer"], {}, {}, never, never, true, never>;
+    // (undocumented)
+    static ɵfac: i0.ɵɵFactoryDeclaration<MapBaseLayer, never>;
+}
+
+// @public
+export class MapBicyclingLayer implements OnInit, OnDestroy {
+    bicyclingLayer?: google.maps.BicyclingLayer;
+    readonly bicyclingLayerInitialized: EventEmitter<google.maps.BicyclingLayer>;
+    // (undocumented)
+    ngOnDestroy(): void;
+    // (undocumented)
+    ngOnInit(): void;
+    // (undocumented)
+    static ɵdir: i0.ɵɵDirectiveDeclaration<MapBicyclingLayer, "map-bicycling-layer", ["mapBicyclingLayer"], {}, { "bicyclingLayerInitialized": "bicyclingLayerInitialized"; }, never, never, true, never>;
+    // (undocumented)
+    static ɵfac: i0.ɵɵFactoryDeclaration<MapBicyclingLayer, never>;
+}
+
+// @public
+export class MapCircle implements OnInit, OnDestroy {
+    constructor(...args: unknown[]);
+    // (undocumented)
+    set center(center: google.maps.LatLng | google.maps.LatLngLiteral);
+    // (undocumented)
+    readonly centerChanged: Observable<void>;
+    circle?: google.maps.Circle;
+    // (undocumented)
+    readonly circleClick: Observable<google.maps.MapMouseEvent>;
+    // (undocumented)
+    readonly circleDblclick: Observable<google.maps.MapMouseEvent>;
+    // (undocumented)
+    readonly circleDrag: Observable<google.maps.MapMouseEvent>;
+    // (undocumented)
+    readonly circleDragend: Observable<google.maps.MapMouseEvent>;
+    // (undocumented)
+    readonly circleDragstart: Observable<google.maps.MapMouseEvent>;
+    readonly circleInitialized: EventEmitter<google.maps.Circle>;
+    // (undocumented)
+    readonly circleMousedown: Observable<google.maps.MapMouseEvent>;
+    // (undocumented)
+    readonly circleMousemove: Observable<google.maps.MapMouseEvent>;
+    // (undocumented)
+    readonly circleMouseout: Observable<google.maps.MapMouseEvent>;
+    // (undocumented)
+    readonly circleMouseover: Observable<google.maps.MapMouseEvent>;
+    // (undocumented)
+    readonly circleMouseup: Observable<google.maps.MapMouseEvent>;
+    // (undocumented)
+    readonly circleRightclick: Observable<google.maps.MapMouseEvent>;
+    // (undocumented)
+    getBounds(): google.maps.LatLngBounds | null;
+    // (undocumented)
+    getCenter(): google.maps.LatLng | null;
+    // (undocumented)
+    getDraggable(): boolean;
+    // (undocumented)
+    getEditable(): boolean;
+    // (undocumented)
+    getRadius(): number;
+    // (undocumented)
+    getVisible(): boolean;
+    // (undocumented)
+    ngOnDestroy(): void;
+    // (undocumented)
+    ngOnInit(): void;
+    // (undocumented)
+    set options(options: google.maps.CircleOptions);
+    // (undocumented)
+    set radius(radius: number);
+    // (undocumented)
+    readonly radiusChanged: Observable<void>;
+    // (undocumented)
+    static ɵdir: i0.ɵɵDirectiveDeclaration<MapCircle, "map-circle", ["mapCircle"], { "options": { "alias": "options"; "required": false; }; "center": { "alias": "center"; "required": false; }; "radius": { "alias": "radius"; "required": false; }; }, { "centerChanged": "centerChanged"; "circleClick": "circleClick"; "circleDblclick": "circleDblclick"; "circleDrag": "circleDrag"; "circleDragend": "circleDragend"; "circleDragstart": "circleDragstart"; "circleMousedown": "circleMousedown"; "circleMousemove": "circleMousemove"; "circleMouseout": "circleMouseout"; "circleMouseover": "circleMouseover"; "circleMouseup": "circleMouseup"; "radiusChanged": "radiusChanged"; "circleRightclick": "circleRightclick"; "circleInitialized": "circleInitialized"; }, never, never, true, never>;
+    // (undocumented)
+    static ɵfac: i0.ɵɵFactoryDeclaration<MapCircle, never>;
+}
+
+// @public
+export class MapDirectionsRenderer implements OnInit, OnChanges, OnDestroy {
+    constructor(...args: unknown[]);
+    set directions(directions: google.maps.DirectionsResult);
+    readonly directionsChanged: Observable<void>;
+    directionsRenderer?: google.maps.DirectionsRenderer;
+    readonly directionsRendererInitialized: EventEmitter<google.maps.DirectionsRenderer>;
+    getDirections(): google.maps.DirectionsResult | null;
+    getPanel(): Node | null;
+    getRouteIndex(): number;
+    // (undocumented)
+    ngOnChanges(changes: SimpleChanges): void;
+    // (undocumented)
+    ngOnDestroy(): void;
+    // (undocumented)
+    ngOnInit(): void;
+    set options(options: google.maps.DirectionsRendererOptions);
+    // (undocumented)
+    static ɵdir: i0.ɵɵDirectiveDeclaration<MapDirectionsRenderer, "map-directions-renderer", ["mapDirectionsRenderer"], { "directions": { "alias": "directions"; "required": false; }; "options": { "alias": "options"; "required": false; }; }, { "directionsChanged": "directionsChanged"; "directionsRendererInitialized": "directionsRendererInitialized"; }, never, never, true, never>;
+    // (undocumented)
+    static ɵfac: i0.ɵɵFactoryDeclaration<MapDirectionsRenderer, never>;
+}
+
+// @public (undocumented)
+export interface MapDirectionsResponse {
+    // (undocumented)
+    result?: google.maps.DirectionsResult;
+    // (undocumented)
+    status: google.maps.DirectionsStatus;
+}
+
+// @public
+export class MapDirectionsService {
+    constructor(...args: unknown[]);
+    route(request: google.maps.DirectionsRequest): Observable<MapDirectionsResponse>;
+    // (undocumented)
+    static ɵfac: i0.ɵɵFactoryDeclaration<MapDirectionsService, never>;
+    // (undocumented)
+    static ɵprov: i0.ɵɵInjectableDeclaration<MapDirectionsService>;
+}
+
+// @public
+export class MapEventManager {
+    constructor(_ngZone: NgZone);
+    destroy(): void;
+    getLazyEmitter<T>(name: string): Observable<T>;
+    setTarget(target: MapEventManagerTarget): void;
+}
+
+// @public
+export class MapGeocoder {
+    constructor(...args: unknown[]);
+    geocode(request: google.maps.GeocoderRequest): Observable<MapGeocoderResponse>;
+    // (undocumented)
+    static ɵfac: i0.ɵɵFactoryDeclaration<MapGeocoder, never>;
+    // (undocumented)
+    static ɵprov: i0.ɵɵInjectableDeclaration<MapGeocoder>;
+}
+
+// @public (undocumented)
+export interface MapGeocoderResponse {
+    // (undocumented)
+    results: google.maps.GeocoderResult[];
+    // (undocumented)
+    status: google.maps.GeocoderStatus;
+}
+
+// @public
+export class MapGroundOverlay implements OnInit, OnDestroy {
+    constructor(...args: unknown[]);
+    get bounds(): google.maps.LatLngBounds | google.maps.LatLngBoundsLiteral;
+    set bounds(bounds: google.maps.LatLngBounds | google.maps.LatLngBoundsLiteral);
+    clickable: boolean;
+    getBounds(): google.maps.LatLngBounds | null;
+    getOpacity(): number;
+    getUrl(): string;
+    groundOverlay?: google.maps.GroundOverlay;
+    readonly groundOverlayInitialized: EventEmitter<google.maps.GroundOverlay>;
+    readonly mapClick: Observable<google.maps.MapMouseEvent>;
+    readonly mapDblclick: Observable<google.maps.MapMouseEvent>;
+    // (undocumented)
+    ngOnDestroy(): void;
+    // (undocumented)
+    ngOnInit(): void;
+    set opacity(opacity: number);
+    set url(url: string);
+    // (undocumented)
+    static ɵdir: i0.ɵɵDirectiveDeclaration<MapGroundOverlay, "map-ground-overlay", ["mapGroundOverlay"], { "url": { "alias": "url"; "required": false; }; "bounds": { "alias": "bounds"; "required": false; }; "clickable": { "alias": "clickable"; "required": false; }; "opacity": { "alias": "opacity"; "required": false; }; }, { "mapClick": "mapClick"; "mapDblclick": "mapDblclick"; "groundOverlayInitialized": "groundOverlayInitialized"; }, never, never, true, never>;
+    // (undocumented)
+    static ɵfac: i0.ɵɵFactoryDeclaration<MapGroundOverlay, never>;
+}
+
+// @public
+export class MapHeatmapLayer implements OnInit, OnChanges, OnDestroy {
+    constructor(...args: unknown[]);
+    set data(data: HeatmapData);
+    getData(): HeatmapData;
+    heatmap?: google.maps.visualization.HeatmapLayer;
+    readonly heatmapInitialized: EventEmitter<google.maps.visualization.HeatmapLayer>;
+    // (undocumented)
+    ngOnChanges(changes: SimpleChanges): void;
+    // (undocumented)
+    ngOnDestroy(): void;
+    // (undocumented)
+    ngOnInit(): void;
+    set options(options: Partial<google.maps.visualization.HeatmapLayerOptions>);
+    // (undocumented)
+    static ɵdir: i0.ɵɵDirectiveDeclaration<MapHeatmapLayer, "map-heatmap-layer", ["mapHeatmapLayer"], { "data": { "alias": "data"; "required": false; }; "options": { "alias": "options"; "required": false; }; }, { "heatmapInitialized": "heatmapInitialized"; }, never, never, true, never>;
+    // (undocumented)
+    static ɵfac: i0.ɵɵFactoryDeclaration<MapHeatmapLayer, never>;
+}
+
+// @public
+export class MapInfoWindow implements OnInit, OnDestroy {
+    constructor(...args: unknown[]);
+    close(): void;
+    readonly closeclick: Observable<void>;
+    readonly contentChanged: Observable<void>;
+    readonly domready: Observable<void>;
+    getContent(): string | Node | null;
+    getPosition(): google.maps.LatLng | null;
+    getZIndex(): number;
+    infoWindow?: google.maps.InfoWindow;
+    readonly infoWindowInitialized: EventEmitter<google.maps.InfoWindow>;
+    // (undocumented)
+    ngOnDestroy(): void;
+    // (undocumented)
+    ngOnInit(): void;
+    open(anchor?: MapAnchorPoint, shouldFocus?: boolean, content?: string | Element | Text): void;
+    // @deprecated
+    openAdvancedMarkerElement(advancedMarkerElement: google.maps.marker.AdvancedMarkerElement, content?: string | Element | Text): void;
+    // (undocumented)
+    set options(options: google.maps.InfoWindowOptions);
+    // (undocumented)
+    set position(position: google.maps.LatLngLiteral | google.maps.LatLng);
+    readonly positionChanged: Observable<void>;
+    readonly zindexChanged: Observable<void>;
+    // (undocumented)
+    static ɵdir: i0.ɵɵDirectiveDeclaration<MapInfoWindow, "map-info-window", ["mapInfoWindow"], { "options": { "alias": "options"; "required": false; }; "position": { "alias": "position"; "required": false; }; }, { "closeclick": "closeclick"; "contentChanged": "contentChanged"; "domready": "domready"; "positionChanged": "positionChanged"; "zindexChanged": "zindexChanged"; "infoWindowInitialized": "infoWindowInitialized"; }, never, never, true, never>;
+    // (undocumented)
+    static ɵfac: i0.ɵɵFactoryDeclaration<MapInfoWindow, never>;
+}
+
+// @public
+export class MapKmlLayer implements OnInit, OnDestroy {
+    constructor(...args: unknown[]);
+    readonly defaultviewportChanged: Observable<void>;
+    getDefaultViewport(): google.maps.LatLngBounds | null;
+    getMetadata(): google.maps.KmlLayerMetadata | null;
+    getStatus(): google.maps.KmlLayerStatus;
+    getUrl(): string;
+    getZIndex(): number;
+    readonly kmlClick: Observable<google.maps.KmlMouseEvent>;
+    kmlLayer?: google.maps.KmlLayer;
+    readonly kmlLayerInitialized: EventEmitter<google.maps.KmlLayer>;
+    // (undocumented)
+    ngOnDestroy(): void;
+    // (undocumented)
+    ngOnInit(): void;
+    // (undocumented)
+    set options(options: google.maps.KmlLayerOptions);
+    readonly statusChanged: Observable<void>;
+    // (undocumented)
+    set url(url: string);
+    // (undocumented)
+    static ɵdir: i0.ɵɵDirectiveDeclaration<MapKmlLayer, "map-kml-layer", ["mapKmlLayer"], { "options": { "alias": "options"; "required": false; }; "url": { "alias": "url"; "required": false; }; }, { "kmlClick": "kmlClick"; "defaultviewportChanged": "defaultviewportChanged"; "statusChanged": "statusChanged"; "kmlLayerInitialized": "kmlLayerInitialized"; }, never, never, true, never>;
+    // (undocumented)
+    static ɵfac: i0.ɵɵFactoryDeclaration<MapKmlLayer, never>;
+}
+
+// @public
+export class MapMarker implements OnInit, OnChanges, OnDestroy, MapAnchorPoint, MarkerDirective {
+    constructor(...args: unknown[]);
+    readonly animationChanged: Observable<void>;
+    set clickable(clickable: boolean);
+    readonly clickableChanged: Observable<void>;
+    readonly cursorChanged: Observable<void>;
+    readonly draggableChanged: Observable<void>;
+    readonly flatChanged: Observable<void>;
+    getAnchor(): google.maps.MVCObject;
+    getAnimation(): google.maps.Animation | null;
+    getClickable(): boolean;
+    getCursor(): string | null;
+    getDraggable(): boolean;
+    getIcon(): string | google.maps.Icon | google.maps.Symbol | null;
+    getLabel(): google.maps.MarkerLabel | string | null;
+    getOpacity(): number | null;
+    getPosition(): google.maps.LatLng | null;
+    getShape(): google.maps.MarkerShape | null;
+    getTitle(): string | null;
+    getVisible(): boolean;
+    getZIndex(): number | null;
+    set icon(icon: string | google.maps.Icon | google.maps.Symbol);
+    readonly iconChanged: Observable<void>;
+    set label(label: string | google.maps.MarkerLabel);
+    readonly mapClick: Observable<google.maps.MapMouseEvent>;
+    readonly mapDblclick: Observable<google.maps.MapMouseEvent>;
+    readonly mapDrag: Observable<google.maps.MapMouseEvent>;
+    readonly mapDragend: Observable<google.maps.MapMouseEvent>;
+    readonly mapDragstart: Observable<google.maps.MapMouseEvent>;
+    readonly mapMousedown: Observable<google.maps.MapMouseEvent>;
+    readonly mapMouseout: Observable<google.maps.MapMouseEvent>;
+    readonly mapMouseover: Observable<google.maps.MapMouseEvent>;
+    readonly mapMouseup: Observable<google.maps.MapMouseEvent>;
+    readonly mapRightclick: Observable<google.maps.MapMouseEvent>;
+    marker?: google.maps.Marker;
+    readonly markerInitialized: EventEmitter<google.maps.Marker>;
+    // (undocumented)
+    ngOnChanges(changes: SimpleChanges): void;
+    // (undocumented)
+    ngOnDestroy(): void;
+    // (undocumented)
+    ngOnInit(): void;
+    set options(options: google.maps.MarkerOptions);
+    set position(position: google.maps.LatLngLiteral | google.maps.LatLng);
+    readonly positionChanged: Observable<void>;
+    _resolveMarker(): Promise<google.maps.Marker>;
+    readonly shapeChanged: Observable<void>;
+    set title(title: string);
+    readonly titleChanged: Observable<void>;
+    set visible(value: boolean);
+    readonly visibleChanged: Observable<void>;
+    readonly zindexChanged: Observable<void>;
+    // (undocumented)
+    static ɵdir: i0.ɵɵDirectiveDeclaration<MapMarker, "map-marker", ["mapMarker"], { "title": { "alias": "title"; "required": false; }; "position": { "alias": "position"; "required": false; }; "label": { "alias": "label"; "required": false; }; "clickable": { "alias": "clickable"; "required": false; }; "options": { "alias": "options"; "required": false; }; "icon": { "alias": "icon"; "required": false; }; "visible": { "alias": "visible"; "required": false; }; }, { "animationChanged": "animationChanged"; "mapClick": "mapClick"; "clickableChanged": "clickableChanged"; "cursorChanged": "cursorChanged"; "mapDblclick": "mapDblclick"; "mapDrag": "mapDrag"; "mapDragend": "mapDragend"; "draggableChanged": "draggableChanged"; "mapDragstart": "mapDragstart"; "flatChanged": "flatChanged"; "iconChanged": "iconChanged"; "mapMousedown": "mapMousedown"; "mapMouseout": "mapMouseout"; "mapMouseover": "mapMouseover"; "mapMouseup": "mapMouseup"; "positionChanged": "positionChanged"; "mapRightclick": "mapRightclick"; "shapeChanged": "shapeChanged"; "titleChanged": "titleChanged"; "visibleChanged": "visibleChanged"; "zindexChanged": "zindexChanged"; "markerInitialized": "markerInitialized"; }, never, never, true, never>;
+    // (undocumented)
+    static ɵfac: i0.ɵɵFactoryDeclaration<MapMarker, never>;
+}
+
+// @public
+export class MapMarkerClusterer implements OnInit, OnChanges, OnDestroy {
+    algorithm: Algorithm_2;
+    readonly clusterClick: EventEmitter<Cluster>;
+    readonly clusteringbegin: Observable<void>;
+    readonly clusteringend: Observable<void>;
+    markerClusterer?: MarkerClusterer;
+    readonly markerClustererInitialized: EventEmitter<MarkerClusterer>;
+    // (undocumented)
+    _markers: QueryList<MarkerDirective>;
+    // (undocumented)
+    ngOnChanges(changes: SimpleChanges): Promise<void>;
+    // (undocumented)
+    ngOnDestroy(): void;
+    // (undocumented)
+    ngOnInit(): Promise<void>;
+    renderer: Renderer;
+    // (undocumented)
+    static ɵcmp: i0.ɵɵComponentDeclaration<MapMarkerClusterer, "map-marker-clusterer", ["mapMarkerClusterer"], { "renderer": { "alias": "renderer"; "required": false; }; "algorithm": { "alias": "algorithm"; "required": false; }; }, { "clusteringbegin": "clusteringbegin"; "clusteringend": "clusteringend"; "clusterClick": "clusterClick"; "markerClustererInitialized": "markerClustererInitialized"; }, ["_markers"], ["*"], true, never>;
     // (undocumented)
     static ɵfac: i0.ɵɵFactoryDeclaration<MapMarkerClusterer, never>;
 }
 
 // @public
 export class MapPolygon implements OnInit, OnDestroy {
-    constructor(_map: GoogleMap, _ngZone: NgZone);
+    constructor(...args: unknown[]);
     getDraggable(): boolean;
     getEditable(): boolean;
     getPath(): google.maps.MVCArray<google.maps.LatLng>;
@@ -577,6 +719,7 @@ export class MapPolygon implements OnInit, OnDestroy {
     readonly polygonDrag: Observable<google.maps.MapMouseEvent>;
     readonly polygonDragend: Observable<google.maps.MapMouseEvent>;
     readonly polygonDragstart: Observable<google.maps.MapMouseEvent>;
+    readonly polygonInitialized: EventEmitter<google.maps.Polygon>;
     readonly polygonMousedown: Observable<google.maps.PolyMouseEvent>;
     readonly polygonMousemove: Observable<google.maps.PolyMouseEvent>;
     readonly polygonMouseout: Observable<google.maps.PolyMouseEvent>;
@@ -584,14 +727,14 @@ export class MapPolygon implements OnInit, OnDestroy {
     readonly polygonMouseup: Observable<google.maps.PolyMouseEvent>;
     readonly polygonRightclick: Observable<google.maps.PolyMouseEvent>;
     // (undocumented)
-    static ɵdir: i0.ɵɵDirectiveDeclaration<MapPolygon, "map-polygon", ["mapPolygon"], { "options": "options"; "paths": "paths"; }, { "polygonClick": "polygonClick"; "polygonDblclick": "polygonDblclick"; "polygonDrag": "polygonDrag"; "polygonDragend": "polygonDragend"; "polygonDragstart": "polygonDragstart"; "polygonMousedown": "polygonMousedown"; "polygonMousemove": "polygonMousemove"; "polygonMouseout": "polygonMouseout"; "polygonMouseover": "polygonMouseover"; "polygonMouseup": "polygonMouseup"; "polygonRightclick": "polygonRightclick"; }, never, never, false, never>;
+    static ɵdir: i0.ɵɵDirectiveDeclaration<MapPolygon, "map-polygon", ["mapPolygon"], { "options": { "alias": "options"; "required": false; }; "paths": { "alias": "paths"; "required": false; }; }, { "polygonClick": "polygonClick"; "polygonDblclick": "polygonDblclick"; "polygonDrag": "polygonDrag"; "polygonDragend": "polygonDragend"; "polygonDragstart": "polygonDragstart"; "polygonMousedown": "polygonMousedown"; "polygonMousemove": "polygonMousemove"; "polygonMouseout": "polygonMouseout"; "polygonMouseover": "polygonMouseover"; "polygonMouseup": "polygonMouseup"; "polygonRightclick": "polygonRightclick"; "polygonInitialized": "polygonInitialized"; }, never, never, true, never>;
     // (undocumented)
     static ɵfac: i0.ɵɵFactoryDeclaration<MapPolygon, never>;
 }
 
 // @public
 export class MapPolyline implements OnInit, OnDestroy {
-    constructor(_map: GoogleMap, _ngZone: NgZone);
+    constructor(...args: unknown[]);
     getDraggable(): boolean;
     getEditable(): boolean;
     getPath(): google.maps.MVCArray<google.maps.LatLng>;
@@ -610,6 +753,7 @@ export class MapPolyline implements OnInit, OnDestroy {
     readonly polylineDrag: Observable<google.maps.MapMouseEvent>;
     readonly polylineDragend: Observable<google.maps.MapMouseEvent>;
     readonly polylineDragstart: Observable<google.maps.MapMouseEvent>;
+    readonly polylineInitialized: EventEmitter<google.maps.Polyline>;
     readonly polylineMousedown: Observable<google.maps.PolyMouseEvent>;
     readonly polylineMousemove: Observable<google.maps.PolyMouseEvent>;
     readonly polylineMouseout: Observable<google.maps.PolyMouseEvent>;
@@ -617,14 +761,14 @@ export class MapPolyline implements OnInit, OnDestroy {
     readonly polylineMouseup: Observable<google.maps.PolyMouseEvent>;
     readonly polylineRightclick: Observable<google.maps.PolyMouseEvent>;
     // (undocumented)
-    static ɵdir: i0.ɵɵDirectiveDeclaration<MapPolyline, "map-polyline", ["mapPolyline"], { "options": "options"; "path": "path"; }, { "polylineClick": "polylineClick"; "polylineDblclick": "polylineDblclick"; "polylineDrag": "polylineDrag"; "polylineDragend": "polylineDragend"; "polylineDragstart": "polylineDragstart"; "polylineMousedown": "polylineMousedown"; "polylineMousemove": "polylineMousemove"; "polylineMouseout": "polylineMouseout"; "polylineMouseover": "polylineMouseover"; "polylineMouseup": "polylineMouseup"; "polylineRightclick": "polylineRightclick"; }, never, never, false, never>;
+    static ɵdir: i0.ɵɵDirectiveDeclaration<MapPolyline, "map-polyline", ["mapPolyline"], { "options": { "alias": "options"; "required": false; }; "path": { "alias": "path"; "required": false; }; }, { "polylineClick": "polylineClick"; "polylineDblclick": "polylineDblclick"; "polylineDrag": "polylineDrag"; "polylineDragend": "polylineDragend"; "polylineDragstart": "polylineDragstart"; "polylineMousedown": "polylineMousedown"; "polylineMousemove": "polylineMousemove"; "polylineMouseout": "polylineMouseout"; "polylineMouseover": "polylineMouseover"; "polylineMouseup": "polylineMouseup"; "polylineRightclick": "polylineRightclick"; "polylineInitialized": "polylineInitialized"; }, never, never, true, never>;
     // (undocumented)
     static ɵfac: i0.ɵɵFactoryDeclaration<MapPolyline, never>;
 }
 
 // @public
 export class MapRectangle implements OnInit, OnDestroy {
-    constructor(_map: GoogleMap, _ngZone: NgZone);
+    constructor(...args: unknown[]);
     // (undocumented)
     set bounds(bounds: google.maps.LatLngBounds | google.maps.LatLngBoundsLiteral);
     readonly boundsChanged: Observable<void>;
@@ -644,6 +788,7 @@ export class MapRectangle implements OnInit, OnDestroy {
     readonly rectangleDrag: Observable<google.maps.MapMouseEvent>;
     readonly rectangleDragend: Observable<google.maps.MapMouseEvent>;
     readonly rectangleDragstart: Observable<google.maps.MapMouseEvent>;
+    readonly rectangleInitialized: EventEmitter<google.maps.Rectangle>;
     readonly rectangleMousedown: Observable<google.maps.MapMouseEvent>;
     readonly rectangleMousemove: Observable<google.maps.MapMouseEvent>;
     readonly rectangleMouseout: Observable<google.maps.MapMouseEvent>;
@@ -651,39 +796,88 @@ export class MapRectangle implements OnInit, OnDestroy {
     readonly rectangleMouseup: Observable<google.maps.MapMouseEvent>;
     readonly rectangleRightclick: Observable<google.maps.MapMouseEvent>;
     // (undocumented)
-    static ɵdir: i0.ɵɵDirectiveDeclaration<MapRectangle, "map-rectangle", ["mapRectangle"], { "options": "options"; "bounds": "bounds"; }, { "boundsChanged": "boundsChanged"; "rectangleClick": "rectangleClick"; "rectangleDblclick": "rectangleDblclick"; "rectangleDrag": "rectangleDrag"; "rectangleDragend": "rectangleDragend"; "rectangleDragstart": "rectangleDragstart"; "rectangleMousedown": "rectangleMousedown"; "rectangleMousemove": "rectangleMousemove"; "rectangleMouseout": "rectangleMouseout"; "rectangleMouseover": "rectangleMouseover"; "rectangleMouseup": "rectangleMouseup"; "rectangleRightclick": "rectangleRightclick"; }, never, never, false, never>;
+    static ɵdir: i0.ɵɵDirectiveDeclaration<MapRectangle, "map-rectangle", ["mapRectangle"], { "options": { "alias": "options"; "required": false; }; "bounds": { "alias": "bounds"; "required": false; }; }, { "boundsChanged": "boundsChanged"; "rectangleClick": "rectangleClick"; "rectangleDblclick": "rectangleDblclick"; "rectangleDrag": "rectangleDrag"; "rectangleDragend": "rectangleDragend"; "rectangleDragstart": "rectangleDragstart"; "rectangleMousedown": "rectangleMousedown"; "rectangleMousemove": "rectangleMousemove"; "rectangleMouseout": "rectangleMouseout"; "rectangleMouseover": "rectangleMouseover"; "rectangleMouseup": "rectangleMouseup"; "rectangleRightclick": "rectangleRightclick"; "rectangleInitialized": "rectangleInitialized"; }, never, never, true, never>;
     // (undocumented)
     static ɵfac: i0.ɵɵFactoryDeclaration<MapRectangle, never>;
 }
 
 // @public
 export class MapTrafficLayer implements OnInit, OnDestroy {
-    constructor(_map: GoogleMap, _ngZone: NgZone);
+    constructor(...args: unknown[]);
     set autoRefresh(autoRefresh: boolean);
     // (undocumented)
     ngOnDestroy(): void;
     // (undocumented)
     ngOnInit(): void;
     trafficLayer?: google.maps.TrafficLayer;
+    readonly trafficLayerInitialized: EventEmitter<google.maps.TrafficLayer>;
     // (undocumented)
-    static ɵdir: i0.ɵɵDirectiveDeclaration<MapTrafficLayer, "map-traffic-layer", ["mapTrafficLayer"], { "autoRefresh": "autoRefresh"; }, {}, never, never, false, never>;
+    static ɵdir: i0.ɵɵDirectiveDeclaration<MapTrafficLayer, "map-traffic-layer", ["mapTrafficLayer"], { "autoRefresh": { "alias": "autoRefresh"; "required": false; }; }, { "trafficLayerInitialized": "trafficLayerInitialized"; }, never, never, true, never>;
     // (undocumented)
     static ɵfac: i0.ɵɵFactoryDeclaration<MapTrafficLayer, never>;
 }
 
 // @public
-export class MapTransitLayer extends MapBaseLayer {
+export class MapTransitLayer implements OnInit, OnDestroy {
     // (undocumented)
-    protected _initializeObject(): void;
+    ngOnDestroy(): void;
     // (undocumented)
-    protected _setMap(): void;
+    ngOnInit(): void;
     transitLayer?: google.maps.TransitLayer;
+    readonly transitLayerInitialized: EventEmitter<google.maps.TransitLayer>;
     // (undocumented)
-    protected _unsetMap(): void;
-    // (undocumented)
-    static ɵdir: i0.ɵɵDirectiveDeclaration<MapTransitLayer, "map-transit-layer", ["mapTransitLayer"], {}, {}, never, never, false, never>;
+    static ɵdir: i0.ɵɵDirectiveDeclaration<MapTransitLayer, "map-transit-layer", ["mapTransitLayer"], {}, { "transitLayerInitialized": "transitLayerInitialized"; }, never, never, true, never>;
     // (undocumented)
     static ɵfac: i0.ɵɵFactoryDeclaration<MapTransitLayer, never>;
+}
+
+// @public (undocumented)
+export class MarkerClusterer extends google.maps.OverlayView {
+    constructor({ map, markers, algorithmOptions, algorithm, renderer, onClusterClick, }: MarkerClustererOptions_2);
+    // (undocumented)
+    addMarker(marker: Marker, noDraw?: boolean): void;
+    // (undocumented)
+    addMarkers(markers: Marker[], noDraw?: boolean): void;
+    // (undocumented)
+    protected algorithm: Algorithm_2;
+    // (undocumented)
+    clearMarkers(noDraw?: boolean): void;
+    // (undocumented)
+    protected clusters: Cluster[];
+    // (undocumented)
+    protected idleListener: google.maps.MapsEventListener;
+    // (undocumented)
+    protected map: google.maps.Map | null;
+    // (undocumented)
+    protected markers: Marker[];
+    // (undocumented)
+    onAdd(): void;
+    // (undocumented)
+    onClusterClick: onClusterClickHandler;
+    // (undocumented)
+    onRemove(): void;
+    // (undocumented)
+    removeMarker(marker: Marker, noDraw?: boolean): boolean;
+    // (undocumented)
+    removeMarkers(markers: Marker[], noDraw?: boolean): boolean;
+    // (undocumented)
+    render(): void;
+    // (undocumented)
+    protected renderClusters(): void;
+    // (undocumented)
+    protected renderer: Renderer;
+    // (undocumented)
+    protected reset(): void;
+}
+
+// @public (undocumented)
+export enum MarkerClustererEvents {
+    // (undocumented)
+    CLUSTER_CLICK = "click",
+    // (undocumented)
+    CLUSTERING_BEGIN = "clusteringbegin",
+    // (undocumented)
+    CLUSTERING_END = "clusteringend"
 }
 
 // @public
@@ -724,6 +918,14 @@ export interface MarkerClustererOptions {
     zIndex?: number;
     // (undocumented)
     zoomOnClick?: boolean;
+}
+
+// @public (undocumented)
+export type onClusterClickHandler = (event: google.maps.MapMouseEvent, cluster: Cluster, map: google.maps.Map) => void;
+
+// @public (undocumented)
+export interface Renderer {
+    render(cluster: Cluster, stats: ClusterStats, map: google.maps.Map): Marker;
 }
 
 // (No @packageDocumentation comment for this package)

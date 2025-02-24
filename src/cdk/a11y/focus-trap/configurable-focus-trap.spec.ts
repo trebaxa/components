@@ -1,4 +1,12 @@
-import {AfterViewInit, Component, ElementRef, Type, ViewChild, Provider} from '@angular/core';
+import {
+  AfterViewInit,
+  Component,
+  ElementRef,
+  Type,
+  ViewChild,
+  Provider,
+  inject,
+} from '@angular/core';
 import {ComponentFixture, TestBed} from '@angular/core/testing';
 import {
   A11yModule,
@@ -93,10 +101,9 @@ function createComponent<T>(
   providers: Provider[] = [],
 ): ComponentFixture<T> {
   TestBed.configureTestingModule({
-    imports: [A11yModule],
-    declarations: [componentType],
+    imports: [A11yModule, componentType],
     providers: providers,
-  }).compileComponents();
+  });
 
   return TestBed.createComponent<T>(componentType);
 }
@@ -107,14 +114,14 @@ function createComponent<T>(
       <input>
       <button>SAVE</button>
     </div>
-    `,
+  `,
 })
 class SimpleFocusTrap implements AfterViewInit {
+  private _focusTrapFactory = inject(ConfigurableFocusTrapFactory);
+
   @ViewChild('focusTrapElement') focusTrapElement!: ElementRef;
 
   focusTrap: ConfigurableFocusTrap;
-
-  constructor(private _focusTrapFactory: ConfigurableFocusTrapFactory) {}
 
   ngAfterViewInit() {
     this.focusTrap = this._focusTrapFactory.create(this.focusTrapElement.nativeElement);

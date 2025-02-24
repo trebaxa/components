@@ -3,11 +3,11 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
+import {OverlayRef} from '../overlay-ref';
 import {PositionStrategy} from './position-strategy';
-import {OverlayReference} from '../overlay-reference';
 
 /** Class to be added to the overlay pane wrapper. */
 const wrapperClass = 'cdk-global-overlay-wrapper';
@@ -20,7 +20,7 @@ const wrapperClass = 'cdk-global-overlay-wrapper';
  */
 export class GlobalPositionStrategy implements PositionStrategy {
   /** The overlay to which this strategy is attached. */
-  private _overlayRef: OverlayReference;
+  private _overlayRef: OverlayRef;
   private _cssPosition = 'static';
   private _topOffset = '';
   private _bottomOffset = '';
@@ -31,7 +31,7 @@ export class GlobalPositionStrategy implements PositionStrategy {
   private _height = '';
   private _isDisposed = false;
 
-  attach(overlayRef: OverlayReference): void {
+  attach(overlayRef: OverlayRef): void {
     const config = overlayRef.getConfig();
 
     this._overlayRef = overlayRef;

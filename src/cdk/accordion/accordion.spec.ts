@@ -9,10 +9,8 @@ import {CdkAccordionModule} from './accordion-module';
 describe('CdkAccordion', () => {
   beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
-      imports: [BrowserAnimationsModule, CdkAccordionModule],
-      declarations: [SetOfItems, NestedItems],
+      imports: [BrowserAnimationsModule, CdkAccordionModule, SetOfItems, NestedItems],
     });
-    TestBed.compileComponents();
   }));
 
   it('should ensure only one item is expanded at a time', () => {
@@ -117,6 +115,7 @@ describe('CdkAccordion', () => {
     <cdk-accordion-item></cdk-accordion-item>
     <cdk-accordion-item></cdk-accordion-item>
   </cdk-accordion>`,
+  imports: [CdkAccordionModule],
 })
 class SetOfItems {
   @ViewChild(CdkAccordion) accordion: CdkAccordion;
@@ -131,6 +130,7 @@ class SetOfItems {
       <cdk-accordion-item #innerItem="cdkAccordionItem"></cdk-accordion-item>
     </cdk-accordion-item>
   </cdk-accordion>`,
+  imports: [CdkAccordionModule],
 })
 class NestedItems {
   @ViewChild('outerItem') outerItem: CdkAccordionItem;

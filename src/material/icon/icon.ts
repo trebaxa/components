@@ -3,44 +3,40 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {BooleanInput, coerceBooleanProperty} from '@angular/cdk/coercion';
 import {DOCUMENT} from '@angular/common';
 import {
   AfterViewChecked,
-  Attribute,
+  booleanAttribute,
   ChangeDetectionStrategy,
   Component,
   ElementRef,
   ErrorHandler,
   inject,
-  Inject,
   InjectionToken,
   Input,
   OnDestroy,
   OnInit,
-  Optional,
   ViewEncapsulation,
+  HostAttributeToken,
 } from '@angular/core';
-import {CanColor, ThemePalette, mixinColor} from '@angular/material/core';
+import {ThemePalette} from '@angular/material/core';
 import {Subscription} from 'rxjs';
 import {take} from 'rxjs/operators';
 
 import {MatIconRegistry} from './icon-registry';
 
-// Boilerplate for applying mixins to MatIcon.
-/** @docs-private */
-const _MatIconBase = mixinColor(
-  class {
-    constructor(public _elementRef: ElementRef) {}
-  },
-);
-
 /** Default options for `mat-icon`.  */
 export interface MatIconDefaultOptions {
-  /** Default color of the icon. */
+  /**
+   * Theme color of the icon. This API is supported in M2 themes only, it
+   * has no effect in M3 themes. For color customization in M3, see https://material.angular.io/components/icon/styling.
+   *
+   * For information on applying color variants in M3, see
+   * https://material.angular.io/guide/material-2-theming#optional-add-backwards-compatibility-styles-for-color-variants
+   */
   color?: ThemePalette;
   /** Font set that the icon is a part of. */
   fontSet?: string;
@@ -131,7 +127,7 @@ const funcIriPattern = /^url\(['"]?#(.*?)['"]?\)$/;
  * - Specify a font glyph to be included via CSS rules by setting the fontSet input to specify the
  *   font, and the fontIcon input to specify the icon. Typically the fontIcon will specify a
  *   CSS class which causes the glyph to be displayed via a :before selector, as in
- *   https://fortawesome.github.io/Font-Awesome/examples/
+ *   https://fontawesome-v4.github.io/examples/
  *   Example:
  *     `<mat-icon fontSet="fa" fontIcon="alarm"></mat-icon>`
  */
@@ -139,11 +135,11 @@ const funcIriPattern = /^url\(['"]?#(.*?)['"]?\)$/;
   template: '<ng-content></ng-content>',
   selector: 'mat-icon',
   exportAs: 'matIcon',
-  styleUrls: ['icon.css'],
-  inputs: ['color'],
+  styleUrl: 'icon.css',
   host: {
     'role': 'img',
     'class': 'mat-icon notranslate',
+    '[class]': 'color ? "mat-" + color : ""',
     '[attr.data-mat-icon-type]': '_usingFontIcon() ? "font" : "svg"',
     '[attr.data-mat-icon-name]': '_svgName || fontIcon',
     '[attr.data-mat-icon-namespace]': '_svgNamespace || fontSet',
@@ -154,19 +150,35 @@ const funcIriPattern = /^url\(['"]?#(.*?)['"]?\)$/;
   encapsulation: ViewEncapsulation.None,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class MatIcon extends _MatIconBase implements OnInit, AfterViewChecked, CanColor, OnDestroy {
+export class MatIcon implements OnInit, AfterViewChecked, OnDestroy {
+  readonly _elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
+  private _iconRegistry = inject(MatIconRegistry);
+  private _location = inject<MatIconLocation>(MAT_ICON_LOCATION);
+  private readonly _errorHandler = inject(ErrorHandler);
+  private _defaultColor: ThemePalette;
+
+  /**
+   * Theme color of the icon. This API is supported in M2 themes only, it
+   * has no effect in M3 themes. For color customization in M3, see https://material.angular.io/components/icon/styling.
+   *
+   * For information on applying color variants in M3, see
+   * https://material.angular.io/guide/material-2-theming#optional-add-backwards-compatibility-styles-for-color-variants
+   */
+  @Input()
+  get color() {
+    return this._color || this._defaultColor;
+  }
+  set color(value: string | null | undefined) {
+    this._color = value;
+  }
+  private _color: string | null | undefined;
+
   /**
    * Whether the icon should be inlined, automatically sizing the icon to match the font size of
    * the element the icon is contained in.
    */
-  @Input()
-  get inline(): boolean {
-    return this._inline;
-  }
-  set inline(inline: BooleanInput) {
-    this._inline = coerceBooleanProperty(inline);
-  }
-  private _inline: boolean = false;
+  @Input({transform: booleanAttribute})
+  inline: boolean = false;
 
   /** Name of the icon in the SVG icon set. */
   @Input()
@@ -230,21 +242,15 @@ export class MatIcon extends _MatIconBase implements OnInit, AfterViewChecked, C
   /** Subscription to the current in-progress SVG icon request. */
   private _currentIconFetch = Subscription.EMPTY;
 
-  constructor(
-    elementRef: ElementRef<HTMLElement>,
-    private _iconRegistry: MatIconRegistry,
-    @Attribute('aria-hidden') ariaHidden: string,
-    @Inject(MAT_ICON_LOCATION) private _location: MatIconLocation,
-    private readonly _errorHandler: ErrorHandler,
-    @Optional()
-    @Inject(MAT_ICON_DEFAULT_OPTIONS)
-    defaults?: MatIconDefaultOptions,
-  ) {
-    super(elementRef);
+  constructor(...args: unknown[]);
+
+  constructor() {
+    const ariaHidden = inject(new HostAttributeToken('aria-hidden'), {optional: true});
+    const defaults = inject<MatIconDefaultOptions>(MAT_ICON_DEFAULT_OPTIONS, {optional: true});
 
     if (defaults) {
       if (defaults.color) {
-        this.color = this.defaultColor = defaults.color;
+        this.color = this._defaultColor = defaults.color;
       }
 
       if (defaults.fontSet) {
@@ -255,7 +261,7 @@ export class MatIcon extends _MatIconBase implements OnInit, AfterViewChecked, C
     // If the user has not explicitly set aria-hidden, mark the icon as hidden, as this is
     // the right thing to do for the majority of icon use-cases.
     if (!ariaHidden) {
-      elementRef.nativeElement.setAttribute('aria-hidden', 'true');
+      this._elementRef.nativeElement.setAttribute('aria-hidden', 'true');
     }
   }
 

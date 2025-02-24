@@ -16,7 +16,7 @@ describe('Material address-form schematic', () => {
   });
 
   it('should create address-form files and add them to module', async () => {
-    const app = await createTestApp(runner);
+    const app = await createTestApp(runner, {standalone: false});
     const tree = await runner.runSchematic('address-form', baseOptions, app);
     const files = tree.files;
 
@@ -31,7 +31,7 @@ describe('Material address-form schematic', () => {
   });
 
   it('should add address-form imports to module', async () => {
-    const app = await createTestApp(runner);
+    const app = await createTestApp(runner, {standalone: false});
     const tree = await runner.runSchematic('address-form', baseOptions, app);
     const moduleContent = getFileContent(tree, '/projects/material/src/app/app.module.ts');
 
@@ -48,6 +48,69 @@ describe('Material address-form schematic', () => {
     await expectAsync(
       runner.runSchematic('address-form', {project: 'material'}, appTree),
     ).toBeRejectedWithError(/required property 'name'/);
+  });
+
+  describe('standalone option', () => {
+    it('should generate a standalone component', async () => {
+      const app = await createTestApp(runner, {standalone: false});
+      const tree = await runner.runSchematic(
+        'address-form',
+        {...baseOptions, standalone: true},
+        app,
+      );
+      const module = getFileContent(tree, '/projects/material/src/app/app.module.ts');
+      const content = getFileContent(tree, '/projects/material/src/app/foo/foo.component.ts');
+      const requiredModules = [
+        'MatInputModule',
+        'MatButtonModule',
+        'MatSelectModule',
+        'MatRadioModule',
+        'ReactiveFormsModule',
+      ];
+
+      requiredModules.forEach(name => {
+        expect(module).withContext('Module should not import dependencies').not.toContain(name);
+        expect(content).withContext('Component should import dependencies').toContain(name);
+      });
+
+      expect(module).not.toContain('FooComponent');
+      expect(content).toContain('imports: [');
+    });
+
+    it('should generate a component with no imports and standalone false', async () => {
+      const app = await createTestApp(runner, {standalone: false});
+      const tree = await runner.runSchematic(
+        'address-form',
+        {...baseOptions, standalone: false},
+        app,
+      );
+      const module = getFileContent(tree, '/projects/material/src/app/app.module.ts');
+      const content = getFileContent(tree, '/projects/material/src/app/foo/foo.component.ts');
+      const requiredModules = [
+        'MatInputModule',
+        'MatButtonModule',
+        'MatSelectModule',
+        'MatRadioModule',
+        'ReactiveFormsModule',
+      ];
+
+      requiredModules.forEach(name => {
+        expect(module).withContext('Module should import dependencies').toContain(name);
+        expect(content).withContext('Component should not import dependencies').not.toContain(name);
+      });
+
+      expect(content).toContain('standalone: false');
+      expect(content).not.toContain('imports: [');
+    });
+
+    it('should infer the standalone option from the project structure', async () => {
+      const app = await createTestApp(runner, {standalone: true});
+      const tree = await runner.runSchematic('address-form', baseOptions, app);
+      const component = getFileContent(tree, '/projects/material/src/app/foo/foo.component.ts');
+
+      expect(tree.exists('/projects/material/src/app/app.module.ts')).toBe(false);
+      expect(component).toContain('imports: [');
+    });
   });
 
   describe('style option', () => {
@@ -80,7 +143,7 @@ describe('Material address-form schematic', () => {
       );
       expect(tree.files).not.toContain('/projects/material/src/app/foo/foo.component.css');
       expect(tree.readContent('/projects/material/src/app/foo/foo.component.ts')).toContain(
-        'styles: [`',
+        'styles: `',
       );
     });
 

@@ -1,9 +1,16 @@
 load("@bazel_skylib//lib:dicts.bzl", "dicts")
-load("//tools:defaults.bzl", "node_integration_test")
 load("//tools:integration.bzl", "CLI_PROJECT_MAPPINGS")
+load("//tools:defaults.bzl", "node_integration_test")
 
 npmPackageMappings = dicts.add(
-    CLI_PROJECT_MAPPINGS,
+    dicts.omit(
+        CLI_PROJECT_MAPPINGS,
+        # Exclude typescript, because Yarn PnP hasn't been updated to support versions 5.0+ yet.
+        [
+            "@npm//:typescript_archive",
+            "typescript",
+        ],
+    ),
     {
         "//src/cdk:npm_package_archive": "@angular/cdk",
         "//src/material:npm_package_archive": "@angular/material",

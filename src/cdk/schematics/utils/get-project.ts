@@ -3,10 +3,10 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {ProjectDefinition, WorkspaceDefinition} from '@angular-devkit/core/src/workspace';
+import {workspaces} from '@angular-devkit/core';
 import {SchematicsException} from '@angular-devkit/schematics';
 
 /**
@@ -14,9 +14,9 @@ import {SchematicsException} from '@angular-devkit/schematics';
  * couldn't be found.
  */
 export function getProjectFromWorkspace(
-  workspace: WorkspaceDefinition,
+  workspace: workspaces.WorkspaceDefinition,
   projectName: string | undefined,
-): ProjectDefinition {
+): workspaces.ProjectDefinition {
   if (!projectName) {
     // TODO(crisbeto): some schematics APIs have the project name as optional so for now it's
     // simpler to allow undefined and checking it at runtime. Eventually we should clean this up.

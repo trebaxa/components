@@ -3,30 +3,22 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {Component} from '@angular/core';
-import {CommonModule} from '@angular/common';
+import {ChangeDetectionStrategy, Component} from '@angular/core';
+import {MatButtonModule} from '@angular/material/button';
+import {MatDividerModule} from '@angular/material/divider';
+import {MatIconModule} from '@angular/material/icon';
 import {MatMenuModule} from '@angular/material/menu';
 import {MatToolbarModule} from '@angular/material/toolbar';
-import {MatIconModule} from '@angular/material/icon';
-import {MatDividerModule} from '@angular/material/divider';
-import {MatButtonModule} from '@angular/material/button';
 
 @Component({
   selector: 'menu-demo',
   templateUrl: 'menu-demo.html',
-  styleUrls: ['menu-demo.css'],
-  standalone: true,
-  imports: [
-    CommonModule,
-    MatMenuModule,
-    MatButtonModule,
-    MatToolbarModule,
-    MatIconModule,
-    MatDividerModule,
-  ],
+  styleUrl: 'menu-demo.css',
+  imports: [MatMenuModule, MatButtonModule, MatToolbarModule, MatIconModule, MatDividerModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MenuDemo {
   selected = '';

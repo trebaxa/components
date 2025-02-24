@@ -48,6 +48,7 @@ ts_library(
         # TODO(devversion): Only include jasmine for test sources (See: tsconfig types).
         "@npm//@types/jasmine",
         "@npm//@types/node",
+        "@npm//rxjs",
         "@npm//tslint",
         "@npm//typescript",
     ],
@@ -75,7 +76,7 @@ pkg_npm(
     name = "npm_package",
     srcs = ["package.json"],
     nested_packages = [
-        "//src/material/schematics/ng-generate/mdc-migration:npm_package",
+        "//src/material/schematics/ng-generate/theme-color:npm_package",
     ],
     deps = [
         ":collection_assets",

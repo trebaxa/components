@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {coerceNumberProperty, NumberInput} from '@angular/cdk/coercion';
@@ -183,7 +183,7 @@ export class AutoSizeVirtualScrollStrategy implements VirtualScrollStrategy {
    */
   updateBufferSize(minBufferPx: number, maxBufferPx: number) {
     if (maxBufferPx < minBufferPx) {
-      throw 'CDK virtual scroll: maxBufferPx must be greater than or equal to minBufferPx';
+      throw Error('CDK virtual scroll: maxBufferPx must be greater than or equal to minBufferPx');
     }
     this._minBufferPx = minBufferPx;
     this._maxBufferPx = maxBufferPx;

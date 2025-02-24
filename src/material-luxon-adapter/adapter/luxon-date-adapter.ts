@@ -3,15 +3,16 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {Inject, Injectable, Optional, InjectionToken} from '@angular/core';
+import {Injectable, InjectionToken, inject} from '@angular/core';
 import {DateAdapter, MAT_DATE_LOCALE} from '@angular/material/core';
 import {
   DateTime as LuxonDateTime,
   Info as LuxonInfo,
   DateTimeOptions as LuxonDateTimeOptions,
+  CalendarSystem as LuxonCalendarSystem,
 } from 'luxon';
 
 /** Configurable options for the `LuxonDateAdapter`. */
@@ -26,7 +27,13 @@ export interface MatLuxonDateAdapterOptions {
    * Sets the first day of week.
    * Changing this will change how Angular Material components like DatePicker shows start of week.
    */
-  firstDayOfWeek: number;
+  firstDayOfWeek?: number;
+
+  /**
+   * Sets the output Calendar.
+   * Changing this will change how Angular Material components like DatePicker output dates.
+   */
+  defaultOutputCalendar: LuxonCalendarSystem;
 }
 
 /** InjectionToken for LuxonDateAdapter to configure options. */
@@ -42,7 +49,7 @@ export const MAT_LUXON_DATE_ADAPTER_OPTIONS = new InjectionToken<MatLuxonDateAda
 export function MAT_LUXON_DATE_ADAPTER_OPTIONS_FACTORY(): MatLuxonDateAdapterOptions {
   return {
     useUtc: false,
-    firstDayOfWeek: 0,
+    defaultOutputCalendar: 'gregory',
   };
 }
 
@@ -59,17 +66,22 @@ function range<T>(length: number, valueFunction: (index: number) => T): T[] {
 @Injectable()
 export class LuxonDateAdapter extends DateAdapter<LuxonDateTime> {
   private _useUTC: boolean;
-  private _firstDayOfWeek: number;
+  private _firstDayOfWeek: number | undefined;
+  private _defaultOutputCalendar: LuxonCalendarSystem;
 
-  constructor(
-    @Optional() @Inject(MAT_DATE_LOCALE) dateLocale: string,
-    @Optional()
-    @Inject(MAT_LUXON_DATE_ADAPTER_OPTIONS)
-    options?: MatLuxonDateAdapterOptions,
-  ) {
+  constructor(...args: unknown[]);
+
+  constructor() {
     super();
+
+    const dateLocale = inject(MAT_DATE_LOCALE, {optional: true});
+    const options = inject<MatLuxonDateAdapterOptions>(MAT_LUXON_DATE_ADAPTER_OPTIONS, {
+      optional: true,
+    });
+
     this._useUTC = !!options?.useUtc;
-    this._firstDayOfWeek = options?.firstDayOfWeek || 0;
+    this._firstDayOfWeek = options?.firstDayOfWeek;
+    this._defaultOutputCalendar = options?.defaultOutputCalendar || 'gregory';
     this.setLocale(dateLocale || LuxonDateTime.local().locale);
   }
 
@@ -91,7 +103,11 @@ export class LuxonDateAdapter extends DateAdapter<LuxonDateTime> {
   }
 
   getMonthNames(style: 'long' | 'short' | 'narrow'): string[] {
-    return LuxonInfo.months(style, {locale: this.locale});
+    // Adding outputCalendar option, because LuxonInfo doesn't get effected by LuxonSettings
+    return LuxonInfo.months(style, {
+      locale: this.locale,
+      outputCalendar: this._defaultOutputCalendar,
+    });
   }
 
   getDateNames(): string[] {
@@ -113,22 +129,24 @@ export class LuxonDateAdapter extends DateAdapter<LuxonDateTime> {
   }
 
   getYearName(date: LuxonDateTime): string {
-    return date.toFormat('yyyy');
+    return date.toFormat('yyyy', this._getOptions());
   }
 
   getFirstDayOfWeek(): number {
-    return this._firstDayOfWeek;
+    return this._firstDayOfWeek ?? LuxonInfo.getStartOfWeek({locale: this.locale});
   }
 
   getNumDaysInMonth(date: LuxonDateTime): number {
-    return date.daysInMonth;
+    return date.daysInMonth!;
   }
 
   clone(date: LuxonDateTime): LuxonDateTime {
-    return LuxonDateTime.fromObject(date.toObject());
+    return LuxonDateTime.fromObject(date.toObject(), this._getOptions());
   }
 
   createDate(year: number, month: number, date: number): LuxonDateTime {
+    const options = this._getOptions();
+
     if (month < 0 || month > 11) {
       throw Error(`Invalid month index "${month}". Month index has to be between 0 and 11.`);
     }
@@ -139,18 +157,20 @@ export class LuxonDateAdapter extends DateAdapter<LuxonDateTime> {
 
     // Luxon uses 1-indexed months so we need to add one to the month.
     const result = this._useUTC
-      ? LuxonDateTime.utc(year, month + 1, date)
-      : LuxonDateTime.local(year, month + 1, date);
+      ? LuxonDateTime.utc(year, month + 1, date, options)
+      : LuxonDateTime.local(year, month + 1, date, options);
 
     if (!this.isValid(result)) {
       throw Error(`Invalid date "${date}". Reason: "${result.invalidReason}".`);
     }
 
-    return result.setLocale(this.locale);
+    return result;
   }
 
   today(): LuxonDateTime {
-    return (this._useUTC ? LuxonDateTime.utc() : LuxonDateTime.local()).setLocale(this.locale);
+    const options = this._getOptions();
+
+    return this._useUTC ? LuxonDateTime.utc(options) : LuxonDateTime.local(options);
   }
 
   parse(value: any, parseFormat: string | string[]): LuxonDateTime | null {
@@ -193,26 +213,27 @@ export class LuxonDateAdapter extends DateAdapter<LuxonDateTime> {
     if (!this.isValid(date)) {
       throw Error('LuxonDateAdapter: Cannot format invalid date.');
     }
-    return date
-      .setLocale(this.locale)
-      .setZone(this._useUTC ? 'utc' : undefined)
-      .toFormat(displayFormat);
+    if (this._useUTC) {
+      return date.setLocale(this.locale).setZone('utc').toFormat(displayFormat);
+    } else {
+      return date.setLocale(this.locale).toFormat(displayFormat);
+    }
   }
 
   addCalendarYears(date: LuxonDateTime, years: number): LuxonDateTime {
-    return date.plus({years}).setLocale(this.locale);
+    return date.reconfigure(this._getOptions()).plus({years});
   }
 
   addCalendarMonths(date: LuxonDateTime, months: number): LuxonDateTime {
-    return date.plus({months}).setLocale(this.locale);
+    return date.reconfigure(this._getOptions()).plus({months});
   }
 
   addCalendarDays(date: LuxonDateTime, days: number): LuxonDateTime {
-    return date.plus({days}).setLocale(this.locale);
+    return date.reconfigure(this._getOptions()).plus({days});
   }
 
   toIso8601(date: LuxonDateTime): string {
-    return date.toISO();
+    return date.toISO()!;
   }
 
   /**
@@ -250,11 +271,68 @@ export class LuxonDateAdapter extends DateAdapter<LuxonDateTime> {
     return LuxonDateTime.invalid('Invalid Luxon DateTime object.');
   }
 
+  override setTime(
+    target: LuxonDateTime,
+    hours: number,
+    minutes: number,
+    seconds: number,
+  ): LuxonDateTime {
+    if (typeof ngDevMode === 'undefined' || ngDevMode) {
+      if (hours < 0 || hours > 23) {
+        throw Error(`Invalid hours "${hours}". Hours value must be between 0 and 23.`);
+      }
+
+      if (minutes < 0 || minutes > 59) {
+        throw Error(`Invalid minutes "${minutes}". Minutes value must be between 0 and 59.`);
+      }
+
+      if (seconds < 0 || seconds > 59) {
+        throw Error(`Invalid seconds "${seconds}". Seconds value must be between 0 and 59.`);
+      }
+    }
+
+    return this.clone(target).set({
+      hour: hours,
+      minute: minutes,
+      second: seconds,
+      millisecond: 0,
+    });
+  }
+
+  override getHours(date: LuxonDateTime): number {
+    return date.hour;
+  }
+
+  override getMinutes(date: LuxonDateTime): number {
+    return date.minute;
+  }
+
+  override getSeconds(date: LuxonDateTime): number {
+    return date.second;
+  }
+
+  override parseTime(value: any, parseFormat: string | string[]): LuxonDateTime | null {
+    const result = this.parse(value, parseFormat);
+
+    if ((!result || !this.isValid(result)) && typeof value === 'string') {
+      // It seems like Luxon doesn't work well cross-browser for strings that have
+      // additional characters around the time. Try parsing without those characters.
+      return this.parse(value.replace(/[^0-9:(AM|PM)]/gi, ''), parseFormat) || result;
+    }
+
+    return result;
+  }
+
+  override addSeconds(date: LuxonDateTime, amount: number): LuxonDateTime {
+    return date.reconfigure(this._getOptions()).plus({seconds: amount});
+  }
+
   /** Gets the options that should be used when constructing a new `DateTime` object. */
   private _getOptions(): LuxonDateTimeOptions {
     return {
       zone: this._useUTC ? 'utc' : undefined,
       locale: this.locale,
+      outputCalendar: this._defaultOutputCalendar,
     };
   }
 }

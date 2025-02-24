@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {LayoutModule} from './layout-module';
@@ -183,7 +183,10 @@ export class FakeMediaQueryList {
   /** The callback for change events. */
   private _listeners: ((mql: MediaQueryListEvent) => void)[] = [];
 
-  constructor(public matches: boolean, public media: string) {}
+  constructor(
+    public matches: boolean,
+    public media: string,
+  ) {}
 
   /** Toggles the matches state and "emits" a change event. */
   setMatches(matches: boolean) {

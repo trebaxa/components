@@ -1,38 +1,45 @@
-import {SPACE} from '@angular/cdk/keycodes';
-import {waitForAsync, ComponentFixture, fakeAsync, TestBed, tick} from '@angular/core/testing';
-import {Component, QueryList, ViewChild, ViewChildren} from '@angular/core';
-import {MAT_RIPPLE_GLOBAL_OPTIONS, RippleGlobalOptions} from '@angular/material/core';
-import {By} from '@angular/platform-browser';
+import {Direction, Directionality} from '@angular/cdk/bidi';
+import {ENTER, SPACE} from '@angular/cdk/keycodes';
+import {SharedResizeObserver} from '@angular/cdk/observers/private';
 import {
   dispatchFakeEvent,
   dispatchKeyboardEvent,
   dispatchMouseEvent,
-} from '../../../cdk/testing/private';
-import {Direction, Directionality} from '@angular/cdk/bidi';
+} from '@angular/cdk/testing/private';
+import {Component, QueryList, ViewChild, ViewChildren} from '@angular/core';
+import {ComponentFixture, TestBed, fakeAsync, tick, waitForAsync} from '@angular/core/testing';
+import {MAT_RIPPLE_GLOBAL_OPTIONS, RippleGlobalOptions} from '@angular/material/core';
+import {By} from '@angular/platform-browser';
+import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
 import {Subject} from 'rxjs';
+import {MAT_TABS_CONFIG} from '../index';
 import {MatTabsModule} from '../module';
 import {MatTabLink, MatTabNav} from './tab-nav-bar';
-import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
-import {MAT_TABS_CONFIG} from '../index';
 
-describe('MDC-based MatTabNavBar', () => {
+describe('MatTabNavBar', () => {
   let dir: Direction = 'ltr';
   let dirChange = new Subject();
   let globalRippleOptions: RippleGlobalOptions;
+  let resizeEvents: Subject<ResizeObserverEntry[]>;
 
   beforeEach(waitForAsync(() => {
     globalRippleOptions = {};
 
     TestBed.configureTestingModule({
-      imports: [MatTabsModule],
-      declarations: [SimpleTabNavBarTestApp, TabLinkWithNgIf, TabBarWithInactiveTabsOnInit],
+      imports: [
+        MatTabsModule,
+        SimpleTabNavBarTestApp,
+        TabLinkWithNgIf,
+        TabBarWithInactiveTabsOnInit,
+      ],
       providers: [
         {provide: MAT_RIPPLE_GLOBAL_OPTIONS, useFactory: () => globalRippleOptions},
         {provide: Directionality, useFactory: () => ({value: dir, change: dirChange})},
       ],
     });
 
-    TestBed.compileComponents();
+    resizeEvents = new Subject();
+    spyOn(TestBed.inject(SharedResizeObserver), 'observe').and.returnValue(resizeEvents);
   }));
 
   describe('basic behavior', () => {
@@ -73,31 +80,6 @@ describe('MDC-based MatTabNavBar', () => {
       expect(tabLinkElements[1].classList.contains('mdc-tab--active')).toBeTruthy();
     });
 
-    it('should add the disabled class if disabled', () => {
-      const tabLinkElements = fixture.debugElement
-        .queryAll(By.css('a'))
-        .map(tabLinkDebugEl => tabLinkDebugEl.nativeElement);
-
-      expect(
-        tabLinkElements.every(tabLinkEl => {
-          return !tabLinkEl.classList.contains('mat-mdc-tab-disabled');
-        }),
-      )
-        .withContext('Expected every tab link to not have the disabled class initially')
-        .toBe(true);
-
-      fixture.componentInstance.disabled = true;
-      fixture.detectChanges();
-
-      expect(
-        tabLinkElements.every(tabLinkEl => {
-          return tabLinkEl.classList.contains('mat-mdc-tab-disabled');
-        }),
-      )
-        .withContext('Expected every tab link to have the disabled class if set through binding')
-        .toBe(true);
-    });
-
     it('should update aria-disabled if disabled', () => {
       const tabLinkElements = fixture.debugElement
         .queryAll(By.css('a'))
@@ -108,6 +90,7 @@ describe('MDC-based MatTabNavBar', () => {
         .toBe(true);
 
       fixture.componentInstance.disabled = true;
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
 
       expect(tabLinkElements.every(tabLink => tabLink.getAttribute('aria-disabled') === 'true'))
@@ -125,6 +108,7 @@ describe('MDC-based MatTabNavBar', () => {
         .toEqual([0, -1, -1]);
 
       fixture.componentInstance.disabled = true;
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
 
       expect(tabLinkElements.every(tabLink => tabLink.tabIndex === -1))
@@ -138,9 +122,25 @@ describe('MDC-based MatTabNavBar', () => {
       expect(tabLinkElement.classList).not.toContain('mat-mdc-tab-disabled');
 
       fixture.componentInstance.disabled = true;
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
 
       expect(tabLinkElement.classList).toContain('mat-mdc-tab-disabled');
+    });
+
+    it('should prevent default keyboard actions on disabled links', () => {
+      const link = fixture.debugElement.query(By.css('a')).nativeElement;
+      fixture.componentInstance.disabled = true;
+      fixture.changeDetectorRef.markForCheck();
+      fixture.detectChanges();
+
+      const spaceEvent = dispatchKeyboardEvent(link, 'keydown', SPACE);
+      fixture.detectChanges();
+      expect(spaceEvent.defaultPrevented).toBe(true);
+
+      const enterEvent = dispatchKeyboardEvent(link, 'keydown', ENTER);
+      fixture.detectChanges();
+      expect(enterEvent.defaultPrevented).toBe(true);
     });
 
     it('should re-align the ink bar when the direction changes', fakeAsync(() => {
@@ -161,6 +161,7 @@ describe('MDC-based MatTabNavBar', () => {
       spyOn(inkBar, 'alignToElement');
 
       fixture.componentInstance.tabs = [1, 2, 3, 4];
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
       tick();
 
@@ -176,19 +177,20 @@ describe('MDC-based MatTabNavBar', () => {
       });
 
       fixture.componentInstance.label = 'label change';
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
 
       expect(spy.calls.any()).toBe(false);
     });
 
-    it('should re-align the ink bar when the window is resized', fakeAsync(() => {
+    it('should re-align the ink bar when the nav bar is resized', fakeAsync(() => {
       const inkBar = fixture.componentInstance.tabNavBar._inkBar;
 
       spyOn(inkBar, 'alignToElement');
 
-      dispatchFakeEvent(window, 'resize');
-      tick(150);
+      resizeEvents.next([]);
       fixture.detectChanges();
+      tick(32);
 
       expect(inkBar.alignToElement).toHaveBeenCalled();
     }));
@@ -199,6 +201,7 @@ describe('MDC-based MatTabNavBar', () => {
       spyOn(inkBar, 'hide');
 
       fixture.componentInstance.tabLinks.forEach(link => (link.active = false));
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
 
       expect(inkBar.hide).toHaveBeenCalled();
@@ -229,6 +232,7 @@ describe('MDC-based MatTabNavBar', () => {
     let link = fixture.debugElement.nativeElement.querySelector('.mat-mdc-tab-link');
 
     fixture.componentInstance.isDestroyed = true;
+    fixture.changeDetectorRef.markForCheck();
     fixture.detectChanges();
 
     dispatchMouseEvent(link, 'mousedown');
@@ -244,11 +248,13 @@ describe('MDC-based MatTabNavBar', () => {
 
     instance.tabs = [];
     instance.activeIndex = 1;
+    fixture.changeDetectorRef.markForCheck();
     fixture.detectChanges();
 
     expect(instance.tabNavBar.selectedIndex).toBe(-1);
 
     instance.tabs = [0, 1, 2];
+    fixture.changeDetectorRef.markForCheck();
     fixture.detectChanges();
 
     expect(instance.tabNavBar.selectedIndex).toBe(1);
@@ -338,6 +344,41 @@ describe('MDC-based MatTabNavBar', () => {
     expect(tabLinks[1].classList.contains('mdc-tab--active')).toBe(true);
   });
 
+  it('should activate a link when enter is pressed', () => {
+    const fixture = TestBed.createComponent(SimpleTabNavBarTestApp);
+    fixture.detectChanges();
+
+    const tabLinks = fixture.nativeElement.querySelectorAll('.mat-mdc-tab-link');
+    expect(tabLinks[1].classList.contains('mdc-tab--active')).toBe(false);
+
+    dispatchKeyboardEvent(tabLinks[1], 'keydown', ENTER);
+    fixture.detectChanges();
+
+    expect(tabLinks[1].classList.contains('mdc-tab--active')).toBe(true);
+  });
+
+  it('should re-show the ink bar if the same tab is cleared and re-activated', fakeAsync(() => {
+    const getInkBars = () =>
+      fixture.nativeElement.querySelectorAll('.mdc-tab-indicator--active').length;
+    const fixture = TestBed.createComponent(SimpleTabNavBarTestApp);
+    fixture.componentInstance.activeIndex = 0;
+    fixture.detectChanges();
+    tick(20);
+    expect(getInkBars()).toBe(1);
+
+    fixture.componentInstance.activeIndex = -1;
+    fixture.changeDetectorRef.markForCheck();
+    fixture.detectChanges();
+    tick(20);
+    expect(getInkBars()).toBe(0);
+
+    fixture.componentInstance.activeIndex = 0;
+    fixture.changeDetectorRef.markForCheck();
+    fixture.detectChanges();
+    tick(20);
+    expect(getInkBars()).toBe(1);
+  }));
+
   describe('ripples', () => {
     let fixture: ComponentFixture<SimpleTabNavBarTestApp>;
 
@@ -352,6 +393,7 @@ describe('MDC-based MatTabNavBar', () => {
         .toBe(true);
 
       fixture.componentInstance.disableRippleOnBar = true;
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
 
       expect(fixture.componentInstance.tabLinks.toArray().every(tabLink => tabLink.rippleDisabled))
@@ -368,6 +410,7 @@ describe('MDC-based MatTabNavBar', () => {
 
       firstTab.disableRipple = true;
       fixture.componentInstance.disableRippleOnBar = false;
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
 
       expect(firstTab.rippleDisabled)
@@ -391,6 +434,7 @@ describe('MDC-based MatTabNavBar', () => {
       const tabLinkElement = tabLinkDebug.nativeElement;
 
       fixture.componentInstance.disableRippleOnLink = true;
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
 
       dispatchMouseEvent(tabLinkElement, 'mousedown');
@@ -419,9 +463,7 @@ describe('MDC-based MatTabNavBar', () => {
       ];
 
       expect(
-        tabLinkNativeElements.every(element =>
-          element.classList.contains('mat-mdc-focus-indicator'),
-        ),
+        tabLinkNativeElements.every(element => element.classList.contains('mat-focus-indicator')),
       ).toBe(true);
     });
   });
@@ -432,6 +474,7 @@ describe('MDC-based MatTabNavBar', () => {
     beforeEach(() => {
       fixture = TestBed.createComponent(SimpleTabNavBarTestApp);
       fixture.componentInstance.fitInkBarToContent = true;
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
     });
 
@@ -445,6 +488,7 @@ describe('MDC-based MatTabNavBar', () => {
 
     it('should be able to move the ink bar between content and full', () => {
       fixture.componentInstance.fitInkBarToContent = false;
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
 
       const tabElement = fixture.nativeElement.querySelector('.mdc-tab');
@@ -453,6 +497,7 @@ describe('MDC-based MatTabNavBar', () => {
       expect(indicatorElement.parentElement).toBe(tabElement);
 
       fixture.componentInstance.fitInkBarToContent = true;
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
 
       const contentElement = tabElement.querySelector('.mdc-tab__content');
@@ -467,12 +512,9 @@ describe('MatTabNavBar with a default config', () => {
 
   beforeEach(fakeAsync(() => {
     TestBed.configureTestingModule({
-      imports: [MatTabsModule, BrowserAnimationsModule],
-      declarations: [TabLinkWithNgIf],
+      imports: [MatTabsModule, BrowserAnimationsModule, TabLinkWithNgIf],
       providers: [{provide: MAT_TABS_CONFIG, useValue: {fitInkBarToContent: true}}],
     });
-
-    TestBed.compileComponents();
   }));
 
   beforeEach(() => {
@@ -489,6 +531,31 @@ describe('MatTabNavBar with a default config', () => {
   });
 });
 
+describe('MatTabNavBar with enabled animations', () => {
+  beforeEach(fakeAsync(() => {
+    TestBed.configureTestingModule({
+      imports: [MatTabsModule, BrowserAnimationsModule, TabsWithCustomAnimationDuration],
+    });
+  }));
+
+  it('should not throw when setting an animationDuration without units', fakeAsync(() => {
+    expect(() => {
+      let fixture = TestBed.createComponent(TabsWithCustomAnimationDuration);
+      fixture.detectChanges();
+      tick();
+    }).not.toThrow();
+  }));
+
+  it('should set appropiate css variable given a specified animationDuration', fakeAsync(() => {
+    let fixture = TestBed.createComponent(TabsWithCustomAnimationDuration);
+    fixture.detectChanges();
+    tick();
+
+    const tabNavBar = fixture.nativeElement.querySelector('.mat-mdc-tab-nav-bar');
+    expect(tabNavBar.style.getPropertyValue('--mat-tab-animation-duration')).toBe('500ms');
+  }));
+});
+
 @Component({
   selector: 'test-app',
   template: `
@@ -496,17 +563,17 @@ describe('MatTabNavBar with a default config', () => {
          [disableRipple]="disableRippleOnBar"
          [fitInkBarToContent]="fitInkBarToContent"
          [tabPanel]="tabPanel">
-      <a mat-tab-link
-         *ngFor="let tab of tabs; let index = index"
-         [active]="activeIndex === index"
-         [disabled]="disabled"
-         (click)="activeIndex = index"
-         [disableRipple]="disableRippleOnLink">
-        Tab link {{label}}
-      </a>
+      @for (tab of tabs; track tab; let index = $index) {
+        <a mat-tab-link
+          [active]="activeIndex === index"
+          [disabled]="disabled"
+          (click)="activeIndex = index"
+          [disableRipple]="disableRippleOnLink">Tab link {{label}}</a>
+      }
     </nav>
     <mat-tab-nav-panel #tabPanel id="tab-panel">Tab panel</mat-tab-nav-panel>
   `,
+  imports: [MatTabsModule],
 })
 class SimpleTabNavBarTestApp {
   @ViewChild(MatTabNav) tabNavBar: MatTabNav;
@@ -525,10 +592,13 @@ class SimpleTabNavBarTestApp {
 @Component({
   template: `
     <nav mat-tab-nav-bar [tabPanel]="tabPanel">
-      <a mat-tab-link *ngIf="!isDestroyed">Link</a>
+      @if (!isDestroyed) {
+        <a mat-tab-link>Link</a>
+      }
     </nav>
     <mat-tab-nav-panel #tabPanel>Tab panel</mat-tab-nav-panel>
   `,
+  imports: [MatTabsModule],
 })
 class TabLinkWithNgIf {
   isDestroyed = false;
@@ -537,11 +607,29 @@ class TabLinkWithNgIf {
 @Component({
   template: `
     <nav mat-tab-nav-bar [tabPanel]="tabPanel">
-      <a mat-tab-link *ngFor="let tab of tabs" [active]="false">Tab link {{label}}</a>
+      @for (tab of tabs; track tab) {
+        <a mat-tab-link [active]="false">Tab link {{label}}</a>
+      }
     </nav>
     <mat-tab-nav-panel #tabPanel>Tab panel</mat-tab-nav-panel>
   `,
+  imports: [MatTabsModule],
 })
 class TabBarWithInactiveTabsOnInit {
   tabs = [0, 1, 2];
+}
+
+@Component({
+  template: `
+    <nav [animationDuration]="500" mat-tab-nav-bar [tabPanel]="tabPanel">
+    @for (link of links; track link) {
+      <a mat-tab-link>{{link}}</a>
+    }
+  </nav>
+  <mat-tab-nav-panel #tabPanel></mat-tab-nav-panel>,
+  `,
+  imports: [MatTabsModule],
+})
+class TabsWithCustomAnimationDuration {
+  links = ['First', 'Second', 'Third'];
 }

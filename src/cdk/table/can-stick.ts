@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {BooleanInput, coerceBooleanProperty} from '@angular/cdk/coercion';
@@ -21,9 +21,6 @@ export interface CanStick {
   /** Whether sticky positioning should be applied. */
   sticky: boolean;
 
-  /** Whether the sticky input has changed since it was last checked. */
-  _hasStickyChanged: boolean;
-
   /** Whether the sticky value has changed since this was last called. */
   hasStickyChanged(): boolean;
 
@@ -39,6 +36,8 @@ export type CanStickCtor = Constructor<CanStick>;
  * changed since the last time the function was called. Essentially adds a dirty-check to the
  * sticky value.
  * @docs-private
+ * @deprecated Implement the `CanStick` interface instead.
+ * @breaking-change 19.0.0
  */
 export function mixinHasStickyInput<T extends Constructor<{}>>(base: T): CanStickCtor & T {
   return class extends base {

@@ -9,11 +9,10 @@ describe('MatChipSetHarness', () => {
   let fixture: ComponentFixture<ChipSetHarnessTest>;
   let loader: HarnessLoader;
 
-  beforeEach(async () => {
-    await TestBed.configureTestingModule({
-      imports: [MatChipsModule],
-      declarations: [ChipSetHarnessTest],
-    }).compileComponents();
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [MatChipsModule, ChipSetHarnessTest],
+    });
 
     fixture = TestBed.createComponent(ChipSetHarnessTest);
     fixture.detectChanges();
@@ -40,5 +39,6 @@ describe('MatChipSetHarness', () => {
       <mat-chip> Chip C </mat-chip>
     </mat-chip-set>
   `,
+  imports: [MatChipsModule],
 })
 class ChipSetHarnessTest {}

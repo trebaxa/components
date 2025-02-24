@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {Directive} from '@angular/core';
@@ -27,9 +27,9 @@ import {
     'class': 'mat-edit-lens',
   },
   inputs: [
-    'clickOutBehavior: matEditLensClickOutBehavior',
-    'preservedFormValue: matEditLensPreservedFormValue',
-    'ignoreSubmitUnlessValid: matEditLensIgnoreSubmitUnlessValid',
+    {name: 'clickOutBehavior', alias: 'matEditLensClickOutBehavior'},
+    {name: 'preservedFormValue', alias: 'matEditLensPreservedFormValue'},
+    {name: 'ignoreSubmitUnlessValid', alias: 'matEditLensIgnoreSubmitUnlessValid'},
   ],
   outputs: ['preservedFormValueChange: matEditLensPreservedFormValueChange'],
   providers: [EditRef],
@@ -46,5 +46,7 @@ export class MatEditLens<FormValue> extends CdkEditControl<FormValue> {}
 export class MatEditRevert<FormValue> extends CdkEditRevert<FormValue> {}
 
 /** Closes the lens on click. */
-@Directive({selector: '[matEditClose]'})
+@Directive({
+  selector: '[matEditClose]',
+})
 export class MatEditClose<FormValue> extends CdkEditClose<FormValue> {}

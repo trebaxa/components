@@ -3,13 +3,22 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 // Workaround for: https://github.com/bazelbuild/rules_nodejs/issues/1265
-/// <reference types="google.maps" />
+/// <reference types="google.maps" preserve="true" />
 
-import {Directive, Input, OnDestroy, OnInit, Output, NgZone} from '@angular/core';
+import {
+  Directive,
+  Input,
+  OnDestroy,
+  OnInit,
+  Output,
+  NgZone,
+  inject,
+  EventEmitter,
+} from '@angular/core';
 import {BehaviorSubject, combineLatest, Observable, Subject} from 'rxjs';
 import {map, take, takeUntil} from 'rxjs/operators';
 
@@ -26,7 +35,9 @@ import {MapEventManager} from '../map-event-manager';
   exportAs: 'mapPolyline',
 })
 export class MapPolyline implements OnInit, OnDestroy {
-  private _eventManager = new MapEventManager(this._ngZone);
+  private readonly _map = inject(GoogleMap);
+  private _ngZone = inject(NgZone);
+  private _eventManager = new MapEventManager(inject(NgZone));
   private readonly _options = new BehaviorSubject<google.maps.PolylineOptions>({});
   private readonly _path = new BehaviorSubject<
     | google.maps.MVCArray<google.maps.LatLng>
@@ -125,34 +136,57 @@ export class MapPolyline implements OnInit, OnDestroy {
   @Output() readonly polylineRightclick: Observable<google.maps.PolyMouseEvent> =
     this._eventManager.getLazyEmitter<google.maps.PolyMouseEvent>('rightclick');
 
-  constructor(private readonly _map: GoogleMap, private _ngZone: NgZone) {}
+  /** Event emitted when the polyline is initialized. */
+  @Output() readonly polylineInitialized: EventEmitter<google.maps.Polyline> =
+    new EventEmitter<google.maps.Polyline>();
+
+  constructor(...args: unknown[]);
+  constructor() {}
 
   ngOnInit() {
     if (this._map._isBrowser) {
       this._combineOptions()
         .pipe(take(1))
         .subscribe(options => {
-          // Create the object outside the zone so its events don't trigger change detection.
-          // We'll bring it back in inside the `MapEventManager` only for the events that the
-          // user has subscribed to.
-          this._ngZone.runOutsideAngular(() => (this.polyline = new google.maps.Polyline(options)));
-          this._assertInitialized();
-          this.polyline.setMap(this._map.googleMap!);
-          this._eventManager.setTarget(this.polyline);
+          if (google.maps.Polyline && this._map.googleMap) {
+            this._initialize(this._map.googleMap, google.maps.Polyline, options);
+          } else {
+            this._ngZone.runOutsideAngular(() => {
+              Promise.all([this._map._resolveMap(), google.maps.importLibrary('maps')]).then(
+                ([map, lib]) => {
+                  this._initialize(map, (lib as google.maps.MapsLibrary).Polyline, options);
+                },
+              );
+            });
+          }
         });
+    }
+  }
 
+  private _initialize(
+    map: google.maps.Map,
+    polylineConstructor: typeof google.maps.Polyline,
+    options: google.maps.PolygonOptions,
+  ) {
+    // Create the object outside the zone so its events don't trigger change detection.
+    // We'll bring it back in inside the `MapEventManager` only for the events that the
+    // user has subscribed to.
+    this._ngZone.runOutsideAngular(() => {
+      this.polyline = new polylineConstructor(options);
+      this._assertInitialized();
+      this.polyline.setMap(map);
+      this._eventManager.setTarget(this.polyline);
+      this.polylineInitialized.emit(this.polyline);
       this._watchForOptionsChanges();
       this._watchForPathChanges();
-    }
+    });
   }
 
   ngOnDestroy() {
     this._eventManager.destroy();
     this._destroyed.next();
     this._destroyed.complete();
-    if (this.polyline) {
-      this.polyline.setMap(null);
-    }
+    this.polyline?.setMap(null);
   }
 
   /**
@@ -218,12 +252,6 @@ export class MapPolyline implements OnInit, OnDestroy {
 
   private _assertInitialized(): asserts this is {polyline: google.maps.Polyline} {
     if (typeof ngDevMode === 'undefined' || ngDevMode) {
-      if (!this._map.googleMap) {
-        throw Error(
-          'Cannot access Google Map information before the API has been initialized. ' +
-            'Please wait for the API to load before trying to interact with it.',
-        );
-      }
       if (!this.polyline) {
         throw Error(
           'Cannot interact with a Google Map Polyline before it has been ' +

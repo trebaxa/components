@@ -1,5 +1,9 @@
-import {Component} from '@angular/core';
-import {FormBuilder, Validators} from '@angular/forms';
+import {Component, inject} from '@angular/core';
+import {FormBuilder, Validators, FormsModule, ReactiveFormsModule} from '@angular/forms';
+import {MatInputModule} from '@angular/material/input';
+import {MatFormFieldModule} from '@angular/material/form-field';
+import {MatStepperModule} from '@angular/material/stepper';
+import {MatButtonModule} from '@angular/material/button';
 
 /**
  * @title Stepper overview
@@ -7,9 +11,19 @@ import {FormBuilder, Validators} from '@angular/forms';
 @Component({
   selector: 'stepper-overview-example',
   templateUrl: 'stepper-overview-example.html',
-  styleUrls: ['stepper-overview-example.css'],
+  styleUrl: 'stepper-overview-example.css',
+  imports: [
+    MatButtonModule,
+    MatStepperModule,
+    FormsModule,
+    ReactiveFormsModule,
+    MatFormFieldModule,
+    MatInputModule,
+  ],
 })
 export class StepperOverviewExample {
+  private _formBuilder = inject(FormBuilder);
+
   firstFormGroup = this._formBuilder.group({
     firstCtrl: ['', Validators.required],
   });
@@ -17,6 +31,4 @@ export class StepperOverviewExample {
     secondCtrl: ['', Validators.required],
   });
   isLinear = false;
-
-  constructor(private _formBuilder: FormBuilder) {}
 }

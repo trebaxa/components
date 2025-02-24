@@ -1,5 +1,5 @@
 import {waitForAsync, ComponentFixture, TestBed} from '@angular/core/testing';
-import {Component, DebugElement} from '@angular/core';
+import {Component, DebugElement, signal} from '@angular/core';
 import {By} from '@angular/platform-browser';
 import {
   dispatchFakeEvent,
@@ -13,9 +13,8 @@ import {MatOption, MatOptionModule, MAT_OPTION_PARENT_COMPONENT} from './index';
 describe('MatOption component', () => {
   beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
-      imports: [MatOptionModule],
-      declarations: [BasicOption],
-    }).compileComponents();
+      imports: [MatOptionModule, BasicOption],
+    });
   }));
 
   it('should complete the `stateChanges` stream on destroy', () => {
@@ -82,7 +81,7 @@ describe('MatOption component', () => {
   it('should be able to set a custom id', () => {
     const fixture = TestBed.createComponent(BasicOption);
 
-    fixture.componentInstance.id = 'custom-option';
+    fixture.componentInstance.id.set('custom-option');
     fixture.detectChanges();
 
     const optionInstance = fixture.debugElement.query(By.directive(MatOption))!.componentInstance;
@@ -185,7 +184,7 @@ describe('MatOption component', () => {
         .withContext('Expected no ripples to show up initially')
         .toBe(0);
 
-      fixture.componentInstance.disabled = true;
+      fixture.componentInstance.disabled.set(true);
       fixture.detectChanges();
 
       dispatchFakeEvent(optionNativeElement, 'mousedown');
@@ -201,7 +200,12 @@ describe('MatOption component', () => {
     const fixture = TestBed.createComponent(BasicOption);
     const optionNativeElement = fixture.debugElement.query(By.directive(MatOption))!.nativeElement;
 
-    expect(optionNativeElement.classList.contains('mat-mdc-focus-indicator')).toBe(true);
+    expect(optionNativeElement.parentElement.querySelector('.mat-focus-indicator'))
+      .withContext(
+        'expected to find a focus indicator on ' +
+          "either the mat-option element or one of it's children",
+      )
+      .not.toBeNull();
   });
 
   describe('inside inert group', () => {
@@ -210,15 +214,14 @@ describe('MatOption component', () => {
     beforeEach(waitForAsync(() => {
       TestBed.resetTestingModule();
       TestBed.configureTestingModule({
-        imports: [MatOptionModule],
-        declarations: [InsideGroup],
+        imports: [MatOptionModule, InsideGroup],
         providers: [
           {
             provide: MAT_OPTION_PARENT_COMPONENT,
             useValue: {inertGroups: true},
           },
         ],
-      }).compileComponents();
+      });
 
       fixture = TestBed.createComponent(InsideGroup);
       fixture.detectChanges();
@@ -239,11 +242,12 @@ describe('MatOption component', () => {
 });
 
 @Component({
-  template: `<mat-option [id]="id" [disabled]="disabled"></mat-option>`,
+  template: `<mat-option [id]="id()" [disabled]="disabled()"></mat-option>`,
+  imports: [MatOptionModule],
 })
 class BasicOption {
-  disabled: boolean;
-  id: string;
+  disabled = signal(false);
+  id = signal('');
 }
 
 @Component({
@@ -252,5 +256,6 @@ class BasicOption {
       <mat-option>Option</mat-option>
     </mat-optgroup>
   `,
+  imports: [MatOptionModule],
 })
 class InsideGroup {}

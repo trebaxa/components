@@ -1,5 +1,5 @@
-import {Component} from '@angular/core';
-import {Dialog, DialogRef} from '@angular/cdk/dialog';
+import {Component, inject} from '@angular/core';
+import {Dialog, DialogModule, DialogRef} from '@angular/cdk/dialog';
 
 /**
  * @title CDK Dialog Styling
@@ -7,9 +7,10 @@ import {Dialog, DialogRef} from '@angular/cdk/dialog';
 @Component({
   selector: 'cdk-dialog-styling-example',
   templateUrl: 'cdk-dialog-styling-example.html',
+  imports: [DialogModule],
 })
 export class CdkDialogStylingExample {
-  constructor(public dialog: Dialog) {}
+  dialog = inject(Dialog);
 
   openDialog(): void {
     this.dialog.open<string>(CdkDialogStylingExampleDialog);
@@ -19,8 +20,8 @@ export class CdkDialogStylingExample {
 @Component({
   selector: 'cdk-dialog-styling-example-dialog',
   templateUrl: 'cdk-dialog-styling-example-dialog.html',
-  styleUrls: ['cdk-dialog-styling-example-dialog.css'],
+  styleUrl: 'cdk-dialog-styling-example-dialog.css',
 })
 export class CdkDialogStylingExampleDialog {
-  constructor(public dialogRef: DialogRef) {}
+  dialogRef = inject(DialogRef);
 }

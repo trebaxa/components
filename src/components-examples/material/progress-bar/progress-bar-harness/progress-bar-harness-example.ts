@@ -1,4 +1,5 @@
-import {Component} from '@angular/core';
+import {Component, signal} from '@angular/core';
+import {MatProgressBarModule} from '@angular/material/progress-bar';
 
 /**
  * @title Testing with MatProgressBarHarness
@@ -6,7 +7,8 @@ import {Component} from '@angular/core';
 @Component({
   selector: 'progress-bar-harness-example',
   templateUrl: 'progress-bar-harness-example.html',
+  imports: [MatProgressBarModule],
 })
 export class ProgressBarHarnessExample {
-  value: number;
+  value = signal<number | undefined>(undefined);
 }

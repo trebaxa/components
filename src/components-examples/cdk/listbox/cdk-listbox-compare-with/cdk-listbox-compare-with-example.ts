@@ -1,4 +1,6 @@
 import {Component} from '@angular/core';
+import {JsonPipe} from '@angular/common';
+import {CdkListbox, CdkOption} from '@angular/cdk/listbox';
 
 const today = new Date();
 
@@ -15,7 +17,8 @@ const formatter = new Intl.DateTimeFormat(undefined, {
   selector: 'cdk-listbox-compare-with-example',
   exportAs: 'cdkListboxCompareWithExample',
   templateUrl: 'cdk-listbox-compare-with-example.html',
-  styleUrls: ['cdk-listbox-compare-with-example.css'],
+  styleUrl: 'cdk-listbox-compare-with-example.css',
+  imports: [CdkListbox, CdkOption, JsonPipe],
 })
 export class CdkListboxCompareWithExample {
   slots = [12, 13, 14, 15].map(

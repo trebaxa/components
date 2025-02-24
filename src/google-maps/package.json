@@ -17,7 +17,7 @@
   },
   "homepage": "https://github.com/angular/components/tree/main/src/google-maps#readme",
   "dependencies": {
-    "@types/google.maps": "^3.45.6",
+    "@types/google.maps": "^3.54.10",
     "tslib": "0.0.0-TSLIB"
   },
   "peerDependencies": {
@@ -26,5 +26,11 @@
     "rxjs": "0.0.0-RXJS"
   },
   "sideEffects": false,
-  "ng-update": {}
+  "schematics": "./schematics/collection.json",
+  "ng-update": {
+    "migrations": "./schematics/migration.json",
+    "packageGroup": [
+      "@angular/google-maps"
+    ]
+  }
 }

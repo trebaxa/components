@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -12,37 +12,28 @@ import {
   ElementRef,
   OnDestroy,
   ViewEncapsulation,
-  Inject,
-  Optional,
   Input,
   AfterViewInit,
   ChangeDetectorRef,
+  booleanAttribute,
+  inject,
 } from '@angular/core';
-import {
-  CanDisable,
-  CanDisableRipple,
-  mixinDisabled,
-  mixinDisableRipple,
-} from '@angular/material/core';
 import {FocusableOption, FocusMonitor, FocusOrigin} from '@angular/cdk/a11y';
 import {Subject} from 'rxjs';
 import {DOCUMENT} from '@angular/common';
 import {MatMenuPanel, MAT_MENU_PANEL} from './menu-panel';
-
-// Boilerplate for applying mixins to MatMenuItem.
-/** @docs-private */
-const _MatMenuItemBase = mixinDisableRipple(mixinDisabled(class {}));
+import {_StructuralStylesLoader, MatRipple} from '@angular/material/core';
+import {_CdkPrivateStyleLoader} from '@angular/cdk/private';
 
 /**
- * Single item inside of a `mat-menu`. Provides the menu item styling and accessibility treatment.
+ * Single item inside a `mat-menu`. Provides the menu item styling and accessibility treatment.
  */
 @Component({
   selector: '[mat-menu-item]',
   exportAs: 'matMenuItem',
-  inputs: ['disabled', 'disableRipple'],
   host: {
     '[attr.role]': 'role',
-    'class': 'mat-mdc-menu-item mat-mdc-focus-indicator mdc-list-item',
+    'class': 'mat-mdc-menu-item mat-focus-indicator',
     '[class.mat-mdc-menu-item-highlighted]': '_highlighted',
     '[class.mat-mdc-menu-item-submenu-trigger]': '_triggersSubmenu',
     '[attr.tabindex]': '_getTabIndex()',
@@ -54,13 +45,23 @@ const _MatMenuItemBase = mixinDisableRipple(mixinDisabled(class {}));
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
   templateUrl: 'menu-item.html',
+  imports: [MatRipple],
 })
-export class MatMenuItem
-  extends _MatMenuItemBase
-  implements FocusableOption, CanDisable, CanDisableRipple, AfterViewInit, OnDestroy
-{
+export class MatMenuItem implements FocusableOption, AfterViewInit, OnDestroy {
+  private _elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
+  private _document = inject(DOCUMENT);
+  private _focusMonitor = inject(FocusMonitor);
+  _parentMenu? = inject<MatMenuPanel<MatMenuItem>>(MAT_MENU_PANEL, {optional: true});
+  private _changeDetectorRef = inject(ChangeDetectorRef);
+
   /** ARIA role for the menu item. */
   @Input() role: 'menuitem' | 'menuitemradio' | 'menuitemcheckbox' = 'menuitem';
+
+  /** Whether the menu item is disabled. */
+  @Input({transform: booleanAttribute}) disabled: boolean = false;
+
+  /** Whether ripples are disabled on the menu item. */
+  @Input({transform: booleanAttribute}) disableRipple: boolean = false;
 
   /** Stream that emits when the menu item is hovered. */
   readonly _hovered: Subject<MatMenuItem> = new Subject<MatMenuItem>();
@@ -74,35 +75,11 @@ export class MatMenuItem
   /** Whether the menu item acts as a trigger for a sub-menu. */
   _triggersSubmenu: boolean = false;
 
-  constructor(
-    elementRef: ElementRef<HTMLElement>,
-    document: any,
-    focusMonitor: FocusMonitor,
-    parentMenu: MatMenuPanel<MatMenuItem> | undefined,
-    changeDetectorRef: ChangeDetectorRef,
-  );
+  constructor(...args: unknown[]);
 
-  /**
-   * @deprecated `document`, `changeDetectorRef` and `focusMonitor` to become required.
-   * @breaking-change 12.0.0
-   */
-  constructor(
-    elementRef: ElementRef<HTMLElement>,
-    document?: any,
-    focusMonitor?: FocusMonitor,
-    parentMenu?: MatMenuPanel<MatMenuItem>,
-    changeDetectorRef?: ChangeDetectorRef,
-  );
-
-  constructor(
-    private _elementRef: ElementRef<HTMLElement>,
-    @Inject(DOCUMENT) private _document?: any,
-    private _focusMonitor?: FocusMonitor,
-    @Inject(MAT_MENU_PANEL) @Optional() public _parentMenu?: MatMenuPanel<MatMenuItem>,
-    private _changeDetectorRef?: ChangeDetectorRef,
-  ) {
-    super();
-    _parentMenu?.addItem?.(this);
+  constructor() {
+    inject(_CdkPrivateStyleLoader).load(_StructuralStylesLoader);
+    this._parentMenu?.addItem?.(this);
   }
 
   /** Focuses the menu item. */
@@ -118,7 +95,7 @@ export class MatMenuItem
 
   ngAfterViewInit() {
     if (this._focusMonitor) {
-      // Start monitoring the element so it gets the appropriate focused classes. We want
+      // Start monitoring the element, so it gets the appropriate focused classes. We want
       // to show the focus style for menu items only when the focus was not caused by a
       // mouse or touch interaction.
       this._focusMonitor.monitor(this._elementRef, false);
@@ -166,7 +143,7 @@ export class MatMenuItem
     const clone = this._elementRef.nativeElement.cloneNode(true) as HTMLElement;
     const icons = clone.querySelectorAll('mat-icon, .material-icons');
 
-    // Strip away icons so they don't show up in the text.
+    // Strip away icons, so they don't show up in the text.
     for (let i = 0; i < icons.length; i++) {
       icons[i].remove();
     }
@@ -178,15 +155,13 @@ export class MatMenuItem
     // We need to mark this for check for the case where the content is coming from a
     // `matMenuContent` whose change detection tree is at the declaration position,
     // not the insertion position. See #23175.
-    // @breaking-change 12.0.0 Remove null check for `_changeDetectorRef`.
     this._highlighted = isHighlighted;
-    this._changeDetectorRef?.markForCheck();
+    this._changeDetectorRef.markForCheck();
   }
 
   _setTriggersSubmenu(triggersSubmenu: boolean) {
-    // @breaking-change 12.0.0 Remove null check for `_changeDetectorRef`.
     this._triggersSubmenu = triggersSubmenu;
-    this._changeDetectorRef?.markForCheck();
+    this._changeDetectorRef.markForCheck();
   }
 
   _hasFocus(): boolean {

@@ -1,14 +1,17 @@
 import {Component} from '@angular/core';
-import {FormControl, Validators} from '@angular/forms';
+import {FormControl, Validators, FormsModule, ReactiveFormsModule} from '@angular/forms';
 import {map} from 'rxjs/operators';
 import {Observable} from 'rxjs';
+import {AsyncPipe, JsonPipe} from '@angular/common';
+import {CdkListbox, CdkOption} from '@angular/cdk/listbox';
 
 /** @title Listbox with forms validation. */
 @Component({
   selector: 'cdk-listbox-forms-validation-example',
   exportAs: 'cdkListboxFormsValidationExample',
   templateUrl: 'cdk-listbox-forms-validation-example.html',
-  styleUrls: ['cdk-listbox-forms-validation-example.css'],
+  styleUrl: 'cdk-listbox-forms-validation-example.css',
+  imports: [CdkListbox, FormsModule, ReactiveFormsModule, CdkOption, AsyncPipe, JsonPipe],
 })
 export class CdkListboxFormsValidationExample {
   signs = [
@@ -41,13 +44,7 @@ export class CdkListboxFormsValidationExample {
     if (this.signCtrl.hasError('required')) {
       errors.push('You must enter your zodiac sign');
     }
-    if (this.signCtrl.hasError('cdkListboxUnexpectedMultipleValues')) {
-      errors.push('You can only select one zodiac sign');
-    }
-    if (this.signCtrl.hasError('cdkListboxUnexpectedOptionValues')) {
-      const invalidOptions = this.signCtrl.getError('cdkListboxUnexpectedOptionValues').values;
-      errors.push(`You entered an invalid zodiac sign: ${invalidOptions[0]}`);
-    }
+
     return errors.length ? errors : null;
   }
   // #enddocregion errors

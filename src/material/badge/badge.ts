@@ -3,30 +3,28 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {AriaDescriber} from '@angular/cdk/a11y';
-import {BooleanInput, coerceBooleanProperty} from '@angular/cdk/coercion';
+import {_IdGenerator, AriaDescriber, InteractivityChecker} from '@angular/cdk/a11y';
+import {DOCUMENT} from '@angular/common';
 import {
+  booleanAttribute,
+  ChangeDetectionStrategy,
+  Component,
   Directive,
   ElementRef,
-  Inject,
+  inject,
   Input,
   NgZone,
   OnDestroy,
   OnInit,
-  Optional,
   Renderer2,
+  ViewEncapsulation,
+  ANIMATION_MODULE_TYPE,
 } from '@angular/core';
-import {CanDisable, mixinDisabled, ThemePalette} from '@angular/material/core';
-import {ANIMATION_MODULE_TYPE} from '@angular/platform-browser/animations';
-
-let nextId = 0;
-
-// Boilerplate for applying mixins to MatBadge.
-/** @docs-private */
-const _MatBadgeBase = mixinDisabled(class {});
+import {ThemePalette} from '@angular/material/core';
+import {_CdkPrivateStyleLoader, _VisuallyHiddenLoader} from '@angular/cdk/private';
 
 /** Allowed position options for matBadgePosition */
 export type MatBadgePosition =
@@ -44,10 +42,21 @@ export type MatBadgeSize = 'small' | 'medium' | 'large';
 
 const BADGE_CONTENT_CLASS = 'mat-badge-content';
 
+/**
+ * Component used to load the structural styles of the badge.
+ * @docs-private
+ */
+@Component({
+  styleUrl: 'badge.css',
+  encapsulation: ViewEncapsulation.None,
+  template: '',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export class _MatBadgeStyleLoader {}
+
 /** Directive to display a text badge. */
 @Directive({
   selector: '[matBadge]',
-  inputs: ['disabled: matBadgeDisabled'],
   host: {
     'class': 'mat-badge',
     '[class.mat-badge-overlap]': 'overlap',
@@ -62,8 +71,21 @@ const BADGE_CONTENT_CLASS = 'mat-badge-content';
     '[class.mat-badge-disabled]': 'disabled',
   },
 })
-export class MatBadge extends _MatBadgeBase implements OnInit, OnDestroy, CanDisable {
-  /** The color of the badge. Can be `primary`, `accent`, or `warn`. */
+export class MatBadge implements OnInit, OnDestroy {
+  private _ngZone = inject(NgZone);
+  private _elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
+  private _ariaDescriber = inject(AriaDescriber);
+  private _renderer = inject(Renderer2);
+  private _animationMode = inject(ANIMATION_MODULE_TYPE, {optional: true});
+  private _idGenerator = inject(_IdGenerator);
+
+  /**
+   * Theme color of the badge. This API is supported in M2 themes only, it
+   * has no effect in M3 themes. For color customization in M3, see https://material.angular.io/components/badge/styling.
+   *
+   * For information on applying color variants in M3, see
+   * https://material.angular.io/guide/material-2-theming#optional-add-backwards-compatibility-styles-for-color-variants
+   */
   @Input('matBadgeColor')
   get color(): ThemePalette {
     return this._color;
@@ -75,14 +97,10 @@ export class MatBadge extends _MatBadgeBase implements OnInit, OnDestroy, CanDis
   private _color: ThemePalette = 'primary';
 
   /** Whether the badge should overlap its contents or not */
-  @Input('matBadgeOverlap')
-  get overlap(): boolean {
-    return this._overlap;
-  }
-  set overlap(val: BooleanInput) {
-    this._overlap = coerceBooleanProperty(val);
-  }
-  private _overlap: boolean = true;
+  @Input({alias: 'matBadgeOverlap', transform: booleanAttribute}) overlap: boolean = true;
+
+  /** Whether the badge is disabled. */
+  @Input({alias: 'matBadgeDisabled', transform: booleanAttribute}) disabled: boolean;
 
   /**
    * Position the badge should reside.
@@ -106,7 +124,7 @@ export class MatBadge extends _MatBadgeBase implements OnInit, OnDestroy, CanDis
     return this._description;
   }
   set description(newDescription: string) {
-    this._updateHostAriaDescription(newDescription);
+    this._updateDescription(newDescription);
   }
   private _description: string;
 
@@ -114,37 +132,47 @@ export class MatBadge extends _MatBadgeBase implements OnInit, OnDestroy, CanDis
   @Input('matBadgeSize') size: MatBadgeSize = 'medium';
 
   /** Whether the badge is hidden. */
-  @Input('matBadgeHidden')
-  get hidden(): boolean {
-    return this._hidden;
-  }
-  set hidden(val: BooleanInput) {
-    this._hidden = coerceBooleanProperty(val);
-  }
-  private _hidden: boolean;
-
-  /** Unique id for the badge */
-  _id: number = nextId++;
+  @Input({alias: 'matBadgeHidden', transform: booleanAttribute}) hidden: boolean;
 
   /** Visible badge element. */
   private _badgeElement: HTMLElement | undefined;
 
+  /** Inline badge description. Used when the badge is applied to non-interactive host elements. */
+  private _inlineBadgeDescription: HTMLElement | undefined;
+
   /** Whether the OnInit lifecycle hook has run yet */
   private _isInitialized = false;
 
-  constructor(
-    private _ngZone: NgZone,
-    private _elementRef: ElementRef<HTMLElement>,
-    private _ariaDescriber: AriaDescriber,
-    private _renderer: Renderer2,
-    @Optional() @Inject(ANIMATION_MODULE_TYPE) private _animationMode?: string,
-  ) {
-    super();
+  /** InteractivityChecker to determine if the badge host is focusable. */
+  private _interactivityChecker = inject(InteractivityChecker);
+
+  private _document = inject(DOCUMENT);
+
+  constructor(...args: unknown[]);
+
+  constructor() {
+    const styleLoader = inject(_CdkPrivateStyleLoader);
+    styleLoader.load(_MatBadgeStyleLoader);
+    styleLoader.load(_VisuallyHiddenLoader);
 
     if (typeof ngDevMode === 'undefined' || ngDevMode) {
-      const nativeElement = _elementRef.nativeElement;
+      const nativeElement = this._elementRef.nativeElement;
       if (nativeElement.nodeType !== nativeElement.ELEMENT_NODE) {
         throw Error('matBadge must be attached to an element node.');
+      }
+
+      // Heads-up for developers to avoid putting matBadge on <mat-icon>
+      // as it is aria-hidden by default docs mention this at:
+      // https://material.angular.io/components/badge/overview#accessibility
+      if (
+        nativeElement.tagName.toLowerCase() === 'mat-icon' &&
+        nativeElement.getAttribute('aria-hidden') === 'true'
+      ) {
+        console.warn(
+          `Detected a matBadge on an "aria-hidden" "<mat-icon>". ` +
+            `Consider setting aria-hidden="false" in order to surface the information assistive technology.` +
+            `\n${nativeElement.outerHTML}`,
+        );
       }
     }
   }
@@ -186,9 +214,18 @@ export class MatBadge extends _MatBadgeBase implements OnInit, OnDestroy, CanDis
     // We have to destroy it ourselves, otherwise it'll be retained in memory.
     if (this._renderer.destroyNode) {
       this._renderer.destroyNode(this._badgeElement);
+      this._inlineBadgeDescription?.remove();
     }
 
     this._ariaDescriber.removeDescription(this._elementRef.nativeElement, this.description);
+  }
+
+  /** Gets whether the badge's host element is interactive. */
+  private _isHostInteractive(): boolean {
+    // Ignore visibility since it requires an expensive style caluclation.
+    return this._interactivityChecker.isFocusable(this._elementRef.nativeElement, {
+      ignoreVisibility: true,
+    });
   }
 
   /** Creates the badge element */
@@ -196,7 +233,7 @@ export class MatBadge extends _MatBadgeBase implements OnInit, OnDestroy, CanDis
     const badgeElement = this._renderer.createElement('span');
     const activeClass = 'mat-badge-active';
 
-    badgeElement.setAttribute('id', `mat-badge-content-${this._id}`);
+    badgeElement.setAttribute('id', this._idGenerator.getId('mat-badge-content-'));
 
     // The badge is aria-hidden because we don't want it to appear in the page's navigation
     // flow. Instead, we use the badge to describe the decorated element with aria-describedby.
@@ -242,12 +279,46 @@ export class MatBadge extends _MatBadgeBase implements OnInit, OnDestroy, CanDis
   }
 
   /** Updates the host element's aria description via AriaDescriber. */
-  private _updateHostAriaDescription(newDescription: string): void {
+  private _updateDescription(newDescription: string): void {
+    // Always start by removing the aria-describedby; we will add a new one if necessary.
     this._ariaDescriber.removeDescription(this._elementRef.nativeElement, this.description);
-    if (newDescription) {
-      this._ariaDescriber.describe(this._elementRef.nativeElement, newDescription);
+
+    // NOTE: We only check whether the host is interactive here, which happens during
+    // when then badge content changes. It is possible that the host changes
+    // interactivity status separate from one of these. However, watching the interactivity
+    // status of the host would require a `MutationObserver`, which is likely more code + overhead
+    // than it's worth; from usages inside Google, we see that the vats majority of badges either
+    // never change interactivity, or also set `matBadgeHidden` based on the same condition.
+
+    if (!newDescription || this._isHostInteractive()) {
+      this._removeInlineDescription();
     }
+
     this._description = newDescription;
+
+    // We don't add `aria-describedby` for non-interactive hosts elements because we
+    // instead insert the description inline.
+    if (this._isHostInteractive()) {
+      this._ariaDescriber.describe(this._elementRef.nativeElement, newDescription);
+    } else {
+      this._updateInlineDescription();
+    }
+  }
+
+  private _updateInlineDescription() {
+    // Create the inline description element if it doesn't exist
+    if (!this._inlineBadgeDescription) {
+      this._inlineBadgeDescription = this._document.createElement('span');
+      this._inlineBadgeDescription.classList.add('cdk-visually-hidden');
+    }
+
+    this._inlineBadgeDescription.textContent = this.description;
+    this._badgeElement?.appendChild(this._inlineBadgeDescription);
+  }
+
+  private _removeInlineDescription() {
+    this._inlineBadgeDescription?.remove();
+    this._inlineBadgeDescription = undefined;
   }
 
   /** Adds css theme class given the color to the component host */

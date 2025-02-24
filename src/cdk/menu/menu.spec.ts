@@ -1,24 +1,24 @@
+import {TAB} from '@angular/cdk/keycodes';
+import {Component, ElementRef, QueryList, ViewChild, ViewChildren} from '@angular/core';
 import {
   ComponentFixture,
+  TestBed,
   fakeAsync,
   flush,
-  TestBed,
   tick,
   waitForAsync,
 } from '@angular/core/testing';
-import {Component, ElementRef, QueryList, ViewChild, ViewChildren} from '@angular/core';
-import {TAB} from '@angular/cdk/keycodes';
+import {By} from '@angular/platform-browser';
 import {
   createMouseEvent,
   dispatchEvent,
   dispatchKeyboardEvent,
   dispatchMouseEvent,
 } from '../../cdk/testing/private';
-import {By} from '@angular/platform-browser';
 import {CdkMenu} from './menu';
-import {CdkMenuModule} from './menu-module';
-import {CdkMenuItemCheckbox} from './menu-item-checkbox';
 import {CdkMenuItem} from './menu-item';
+import {CdkMenuItemCheckbox} from './menu-item-checkbox';
+import {CdkMenuModule} from './menu-module';
 
 describe('Menu', () => {
   describe('as checkbox group', () => {
@@ -27,9 +27,8 @@ describe('Menu', () => {
 
     beforeEach(waitForAsync(() => {
       TestBed.configureTestingModule({
-        imports: [CdkMenuModule],
-        declarations: [MenuCheckboxGroup],
-      }).compileComponents();
+        imports: [CdkMenuModule, MenuCheckboxGroup],
+      });
 
       fixture = TestBed.createComponent(MenuCheckboxGroup);
       fixture.detectChanges();
@@ -63,9 +62,8 @@ describe('Menu', () => {
 
     beforeEach(waitForAsync(() => {
       TestBed.configureTestingModule({
-        imports: [CdkMenuModule],
-        declarations: [InlineMenu],
-      }).compileComponents();
+        imports: [CdkMenuModule, InlineMenu],
+      });
     }));
 
     beforeEach(() => {
@@ -139,9 +137,8 @@ describe('Menu', () => {
 
       beforeEach(waitForAsync(() => {
         TestBed.configureTestingModule({
-          imports: [CdkMenuModule],
-          declarations: [WithComplexNestedMenus],
-        }).compileComponents();
+          imports: [CdkMenuModule, WithComplexNestedMenus],
+        });
       }));
 
       beforeEach(() => {
@@ -331,9 +328,8 @@ describe('Menu', () => {
 
       beforeEach(waitForAsync(() => {
         TestBed.configureTestingModule({
-          imports: [CdkMenuModule],
-          declarations: [WithComplexNestedMenusOnBottom],
-        }).compileComponents();
+          imports: [CdkMenuModule, WithComplexNestedMenusOnBottom],
+        });
       }));
 
       beforeEach(() => {
@@ -447,6 +443,7 @@ describe('Menu', () => {
       it('should close the edit menu when hovering directly up from the edit menu trigger to the print item without waiting', fakeAsync(() => {
         openFileMenu();
         openMenuOnHover(nativeEditTrigger!);
+        tick();
 
         const editPosition = nativeEditTrigger!.getBoundingClientRect();
         const printPosition = nativeFileButtons![0].getBoundingClientRect();
@@ -490,6 +487,8 @@ describe('Menu', () => {
       it('should not close the edit submenu when hovering into its items in time', fakeAsync(() => {
         openFileMenu();
         openMenuOnHover(nativeEditTrigger!);
+        tick();
+
         const editPosition = nativeEditTrigger!.getBoundingClientRect();
         const undoPosition = nativeEditButtons![0].getBoundingClientRect();
 
@@ -521,6 +520,7 @@ describe('Menu', () => {
       </ul>
     </ng-template>
   `,
+  imports: [CdkMenuModule],
 })
 class MenuCheckboxGroup {
   @ViewChild(CdkMenuItem) readonly trigger: CdkMenuItem;
@@ -533,6 +533,7 @@ class MenuCheckboxGroup {
       <button cdkMenuItem>Starred</button>
     </div>
   `,
+  imports: [CdkMenuModule],
 })
 class InlineMenu {}
 
@@ -585,6 +586,7 @@ class InlineMenu {}
       </div>
     </ng-template>
   `,
+  imports: [CdkMenuModule],
 })
 class WithComplexNestedMenus {
   @ViewChild('file_trigger', {read: ElementRef}) nativeFileTrigger: ElementRef<HTMLElement>;
@@ -644,6 +646,7 @@ class WithComplexNestedMenus {
       </div>
     </ng-template>
   `,
+  imports: [CdkMenuModule],
 })
 class WithComplexNestedMenusOnBottom {
   @ViewChild('file_trigger', {read: ElementRef}) nativeFileTrigger: ElementRef<HTMLElement>;

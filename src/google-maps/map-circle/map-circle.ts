@@ -3,13 +3,22 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 // Workaround for: https://github.com/bazelbuild/rules_nodejs/issues/1265
-/// <reference types="google.maps" />
+/// <reference types="google.maps" preserve="true" />
 
-import {Directive, Input, NgZone, OnDestroy, OnInit, Output} from '@angular/core';
+import {
+  Directive,
+  EventEmitter,
+  Input,
+  NgZone,
+  OnDestroy,
+  OnInit,
+  Output,
+  inject,
+} from '@angular/core';
 import {BehaviorSubject, combineLatest, Observable, Subject} from 'rxjs';
 import {map, take, takeUntil} from 'rxjs/operators';
 
@@ -25,13 +34,14 @@ import {MapEventManager} from '../map-event-manager';
   exportAs: 'mapCircle',
 })
 export class MapCircle implements OnInit, OnDestroy {
-  private _eventManager = new MapEventManager(this._ngZone);
+  private readonly _map = inject(GoogleMap);
+  private readonly _ngZone = inject(NgZone);
+  private _eventManager = new MapEventManager(inject(NgZone));
   private readonly _options = new BehaviorSubject<google.maps.CircleOptions>({});
   private readonly _center = new BehaviorSubject<
     google.maps.LatLng | google.maps.LatLngLiteral | undefined
   >(undefined);
   private readonly _radius = new BehaviorSubject<number | undefined>(undefined);
-
   private readonly _destroyed = new Subject<void>();
 
   /**
@@ -147,37 +157,60 @@ export class MapCircle implements OnInit, OnDestroy {
   @Output() readonly circleRightclick: Observable<google.maps.MapMouseEvent> =
     this._eventManager.getLazyEmitter<google.maps.MapMouseEvent>('rightclick');
 
-  constructor(private readonly _map: GoogleMap, private readonly _ngZone: NgZone) {}
+  /** Event emitted when the circle is initialized. */
+  @Output() readonly circleInitialized: EventEmitter<google.maps.Circle> =
+    new EventEmitter<google.maps.Circle>();
+
+  constructor(...args: unknown[]);
+  constructor() {}
 
   ngOnInit() {
-    if (this._map._isBrowser) {
-      this._combineOptions()
-        .pipe(take(1))
-        .subscribe(options => {
-          // Create the object outside the zone so its events don't trigger change detection.
-          // We'll bring it back in inside the `MapEventManager` only for the events that the
-          // user has subscribed to.
-          this._ngZone.runOutsideAngular(() => {
-            this.circle = new google.maps.Circle(options);
-          });
-          this._assertInitialized();
-          this.circle.setMap(this._map.googleMap!);
-          this._eventManager.setTarget(this.circle);
-        });
+    if (!this._map._isBrowser) {
+      return;
+    }
 
+    this._combineOptions()
+      .pipe(take(1))
+      .subscribe(options => {
+        if (google.maps.Circle && this._map.googleMap) {
+          this._initialize(this._map.googleMap, google.maps.Circle, options);
+        } else {
+          this._ngZone.runOutsideAngular(() => {
+            Promise.all([this._map._resolveMap(), google.maps.importLibrary('maps')]).then(
+              ([map, lib]) => {
+                this._initialize(map, (lib as google.maps.MapsLibrary).Circle, options);
+              },
+            );
+          });
+        }
+      });
+  }
+
+  private _initialize(
+    map: google.maps.Map,
+    circleConstructor: typeof google.maps.Circle,
+    options: google.maps.CircleOptions,
+  ) {
+    // Create the object outside the zone so its events don't trigger change detection.
+    // We'll bring it back in inside the `MapEventManager` only for the events that the
+    // user has subscribed to.
+    this._ngZone.runOutsideAngular(() => {
+      this.circle = new circleConstructor(options);
+      this._assertInitialized();
+      this.circle.setMap(map);
+      this._eventManager.setTarget(this.circle);
+      this.circleInitialized.emit(this.circle);
       this._watchForOptionsChanges();
       this._watchForCenterChanges();
       this._watchForRadiusChanges();
-    }
+    });
   }
 
   ngOnDestroy() {
     this._eventManager.destroy();
     this._destroyed.next();
     this._destroyed.complete();
-    if (this.circle) {
-      this.circle.setMap(null);
-    }
+    this.circle?.setMap(null);
   }
 
   /**
@@ -274,12 +307,6 @@ export class MapCircle implements OnInit, OnDestroy {
 
   private _assertInitialized(): asserts this is {circle: google.maps.Circle} {
     if (typeof ngDevMode === 'undefined' || ngDevMode) {
-      if (!this._map.googleMap) {
-        throw Error(
-          'Cannot access Google Map information before the API has been initialized. ' +
-            'Please wait for the API to load before trying to interact with it.',
-        );
-      }
       if (!this.circle) {
         throw Error(
           'Cannot interact with a Google Map Circle before it has been ' +

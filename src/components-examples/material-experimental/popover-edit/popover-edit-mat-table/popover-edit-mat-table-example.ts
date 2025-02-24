@@ -1,9 +1,17 @@
-import {Component} from '@angular/core';
+import {Component, inject} from '@angular/core';
 import {DataSource} from '@angular/cdk/collections';
-import {FormValueContainer} from '@angular/cdk-experimental/popover-edit';
-import {NgForm} from '@angular/forms';
+import {FormValueContainer, CdkPopoverEditModule} from '@angular/cdk-experimental/popover-edit';
+import {NgForm, FormsModule} from '@angular/forms';
 import {MatSnackBar} from '@angular/material/snack-bar';
 import {BehaviorSubject, Observable} from 'rxjs';
+import {MatListModule} from '@angular/material/list';
+import {MatCheckboxModule} from '@angular/material/checkbox';
+import {MatIconModule} from '@angular/material/icon';
+import {MatButtonModule} from '@angular/material/button';
+import {MatInputModule} from '@angular/material/input';
+import {MatFormFieldModule} from '@angular/material/form-field';
+import {MatPopoverEditModule} from '@angular/material-experimental/popover-edit';
+import {MatTableModule} from '@angular/material/table';
 
 export type ElementType = 'Metal' | 'Semimetal' | 'Nonmetal';
 
@@ -196,10 +204,24 @@ const FANTASY_ELEMENTS: readonly FantasyElement[] = [
  */
 @Component({
   selector: 'popover-edit-mat-table-example',
-  styleUrls: ['popover-edit-mat-table-example.css'],
+  styleUrl: 'popover-edit-mat-table-example.css',
   templateUrl: 'popover-edit-mat-table-example.html',
+  imports: [
+    MatTableModule,
+    CdkPopoverEditModule,
+    FormsModule,
+    MatPopoverEditModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatButtonModule,
+    MatIconModule,
+    MatCheckboxModule,
+    MatListModule,
+  ],
 })
 export class PopoverEditMatTableExample {
+  private readonly _snackBar = inject(MatSnackBar);
+
   displayedColumns: string[] = [
     'position',
     'name',
@@ -219,8 +241,6 @@ export class PopoverEditMatTableExample {
   readonly weightValues = new FormValueContainer<PeriodicElement, any>();
   readonly typeValues = new FormValueContainer<PeriodicElement, any>();
   readonly fantasyValues = new FormValueContainer<PeriodicElement, any>();
-
-  constructor(private readonly _snackBar: MatSnackBar) {}
 
   onSubmitName(element: PeriodicElement, f: NgForm) {
     if (!f.valid) {

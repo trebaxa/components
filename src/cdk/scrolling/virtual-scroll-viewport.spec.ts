@@ -6,28 +6,26 @@ import {
   ScrollDispatcher,
   ScrollingModule,
 } from '@angular/cdk/scrolling';
-import {CommonModule} from '@angular/common';
-import {dispatchFakeEvent} from '../testing/private';
 import {
+  ApplicationRef,
   Component,
-  NgZone,
+  Directive,
   TrackByFunction,
   ViewChild,
-  ViewEncapsulation,
-  Directive,
   ViewContainerRef,
-  ApplicationRef,
+  ViewEncapsulation,
+  inject,
 } from '@angular/core';
 import {
-  waitForAsync,
   ComponentFixture,
+  TestBed,
   fakeAsync,
   flush,
-  inject,
-  TestBed,
   tick,
+  waitForAsync,
 } from '@angular/core/testing';
-import {animationFrameScheduler, Subject} from 'rxjs';
+import {Subject} from 'rxjs';
+import {dispatchFakeEvent} from '../testing/private';
 
 describe('CdkVirtualScrollViewport', () => {
   describe('with FixedSizeVirtualScrollStrategy', () => {
@@ -37,9 +35,8 @@ describe('CdkVirtualScrollViewport', () => {
 
     beforeEach(waitForAsync(() => {
       TestBed.configureTestingModule({
-        imports: [ScrollingModule],
-        declarations: [FixedSizeVirtualScroll],
-      }).compileComponents();
+        imports: [ScrollingModule, FixedSizeVirtualScroll],
+      });
     }));
 
     beforeEach(() => {
@@ -73,16 +70,19 @@ describe('CdkVirtualScrollViewport', () => {
 
     it('should update viewport size', fakeAsync(() => {
       testComponent.viewportSize = 300;
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
       flush();
       viewport.checkViewportSize();
       expect(viewport.getViewportSize()).toBe(300);
 
       testComponent.viewportSize = 500;
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
       flush();
       viewport.checkViewportSize();
       expect(viewport.getViewportSize()).toBe(500);
+      flush();
     }));
 
     it('should update the viewport size when the page viewport changes', fakeAsync(() => {
@@ -110,12 +110,16 @@ describe('CdkVirtualScrollViewport', () => {
       expect(viewport.getRenderedRange()).toEqual({start: 0, end: 4});
 
       fixture.componentInstance.items = [0, 1];
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
+      flush();
 
       expect(viewport.getRenderedRange()).toEqual({start: 0, end: 2});
 
       fixture.componentInstance.items = [];
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
+      flush();
 
       expect(viewport.getRenderedRange()).toEqual({start: 0, end: 0});
     }));
@@ -195,6 +199,7 @@ describe('CdkVirtualScrollViewport', () => {
       expect(viewportElement.classList).toContain('cdk-virtual-scroll-orientation-vertical');
 
       testComponent.orientation = 'horizontal';
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
 
       expect(viewportElement.classList).toContain('cdk-virtual-scroll-orientation-horizontal');
@@ -213,8 +218,8 @@ describe('CdkVirtualScrollViewport', () => {
     it('should set rendered range', fakeAsync(() => {
       finishInit(fixture);
       viewport.setRenderedRange({start: 2, end: 3});
-      fixture.detectChanges();
       flush();
+      fixture.detectChanges();
 
       const items = fixture.elementRef.nativeElement.querySelectorAll('.item');
       expect(items.length).withContext('Expected 1 item to be rendered').toBe(1);
@@ -232,15 +237,15 @@ describe('CdkVirtualScrollViewport', () => {
       expect(viewport.getOffsetToRenderedContentStart()).toBe(10);
     }));
 
-    it('should set content offset to bottom of content', fakeAsync(() => {
+    it('should set content offset to bottom of content', fakeAsync(async () => {
       finishInit(fixture);
       const contentSize = viewport.measureRenderedContentSize();
 
       expect(contentSize).toBeGreaterThan(0);
 
       viewport.setRenderedContentOffset(contentSize + 10, 'to-end');
-      fixture.detectChanges();
       flush();
+      await fixture.whenStable();
 
       expect(viewport.getOffsetToRenderedContentStart()).toBe(10);
     }));
@@ -422,6 +427,7 @@ describe('CdkVirtualScrollViewport', () => {
         .toEqual({start: 2, end: 6});
 
       testComponent.itemSize *= 2;
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
       flush();
 
@@ -442,6 +448,7 @@ describe('CdkVirtualScrollViewport', () => {
 
       testComponent.minBufferPx = testComponent.itemSize;
       testComponent.maxBufferPx = testComponent.itemSize;
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
       flush();
 
@@ -461,6 +468,7 @@ describe('CdkVirtualScrollViewport', () => {
         .toBe(testComponent.itemSize * 6);
 
       testComponent.items = Array(5).fill(0);
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
       flush();
 
@@ -483,6 +491,7 @@ describe('CdkVirtualScrollViewport', () => {
       testComponent.minBufferPx = testComponent.itemSize;
       testComponent.maxBufferPx = testComponent.itemSize;
 
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
       flush();
 
@@ -503,6 +512,7 @@ describe('CdkVirtualScrollViewport', () => {
         .toBe(testComponent.itemSize * 50);
 
       testComponent.items = Array(54).fill(0);
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
       flush();
 
@@ -638,12 +648,14 @@ describe('CdkVirtualScrollViewport', () => {
       finishInit(fixture);
 
       testComponent.items = [0];
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
       flush();
 
       expect(testComponent.virtualForOf._viewContainerRef.detach).not.toHaveBeenCalled();
 
       testComponent.items = [1];
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
       flush();
 
@@ -657,12 +669,14 @@ describe('CdkVirtualScrollViewport', () => {
       finishInit(fixture);
 
       testComponent.items = [0];
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
       flush();
 
       expect(testComponent.virtualForOf._viewContainerRef.detach).not.toHaveBeenCalled();
 
       testComponent.items = [1];
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
       flush();
 
@@ -763,33 +777,30 @@ describe('CdkVirtualScrollViewport', () => {
     }));
 
     it('should throw if maxBufferPx is less than minBufferPx', fakeAsync(() => {
-      testComponent.minBufferPx = 100;
-      testComponent.maxBufferPx = 99;
-      expect(() => finishInit(fixture)).toThrow();
+      expect(() => {
+        testComponent.minBufferPx = 100;
+        testComponent.maxBufferPx = 99;
+        finishInit(fixture);
+      }).toThrowError(
+        'CDK virtual scroll: maxBufferPx must be greater than or equal to minBufferPx',
+      );
     }));
 
-    it('should register and degregister with ScrollDispatcher', fakeAsync(
-      inject([ScrollDispatcher], (dispatcher: ScrollDispatcher) => {
-        spyOn(dispatcher, 'register').and.callThrough();
-        spyOn(dispatcher, 'deregister').and.callThrough();
-        finishInit(fixture);
-        expect(dispatcher.register).toHaveBeenCalledWith(testComponent.viewport.scrollable);
-        fixture.destroy();
-        expect(dispatcher.deregister).toHaveBeenCalledWith(testComponent.viewport.scrollable);
-      }),
-    ));
-
-    it('should emit on viewChange inside the Angular zone', fakeAsync(() => {
-      const zoneTest = jasmine.createSpy('zone test');
-      testComponent.virtualForOf.viewChange.subscribe(() => zoneTest(NgZone.isInAngularZone()));
+    it('should register and degregister with ScrollDispatcher', fakeAsync(() => {
+      const dispatcher = TestBed.inject(ScrollDispatcher);
+      spyOn(dispatcher, 'register').and.callThrough();
+      spyOn(dispatcher, 'deregister').and.callThrough();
       finishInit(fixture);
-      expect(zoneTest).toHaveBeenCalledWith(true);
+      expect(dispatcher.register).toHaveBeenCalledWith(testComponent.viewport.scrollable!);
+      fixture.destroy();
+      expect(dispatcher.deregister).toHaveBeenCalledWith(testComponent.viewport.scrollable!);
     }));
 
     it('should not throw when disposing of a view that will not fit in the cache', fakeAsync(() => {
       finishInit(fixture);
       testComponent.items = new Array(200).fill(0);
       testComponent.templateCacheSize = 1; // Reduce the cache size to something we can easily hit.
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
       flush();
 
@@ -806,13 +817,14 @@ describe('CdkVirtualScrollViewport', () => {
     describe('viewChange change detection behavior', () => {
       let appRef: ApplicationRef;
 
-      beforeEach(inject([ApplicationRef], (ar: ApplicationRef) => {
-        appRef = ar;
-      }));
+      beforeEach(() => {
+        appRef = TestBed.inject(ApplicationRef);
+      });
 
       it('should not run change detection if there are no viewChange listeners', fakeAsync(() => {
         finishInit(fixture);
         testComponent.items = Array(10).fill(0);
+        fixture.changeDetectorRef.markForCheck();
         fixture.detectChanges();
         flush();
 
@@ -822,21 +834,6 @@ describe('CdkVirtualScrollViewport', () => {
         triggerScroll(viewport);
 
         expect(appRef.tick).not.toHaveBeenCalled();
-      }));
-
-      it('should run change detection if there are any viewChange listeners', fakeAsync(() => {
-        testComponent.virtualForOf.viewChange.subscribe();
-        finishInit(fixture);
-        testComponent.items = Array(10).fill(0);
-        fixture.detectChanges();
-        flush();
-
-        spyOn(appRef, 'tick');
-
-        viewport.scrollToIndex(5);
-        triggerScroll(viewport);
-
-        expect(appRef.tick).toHaveBeenCalledTimes(1);
       }));
     });
   });
@@ -850,9 +847,8 @@ describe('CdkVirtualScrollViewport', () => {
 
     beforeEach(() => {
       TestBed.configureTestingModule({
-        imports: [ScrollingModule],
-        declarations: [FixedSizeVirtualScrollWithRtlDirection],
-      }).compileComponents();
+        imports: [ScrollingModule, FixedSizeVirtualScrollWithRtlDirection],
+      });
 
       fixture = TestBed.createComponent(FixedSizeVirtualScrollWithRtlDirection);
       testComponent = fixture.componentInstance;
@@ -951,9 +947,8 @@ describe('CdkVirtualScrollViewport', () => {
   describe('with no VirtualScrollStrategy', () => {
     beforeEach(() => {
       TestBed.configureTestingModule({
-        imports: [ScrollingModule],
-        declarations: [VirtualScrollWithNoStrategy],
-      }).compileComponents();
+        imports: [ScrollingModule, VirtualScrollWithNoStrategy],
+      });
     });
 
     it('should fail on construction', fakeAsync(() => {
@@ -970,9 +965,12 @@ describe('CdkVirtualScrollViewport', () => {
 
     beforeEach(waitForAsync(() => {
       TestBed.configureTestingModule({
-        imports: [ScrollingModule],
-        declarations: [VirtualScrollWithItemInjectingViewContainer, InjectsViewContainer],
-      }).compileComponents();
+        imports: [
+          ScrollingModule,
+          VirtualScrollWithItemInjectingViewContainer,
+          InjectsViewContainer,
+        ],
+      });
     }));
 
     beforeEach(() => {
@@ -1005,9 +1003,8 @@ describe('CdkVirtualScrollViewport', () => {
 
     beforeEach(waitForAsync(() => {
       TestBed.configureTestingModule({
-        imports: [ScrollingModule, CommonModule],
-        declarations: [DelayedInitializationVirtualScroll],
-      }).compileComponents();
+        imports: [ScrollingModule, DelayedInitializationVirtualScroll],
+      });
       fixture = TestBed.createComponent(DelayedInitializationVirtualScroll);
       testComponent = fixture.componentInstance;
       viewport = testComponent.viewport;
@@ -1018,6 +1015,7 @@ describe('CdkVirtualScrollViewport', () => {
       expect(testComponent.trackBy).not.toHaveBeenCalled();
 
       testComponent.renderVirtualFor = true;
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
       triggerScroll(viewport, testComponent.itemSize * 5);
       fixture.detectChanges();
@@ -1035,9 +1033,8 @@ describe('CdkVirtualScrollViewport', () => {
 
     beforeEach(waitForAsync(() => {
       TestBed.configureTestingModule({
-        imports: [ScrollingModule, CommonModule],
-        declarations: [VirtualScrollWithAppendOnly],
-      }).compileComponents();
+        imports: [ScrollingModule, VirtualScrollWithAppendOnly],
+      });
       fixture = TestBed.createComponent(VirtualScrollWithAppendOnly);
       testComponent = fixture.componentInstance;
       viewport = testComponent.viewport;
@@ -1069,15 +1066,15 @@ describe('CdkVirtualScrollViewport', () => {
         .toBe(0);
     }));
 
-    it('should set content offset to bottom of content', fakeAsync(() => {
+    it('should set content offset to bottom of content', fakeAsync(async () => {
       finishInit(fixture);
       const contentSize = viewport.measureRenderedContentSize();
 
       expect(contentSize).toBeGreaterThan(0);
 
       viewport.setRenderedContentOffset(contentSize + 10, 'to-end');
-      fixture.detectChanges();
       flush();
+      await fixture.whenStable();
 
       expect(viewport.getOffsetToRenderedContentStart()).toBe(0);
     }));
@@ -1114,9 +1111,8 @@ describe('CdkVirtualScrollViewport', () => {
 
     beforeEach(waitForAsync(() => {
       TestBed.configureTestingModule({
-        imports: [ScrollingModule],
-        declarations: [VirtualScrollWithCustomScrollingElement],
-      }).compileComponents();
+        imports: [ScrollingModule, VirtualScrollWithCustomScrollingElement],
+      });
     }));
 
     beforeEach(() => {
@@ -1152,9 +1148,8 @@ describe('CdkVirtualScrollViewport', () => {
 
     beforeEach(waitForAsync(() => {
       TestBed.configureTestingModule({
-        imports: [ScrollingModule],
-        declarations: [VirtualScrollWithScrollableWindow],
-      }).compileComponents();
+        imports: [ScrollingModule, VirtualScrollWithScrollableWindow],
+      });
     }));
 
     beforeEach(() => {
@@ -1179,9 +1174,8 @@ describe('CdkVirtualScrollViewport', () => {
 
   it('should be able to query for a virtual scroll viewport as a CdkScrollable', () => {
     TestBed.configureTestingModule({
-      imports: [ScrollingModule],
-      declarations: [VirtualScrollableQuery],
-    }).compileComponents();
+      imports: [ScrollingModule, VirtualScrollableQuery],
+    });
 
     const fixture = TestBed.createComponent(VirtualScrollableQuery);
     fixture.detectChanges();
@@ -1201,7 +1195,7 @@ function finishInit(fixture: ComponentFixture<any>) {
   flush();
 
   // Flush the initial fake scroll event.
-  animationFrameScheduler.flush();
+  tick(16); // flush animation frame
   flush();
   fixture.detectChanges();
 }
@@ -1211,8 +1205,8 @@ function triggerScroll(viewport: CdkVirtualScrollViewport, offset?: number) {
   if (offset !== undefined) {
     viewport.scrollToOffset(offset);
   }
-  dispatchFakeEvent(viewport.scrollable.getElementRef().nativeElement, 'scroll');
-  animationFrameScheduler.flush();
+  dispatchFakeEvent(viewport.scrollable!.getElementRef().nativeElement, 'scroll');
+  tick(16); // flush animation frame
 }
 
 @Component({
@@ -1230,8 +1224,7 @@ function triggerScroll(viewport: CdkVirtualScrollViewport, offset?: number) {
       </div>
     </cdk-virtual-scroll-viewport>
   `,
-  styles: [
-    `
+  styles: `
     .cdk-virtual-scroll-content-wrapper {
       display: flex;
       flex-direction: column;
@@ -1254,8 +1247,8 @@ function triggerScroll(viewport: CdkVirtualScrollViewport, offset?: number) {
       margin-bottom: 10px;
     }
   `,
-  ],
   encapsulation: ViewEncapsulation.None,
+  imports: [ScrollingModule],
 })
 class FixedSizeVirtualScroll {
   @ViewChild(CdkVirtualScrollViewport, {static: true}) viewport: CdkVirtualScrollViewport;
@@ -1300,8 +1293,7 @@ class FixedSizeVirtualScroll {
       </div>
     </cdk-virtual-scroll-viewport>
   `,
-  styles: [
-    `
+  styles: `
     .cdk-virtual-scroll-content-wrapper {
       display: flex;
       flex-direction: column;
@@ -1320,8 +1312,8 @@ class FixedSizeVirtualScroll {
       border: 1px dashed #ccc;
     }
   `,
-  ],
   encapsulation: ViewEncapsulation.None,
+  imports: [ScrollingModule],
 })
 class FixedSizeVirtualScrollWithRtlDirection {
   @ViewChild(CdkVirtualScrollViewport, {static: true}) viewport: CdkVirtualScrollViewport;
@@ -1355,8 +1347,7 @@ class FixedSizeVirtualScrollWithRtlDirection {
       <div class="item" *cdkVirtualFor="let item of items">{{item}}</div>
     </cdk-virtual-scroll-viewport>
   `,
-  styles: [
-    `
+  styles: `
     .cdk-virtual-scroll-viewport {
       background-color: #f5f5f5;
     }
@@ -1366,7 +1357,7 @@ class FixedSizeVirtualScrollWithRtlDirection {
       border: 1px dashed #ccc;
     }
   `,
-  ],
+  imports: [ScrollingModule],
 })
 class VirtualScrollWithNoStrategy {
   items = [];
@@ -1376,7 +1367,7 @@ class VirtualScrollWithNoStrategy {
   selector: '[injects-view-container]',
 })
 class InjectsViewContainer {
-  constructor(public viewContainerRef: ViewContainerRef) {}
+  viewContainerRef = inject(ViewContainerRef);
 }
 
 @Component({
@@ -1385,8 +1376,7 @@ class InjectsViewContainer {
       <div injects-view-container class="item" *cdkVirtualFor="let item of items">{{item}}</div>
     </cdk-virtual-scroll-viewport>
   `,
-  styles: [
-    `
+  styles: `
     .cdk-virtual-scroll-content-wrapper {
       display: flex;
       flex-direction: column;
@@ -1405,8 +1395,8 @@ class InjectsViewContainer {
       border: 1px dashed #ccc;
     }
   `,
-  ],
   encapsulation: ViewEncapsulation.None,
+  imports: [ScrollingModule],
 })
 class VirtualScrollWithItemInjectingViewContainer {
   @ViewChild(CdkVirtualScrollViewport, {static: true}) viewport: CdkVirtualScrollViewport;
@@ -1419,13 +1409,12 @@ class VirtualScrollWithItemInjectingViewContainer {
 @Component({
   template: `
     <cdk-virtual-scroll-viewport [itemSize]="itemSize">
-      <ng-container *ngIf="renderVirtualFor">
+      @if (renderVirtualFor) {
         <div class="item" *cdkVirtualFor="let item of items; trackBy: trackBy">{{item}}</div>
-      </ng-container>
+      }
     </cdk-virtual-scroll-viewport>
   `,
-  styles: [
-    `
+  styles: `
     .cdk-virtual-scroll-content-wrapper {
       display: flex;
       flex-direction: column;
@@ -1444,8 +1433,8 @@ class VirtualScrollWithItemInjectingViewContainer {
       border: 1px dashed #ccc;
     }
   `,
-  ],
   encapsulation: ViewEncapsulation.None,
+  imports: [ScrollingModule],
 })
 class DelayedInitializationVirtualScroll {
   @ViewChild(CdkVirtualScrollViewport, {static: true}) viewport: CdkVirtualScrollViewport;
@@ -1463,8 +1452,7 @@ class DelayedInitializationVirtualScroll {
       <div class="item" *cdkVirtualFor="let item of items">{{item}}</div>
     </cdk-virtual-scroll-viewport>
   `,
-  styles: [
-    `
+  styles: `
     .cdk-virtual-scroll-content-wrapper {
       display: flex;
       flex-direction: column;
@@ -1483,8 +1471,8 @@ class DelayedInitializationVirtualScroll {
       border: 1px dashed #ccc;
     }
   `,
-  ],
   encapsulation: ViewEncapsulation.None,
+  imports: [ScrollingModule],
 })
 class VirtualScrollWithAppendOnly {
   @ViewChild(CdkVirtualScrollViewport, {static: true}) viewport: CdkVirtualScrollViewport;
@@ -1502,8 +1490,7 @@ class VirtualScrollWithAppendOnly {
       </cdk-virtual-scroll-viewport>
     </div>
   `,
-  styles: [
-    `
+  styles: `
         .cdk-virtual-scroll-content-wrapper {
             display: flex;
             flex-direction: column;
@@ -1526,8 +1513,8 @@ class VirtualScrollWithAppendOnly {
             padding-top: 50px;
         }
     `,
-  ],
   encapsulation: ViewEncapsulation.None,
+  imports: [ScrollingModule],
 })
 class VirtualScrollWithCustomScrollingElement {
   @ViewChild(CdkVirtualScrollViewport, {static: true}) viewport: CdkVirtualScrollViewport;
@@ -1544,8 +1531,7 @@ class VirtualScrollWithCustomScrollingElement {
       <div class="item" *cdkVirtualFor="let item of items">{{item}}</div>
     </cdk-virtual-scroll-viewport>
   `,
-  styles: [
-    `
+  styles: `
         .cdk-virtual-scroll-content-wrapper {
             display: flex;
             flex-direction: column;
@@ -1568,8 +1554,8 @@ class VirtualScrollWithCustomScrollingElement {
             height: 50px;
         }
     `,
-  ],
   encapsulation: ViewEncapsulation.None,
+  imports: [ScrollingModule],
 })
 class VirtualScrollWithScrollableWindow {
   @ViewChild(CdkVirtualScrollViewport, {static: true}) viewport: CdkVirtualScrollViewport;
@@ -1581,6 +1567,7 @@ class VirtualScrollWithScrollableWindow {
 
 @Component({
   template: '<cdk-virtual-scroll-viewport itemSize="50"></cdk-virtual-scroll-viewport>',
+  imports: [ScrollingModule],
 })
 class VirtualScrollableQuery {
   @ViewChild(CdkScrollable) scrollable: CdkScrollable;

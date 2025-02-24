@@ -3,39 +3,32 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
-  Inject,
-  OnDestroy,
-  Optional,
-  ViewChild,
-  ViewEncapsulation,
   Directive,
   Injectable,
+  OnDestroy,
+  ViewChild,
+  ViewEncapsulation,
+  inject,
 } from '@angular/core';
-import {CommonModule} from '@angular/common';
+import {JsonPipe} from '@angular/common';
 import {FormControl, FormGroup, FormsModule, ReactiveFormsModule} from '@angular/forms';
 import {MatButtonModule} from '@angular/material/button';
 import {MatCheckboxModule} from '@angular/material/checkbox';
+import {DateAdapter, MAT_DATE_FORMATS, ThemePalette} from '@angular/material/core';
 import {
-  DateAdapter,
-  MAT_DATE_FORMATS,
-  MatDateFormats,
-  ThemePalette,
-  MatNativeDateModule,
-} from '@angular/material/core';
-import {
+  DateRange,
+  MAT_DATE_RANGE_SELECTION_STRATEGY,
   MatCalendar,
   MatCalendarHeader,
-  MatDatepickerInputEvent,
-  MAT_DATE_RANGE_SELECTION_STRATEGY,
   MatDateRangeSelectionStrategy,
-  DateRange,
+  MatDatepickerInputEvent,
   MatDatepickerModule,
 } from '@angular/material/datepicker';
 import {MatFormFieldModule} from '@angular/material/form-field';
@@ -48,7 +41,7 @@ import {takeUntil} from 'rxjs/operators';
 /** Range selection strategy that preserves the current range. */
 @Injectable()
 export class PreserveRangeStrategy<D> implements MatDateRangeSelectionStrategy<D> {
-  constructor(private _dateAdapter: DateAdapter<D>) {}
+  private _dateAdapter = inject<DateAdapter<D>>(DateAdapter<D>);
 
   selectionFinished(date: D, currentRange: DateRange<D>) {
     let {start, end} = currentRange;
@@ -94,7 +87,6 @@ export class PreserveRangeStrategy<D> implements MatDateRangeSelectionStrategy<D
 
 @Directive({
   selector: '[customRangeStrategy]',
-  standalone: true,
   providers: [
     {
       provide: MAT_DATE_RANGE_SELECTION_STRATEGY,
@@ -108,20 +100,21 @@ export class CustomRangeStrategy {}
 @Component({
   selector: 'custom-header',
   templateUrl: 'custom-header.html',
-  styleUrls: ['custom-header.css'],
+  styleUrl: 'custom-header.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  standalone: true,
   imports: [MatIconModule, MatButtonModule],
 })
 export class CustomHeader<D> implements OnDestroy {
+  private _calendar = inject<MatCalendar<D>>(MatCalendar);
+  private _dateAdapter = inject<DateAdapter<D>>(DateAdapter);
+  private _dateFormats = inject(MAT_DATE_FORMATS);
+
   private readonly _destroyed = new Subject<void>();
 
-  constructor(
-    private _calendar: MatCalendar<D>,
-    private _dateAdapter: DateAdapter<D>,
-    @Inject(MAT_DATE_FORMATS) private _dateFormats: MatDateFormats,
-    cdr: ChangeDetectorRef,
-  ) {
+  constructor() {
+    const _calendar = this._calendar;
+    const cdr = inject(ChangeDetectorRef);
+
     _calendar.stateChanges.pipe(takeUntil(this._destroyed)).subscribe(() => cdr.markForCheck());
   }
 
@@ -152,20 +145,20 @@ export class CustomHeader<D> implements OnDestroy {
 }
 
 @Component({
-  selector: 'customer-header-ng-content',
+  selector: 'custom-header-ng-content',
   template: `
       <mat-calendar-header #header>
         <button mat-button type="button" (click)="todayClicked()">TODAY</button>
       </mat-calendar-header>
     `,
-  standalone: true,
   imports: [MatDatepickerModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CustomHeaderNgContent<D> {
+  private _dateAdapter = inject<DateAdapter<D>>(DateAdapter);
+
   @ViewChild(MatCalendarHeader)
   header: MatCalendarHeader<D>;
-
-  constructor(@Optional() private _dateAdapter: DateAdapter<D>) {}
 
   todayClicked() {
     let calendar = this.header.calendar;
@@ -178,12 +171,11 @@ export class CustomHeaderNgContent<D> {
 @Component({
   selector: 'datepicker-demo',
   templateUrl: 'datepicker-demo.html',
-  styleUrls: ['datepicker-demo.css'],
+  styleUrl: 'datepicker-demo.css',
   encapsulation: ViewEncapsulation.None,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  standalone: true,
   imports: [
-    CommonModule,
+    JsonPipe,
     FormsModule,
     MatButtonModule,
     MatCheckboxModule,
@@ -191,11 +183,8 @@ export class CustomHeaderNgContent<D> {
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
-    MatNativeDateModule,
     MatSelectModule,
     ReactiveFormsModule,
-    CustomHeader,
-    CustomHeaderNgContent,
     CustomRangeStrategy,
   ],
 })
@@ -245,8 +234,8 @@ export class DatepickerDemo {
     return !(date.getFullYear() % 2) && Boolean(date.getMonth() % 2) && !(date.getDate() % 2);
   };
 
-  onDateInput = (e: MatDatepickerInputEvent<Date>) => (this.lastDateInput = e.value);
-  onDateChange = (e: MatDatepickerInputEvent<Date>) => (this.lastDateChange = e.value);
+  onDateInput = (e: MatDatepickerInputEvent<Date, Date | null>) => (this.lastDateInput = e.value);
+  onDateChange = (e: MatDatepickerInputEvent<Date, Date | null>) => (this.lastDateChange = e.value);
 
   // pass custom header component type as input
   customHeader = CustomHeader;

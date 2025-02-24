@@ -1,4 +1,5 @@
 import {Component} from '@angular/core';
+import {MatSliderModule} from '@angular/material/slider';
 
 /**
  * @title Range slider
@@ -6,6 +7,7 @@ import {Component} from '@angular/core';
 @Component({
   selector: 'slider-range-example',
   templateUrl: 'slider-range-example.html',
-  styleUrls: ['slider-range-example.css'],
+  styleUrl: 'slider-range-example.css',
+  imports: [MatSliderModule],
 })
 export class SliderRangeExample {}

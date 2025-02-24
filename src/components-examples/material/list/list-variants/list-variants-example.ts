@@ -1,4 +1,5 @@
 import {Component} from '@angular/core';
+import {MatListModule} from '@angular/material/list';
 
 /**
  * @title List variants
@@ -6,6 +7,7 @@ import {Component} from '@angular/core';
 @Component({
   selector: 'list-variants-example',
   templateUrl: 'list-variants-example.html',
-  styleUrls: ['./list-variants-example.css'],
+  styleUrl: './list-variants-example.css',
+  imports: [MatListModule],
 })
 export class ListVariantsExample {}

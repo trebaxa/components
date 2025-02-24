@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 /** Possible states of the lifecycle of a dialog. */
@@ -11,12 +11,13 @@ import {FocusOrigin} from '@angular/cdk/a11y';
 import {merge, Observable, Subject} from 'rxjs';
 import {DialogRef} from '@angular/cdk/dialog';
 import {DialogPosition, MatDialogConfig} from './dialog-config';
-import {_MatDialogContainerBase} from './dialog-container';
+import {MatDialogContainer} from './dialog-container';
 import {filter, take} from 'rxjs/operators';
 import {ESCAPE, hasModifierKey} from '@angular/cdk/keycodes';
 import {GlobalPositionStrategy} from '@angular/cdk/overlay';
+import {ComponentRef} from '@angular/core';
 
-export const enum MatDialogState {
+export enum MatDialogState {
   OPEN,
   CLOSING,
   CLOSED,
@@ -28,6 +29,12 @@ export const enum MatDialogState {
 export class MatDialogRef<T, R = any> {
   /** The instance of component opened into the dialog. */
   componentInstance: T;
+
+  /**
+   * `ComponentRef` of the component opened into the dialog. Will be
+   * null when the dialog is opened using a `TemplateRef`.
+   */
+  readonly componentRef: ComponentRef<T> | null;
 
   /** Whether the user is allowed to close the dialog. */
   disableClose: boolean | undefined;
@@ -45,7 +52,7 @@ export class MatDialogRef<T, R = any> {
   private _result: R | undefined;
 
   /** Handle to the timeout that's running as a fallback in case the exit animation doesn't fire. */
-  private _closeFallbackTimeout: number;
+  private _closeFallbackTimeout: ReturnType<typeof setTimeout>;
 
   /** Current state of the dialog. */
   private _state = MatDialogState.OPEN;
@@ -60,10 +67,13 @@ export class MatDialogRef<T, R = any> {
   constructor(
     private _ref: DialogRef<R, T>,
     config: MatDialogConfig,
-    public _containerInstance: _MatDialogContainerBase,
+    public _containerInstance: MatDialogContainer,
   ) {
     this.disableClose = config.disableClose;
     this.id = _ref.id;
+
+    // Used to target panels specifically tied to dialogs.
+    _ref.addPanelClass('mat-mdc-dialog-panel');
 
     // Emit when opening animation completes
     _containerInstance._animationStateChanged

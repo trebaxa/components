@@ -31,20 +31,15 @@ Material.
 
 If you'd like to contribute, please follow our [contributing guidelines][contributing]. Please see
 our [`help wanted`][help-wanted] label for a list of issues with good opportunities for
-contribution.
-
-## What we're working on now (Q4 2022):
-* Investigating and fixing reported regressions for the new components launched in v15
-* Creating a new more flexible theming API in collaboration with [MDC Web](https://github.com/material-components/material-components-web/)
-* Designing and Implementing a CDK combobox component
-* Continuing to focus on improving the accessibility of Angular Material components
+contribution. You can also use the [`good first issue`][good-first-issue] label to find issues
+if you are just starting to contribute to the project.
 
 ## About the team
 The Angular Components team is part of the Angular team at Google. The team includes both Google
 employees and community contributors from around the globe.
 
 Our team has two primary goals:
-* Build high-quality UI components that developers can drop into existing applications 
+* Build high-quality UI components that developers can drop into existing applications
 * Provide tools that help developers build their own custom components with common interaction
 patterns
 
@@ -73,7 +68,6 @@ We aim for great user experience with the following screen readers:
 [Material Design]: https://material.io
 [Google Maps JavaScript API]: https://developers.google.com/maps/documentation/javascript/tutorial
 [YouTube Player API]: https://developers.google.com/youtube/iframe_api_reference
-[MDC Web]: https://github.com/material-components/material-components-web/
 [cdk-docs]: https://material.angular.io/cdk/categories
 [mat-docs]: https://material.angular.io
 [map-docs]: https://github.com/angular/components/blob/main/src/google-maps/README.md
@@ -81,3 +75,4 @@ We aim for great user experience with the following screen readers:
 [getting-started]: https://material.angular.io/guide/getting-started
 [contributing]: https://github.com/angular/components/blob/main/CONTRIBUTING.md
 [help-wanted]: https://github.com/angular/components/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22
+[good-first-issue]: https://github.com/angular/components/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22+label%3A%22good+first+issue%22

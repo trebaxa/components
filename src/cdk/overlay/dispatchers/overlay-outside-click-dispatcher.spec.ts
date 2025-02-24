@@ -1,9 +1,10 @@
-import {TestBed, inject, fakeAsync} from '@angular/core/testing';
-import {ApplicationRef, Component} from '@angular/core';
+import {TestBed, inject} from '@angular/core/testing';
+import {ApplicationRef, Component, afterRender} from '@angular/core';
 import {dispatchFakeEvent, dispatchMouseEvent} from '../../testing/private';
 import {OverlayModule, Overlay} from '../index';
 import {OverlayOutsideClickDispatcher} from './overlay-outside-click-dispatcher';
 import {ComponentPortal} from '@angular/cdk/portal';
+import {filter, take} from 'rxjs/operators';
 
 describe('OverlayOutsideClickDispatcher', () => {
   let appRef: ApplicationRef;
@@ -12,8 +13,7 @@ describe('OverlayOutsideClickDispatcher', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      imports: [OverlayModule],
-      declarations: [TestComponent],
+      imports: [OverlayModule, TestComponent],
     });
 
     inject(
@@ -138,10 +138,18 @@ describe('OverlayOutsideClickDispatcher', () => {
     spyOn(body, 'removeEventListener');
 
     outsideClickDispatcher.add(overlayRef);
-    expect(body.addEventListener).toHaveBeenCalledWith('click', jasmine.any(Function), true);
+    expect(body.addEventListener).toHaveBeenCalledWith(
+      'click',
+      jasmine.any(Function),
+      jasmine.objectContaining({capture: true}),
+    );
 
     overlayRef.dispose();
-    expect(body.removeEventListener).toHaveBeenCalledWith('click', jasmine.any(Function), true);
+    expect(body.removeEventListener).toHaveBeenCalledWith(
+      'click',
+      jasmine.any(Function),
+      jasmine.objectContaining({capture: true}),
+    );
   });
 
   it('should not add the same overlay to the stack multiple times', () => {
@@ -305,39 +313,35 @@ describe('OverlayOutsideClickDispatcher', () => {
     overlayRef.dispose();
   });
 
-  it(
-    'should not throw an error when closing out related components via the ' +
-      'outsidePointerEvents emitter on background click',
-    fakeAsync(() => {
-      const firstOverlayRef = overlay.create();
-      firstOverlayRef.attach(new ComponentPortal(TestComponent));
-      const secondOverlayRef = overlay.create();
-      secondOverlayRef.attach(new ComponentPortal(TestComponent));
-      const thirdOverlayRef = overlay.create();
-      thirdOverlayRef.attach(new ComponentPortal(TestComponent));
+  it('should not throw an error when closing out related components via the outsidePointerEvents emitter on background click', () => {
+    const firstOverlayRef = overlay.create();
+    firstOverlayRef.attach(new ComponentPortal(TestComponent));
+    const secondOverlayRef = overlay.create();
+    secondOverlayRef.attach(new ComponentPortal(TestComponent));
+    const thirdOverlayRef = overlay.create();
+    thirdOverlayRef.attach(new ComponentPortal(TestComponent));
 
-      const spy = jasmine.createSpy('background click handler spy').and.callFake(() => {
-        // we close out both overlays from a single outside click event
-        firstOverlayRef.detach();
-        thirdOverlayRef.detach();
-      });
-      firstOverlayRef.outsidePointerEvents().subscribe(spy);
-      secondOverlayRef.outsidePointerEvents().subscribe(spy);
-      thirdOverlayRef.outsidePointerEvents().subscribe(spy);
+    const spy = jasmine.createSpy('background click handler spy').and.callFake(() => {
+      // we close out both overlays from a single outside click event
+      firstOverlayRef.detach();
+      thirdOverlayRef.detach();
+    });
+    firstOverlayRef.outsidePointerEvents().subscribe(spy);
+    secondOverlayRef.outsidePointerEvents().subscribe(spy);
+    thirdOverlayRef.outsidePointerEvents().subscribe(spy);
 
-      const backgroundElement = document.createElement('div');
-      document.body.appendChild(backgroundElement);
+    const backgroundElement = document.createElement('div');
+    document.body.appendChild(backgroundElement);
 
-      expect(() => backgroundElement.click()).not.toThrowError();
+    expect(() => backgroundElement.click()).not.toThrowError();
 
-      expect(spy).toHaveBeenCalled();
+    expect(spy).toHaveBeenCalled();
 
-      backgroundElement.remove();
-      firstOverlayRef.dispose();
-      secondOverlayRef.dispose();
-      thirdOverlayRef.dispose();
-    }),
-  );
+    backgroundElement.remove();
+    firstOverlayRef.dispose();
+    secondOverlayRef.dispose();
+    thirdOverlayRef.dispose();
+  });
 
   describe('change detection behavior', () => {
     it('should not run change detection if there is no portal attached to the overlay', () => {
@@ -382,8 +386,23 @@ describe('OverlayOutsideClickDispatcher', () => {
       expect(appRef.tick).toHaveBeenCalledTimes(0);
     });
 
-    it('should run change detection if the click was made outside the overlay and there are `outsidePointerEvents` observers', () => {
-      spyOn(appRef, 'tick');
+    it('should run change detection if the click was made outside the overlay and there are `outsidePointerEvents` observers', async () => {
+      let renders = 0;
+      TestBed.runInInjectionContext(() => {
+        afterRender(() => {
+          renders++;
+        });
+      });
+      function stablePromise() {
+        return TestBed.inject(ApplicationRef)
+          .isStable.pipe(
+            filter(stable => stable),
+            take(1),
+          )
+          .toPromise();
+      }
+      await stablePromise();
+      expect(renders).toEqual(1);
       const portal = new ComponentPortal(TestComponent);
       const overlayRef = overlay.create();
       overlayRef.attach(portal);
@@ -392,19 +411,23 @@ describe('OverlayOutsideClickDispatcher', () => {
       const context = document.createElement('div');
       document.body.appendChild(context);
 
-      expect(appRef.tick).toHaveBeenCalledTimes(0);
+      await stablePromise();
+      expect(renders).toEqual(2);
       dispatchMouseEvent(context, 'click');
-      expect(appRef.tick).toHaveBeenCalledTimes(0);
+      await stablePromise();
+      expect(renders).toEqual(2);
 
       overlayRef.outsidePointerEvents().subscribe();
 
       dispatchMouseEvent(context, 'click');
-      expect(appRef.tick).toHaveBeenCalledTimes(1);
+      await stablePromise();
+      expect(renders).toEqual(2);
     });
   });
 });
 
 @Component({
   template: 'Hello',
+  imports: [OverlayModule],
 })
 class TestComponent {}

@@ -1,4 +1,6 @@
 import {Component} from '@angular/core';
+import {ClipboardModule} from '@angular/cdk/clipboard';
+import {FormsModule} from '@angular/forms';
 
 /**
  * @title Clipboard overview
@@ -6,7 +8,8 @@ import {Component} from '@angular/core';
 @Component({
   selector: 'cdk-clipboard-overview-example',
   templateUrl: 'cdk-clipboard-overview-example.html',
-  styleUrls: ['cdk-clipboard-overview-example.css'],
+  styleUrl: 'cdk-clipboard-overview-example.css',
+  imports: [FormsModule, ClipboardModule],
 })
 export class CdkClipboardOverviewExample {
   value =

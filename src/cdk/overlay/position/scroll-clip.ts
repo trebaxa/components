@@ -3,14 +3,14 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 // TODO(jelbourn): move this to live with the rest of the scrolling code
 // TODO(jelbourn): someday replace this with IntersectionObservers
 
-/** Equivalent of `ClientRect` without some of the properties we don't care about. */
-type Dimensions = Omit<ClientRect, 'x' | 'y' | 'toJSON'>;
+/** Equivalent of `DOMRect` without some of the properties we don't care about. */
+type Dimensions = Omit<DOMRect, 'x' | 'y' | 'toJSON'>;
 
 /**
  * Gets whether an element is scrolled outside of view by any of its parent scrolling containers.

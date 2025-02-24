@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -58,7 +58,7 @@ export type _ViewRepeaterItemContextFactory<T, R, C extends _ViewRepeaterItemCon
 export type _ViewRepeaterItemValueResolver<T, R> = (record: IterableChangeRecord<R>) => T;
 
 /** Indicates how a view was changed by a {@link _ViewRepeater}. */
-export const enum _ViewRepeaterOperation {
+export enum _ViewRepeaterOperation {
   /** The content of an existing view was replaced with another item. */
   REPLACED,
   /** A new view was created with `createEmbeddedView`. */

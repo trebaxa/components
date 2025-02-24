@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {NgModule} from '@angular/core';
@@ -18,7 +18,17 @@ import {
 import {MatEditLens, MatEditRevert, MatEditClose} from './lens-directives';
 
 @NgModule({
-  imports: [CdkPopoverEditModule, MatCommonModule],
+  imports: [
+    CdkPopoverEditModule,
+    MatCommonModule,
+    MatPopoverEdit,
+    MatPopoverEditTabOut,
+    MatRowHoverContent,
+    MatEditLens,
+    MatEditRevert,
+    MatEditClose,
+    MatEditOpen,
+  ],
   exports: [
     MatPopoverEdit,
     MatPopoverEditTabOut,
@@ -28,15 +38,6 @@ import {MatEditLens, MatEditRevert, MatEditClose} from './lens-directives';
     MatEditClose,
     MatEditOpen,
     CdkEditable,
-  ],
-  declarations: [
-    MatPopoverEdit,
-    MatPopoverEditTabOut,
-    MatRowHoverContent,
-    MatEditLens,
-    MatEditRevert,
-    MatEditClose,
-    MatEditOpen,
   ],
 })
 export class MatPopoverEditModule {}

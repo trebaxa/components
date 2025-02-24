@@ -3,9 +3,9 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
-import {Injectable} from '@angular/core';
+import {Injectable, CSP_NONCE, inject} from '@angular/core';
 import {Platform} from '@angular/cdk/platform';
 
 /** Global registry for all dynamically-created, injected media queries. */
@@ -17,10 +17,15 @@ let mediaQueryStyleNode: HTMLStyleElement | undefined;
 /** A utility for calling matchMedia queries. */
 @Injectable({providedIn: 'root'})
 export class MediaMatcher {
+  private _platform = inject(Platform);
+  private _nonce = inject(CSP_NONCE, {optional: true});
+
   /** The internal matchMedia method to return back a MediaQueryList like object. */
   private _matchMedia: (query: string) => MediaQueryList;
 
-  constructor(private _platform: Platform) {
+  constructor(...args: unknown[]);
+
+  constructor() {
     this._matchMedia =
       this._platform.isBrowser && window.matchMedia
         ? // matchMedia is bound to the window scope intentionally as it is an illegal invocation to
@@ -37,7 +42,7 @@ export class MediaMatcher {
    */
   matchMedia(query: string): MediaQueryList {
     if (this._platform.WEBKIT || this._platform.BLINK) {
-      createEmptyStyleRule(query);
+      createEmptyStyleRule(query, this._nonce);
     }
     return this._matchMedia(query);
   }
@@ -52,7 +57,7 @@ export class MediaMatcher {
  * inside the `@media` match existing elements on the page. We work around it by having one rule
  * targeting the `body`. See https://github.com/angular/components/issues/23546.
  */
-function createEmptyStyleRule(query: string) {
+function createEmptyStyleRule(query: string, nonce: string | undefined | null) {
   if (mediaQueriesForWebkitCompatibility.has(query)) {
     return;
   }
@@ -60,6 +65,11 @@ function createEmptyStyleRule(query: string) {
   try {
     if (!mediaQueryStyleNode) {
       mediaQueryStyleNode = document.createElement('style');
+
+      if (nonce) {
+        mediaQueryStyleNode.setAttribute('nonce', nonce);
+      }
+
       mediaQueryStyleNode.setAttribute('type', 'text/css');
       document.head!.appendChild(mediaQueryStyleNode);
     }

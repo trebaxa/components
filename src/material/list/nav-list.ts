@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {ChangeDetectionStrategy, Component, InjectionToken, ViewEncapsulation} from '@angular/core';
@@ -24,7 +24,7 @@ export const MAT_NAV_LIST = new InjectionToken<MatNavList>('MatNavList');
     'class': 'mat-mdc-nav-list mat-mdc-list-base mdc-list',
     'role': 'navigation',
   },
-  styleUrls: ['list.css'],
+  styleUrl: 'list.css',
   encapsulation: ViewEncapsulation.None,
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [{provide: MatListBase, useExisting: MatNavList}],

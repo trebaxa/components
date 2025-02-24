@@ -3,23 +3,23 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {InjectionToken} from '@angular/core';
+import {InjectionToken, ChangeDetectorRef, WritableSignal} from '@angular/core';
 import {MatRipple, RippleGlobalOptions} from '@angular/material/core';
 
 /**
  * Thumb types: range slider has two thumbs (START, END) whereas single point
  * slider only has one thumb (END).
  */
-export const enum _MatThumb {
+export enum _MatThumb {
   START = 1,
   END = 2,
 }
 
 /** Tick mark enum, for discrete sliders. */
-export const enum _MatTickMark {
+export enum _MatTickMark {
   ACTIVE = 0,
   INACTIVE = 1,
 }
@@ -67,7 +67,7 @@ export interface MatSliderDragEvent {
 
 /**
  * A simple change event emitted by the MatSlider component.
- * @deprecated Use event bindings directly on the MatSliderThumbs for `change` and `input` events. See https://material.angular.io/guide/mdc-migration for information about migrating.
+ * @deprecated Use event bindings directly on the MatSliderThumbs for `change` and `input` events. See https://v17.material.angular.io/guide/mdc-migration for information about migrating.
  * @breaking-change 17.0.0
  */
 export class MatSliderChange {
@@ -82,6 +82,9 @@ export class MatSliderChange {
 }
 
 export interface _MatSlider {
+  /** Whether the given pointer event occurred within the bounds of the slider pointer's DOM Rect. */
+  _isCursorOnSliderThumb(event: PointerEvent, rect: DOMRect): boolean;
+
   /** Gets the slider thumb input of the given thumb position. */
   _getInput(thumbPosition: _MatThumb): _MatSliderThumb | _MatSliderRangeThumb | undefined;
 
@@ -118,23 +121,11 @@ export interface _MatSlider {
    */
   _inputPadding: number;
 
-  /**
-   * The offset represents left most translateX of the slider knob. Inversely,
-   * (slider width - offset) = the right most translateX of the slider knob.
-   *
-   * Note:
-   *    * The native slider knob differs from the visual slider. It's knob cannot slide past
-   *      the end of the track AT ALL.
-   *    * The visual slider knob CAN slide past the end of the track slightly. It's knob can slide
-   *      past the end of the track such that it's center lines up with the end of the track.
-   */
-  _inputOffset: number;
-
   /** The radius of the visual slider's ripple. */
   _rippleRadius: number;
 
   /** The global configuration for `matRipple` instances. */
-  readonly _globalRippleOptions?: RippleGlobalOptions;
+  readonly _globalRippleOptions: RippleGlobalOptions | null;
 
   /** Whether animations have been disabled. */
   _noopAnimations: boolean;
@@ -151,8 +142,13 @@ export interface _MatSlider {
   /** Updates the stored slider dimensions using the current bounding client rect. */
   _updateDimensions: () => void;
 
+  /** Updates the scale on the active portion of the track. */
+  _updateTrackUI: (source: _MatSliderThumb) => void;
+
   /** Used to set the transition duration for thumb and track animations. */
   _setTransition: (withAnimation: boolean) => void;
+
+  _cdr: ChangeDetectorRef;
 }
 
 export interface _MatSliderThumb {
@@ -187,7 +183,7 @@ export interface _MatSliderThumb {
   _isFocused: boolean;
 
   /** The aria-valuetext string representation of the input's value. */
-  _valuetext: string;
+  _valuetext: WritableSignal<string>;
 
   /**
    * Indicates whether UI updates should be skipped.

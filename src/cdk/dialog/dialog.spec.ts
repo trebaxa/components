@@ -1,36 +1,37 @@
+import {Directionality} from '@angular/cdk/bidi';
+import {A, ESCAPE} from '@angular/cdk/keycodes';
+import {Overlay, OverlayContainer, ScrollDispatcher} from '@angular/cdk/overlay';
+import {_supportsShadowDom} from '@angular/cdk/platform';
 import {
-  ComponentFixture,
-  fakeAsync,
-  flushMicrotasks,
-  TestBed,
-  tick,
-  flush,
-} from '@angular/core/testing';
+  createKeyboardEvent,
+  dispatchEvent,
+  dispatchKeyboardEvent,
+} from '@angular/cdk/testing/private';
+import {Location} from '@angular/common';
+import {SpyLocation} from '@angular/common/testing';
 import {
   ChangeDetectionStrategy,
   Component,
+  ComponentRef,
   Directive,
-  inject,
-  Inject,
   InjectionToken,
   Injector,
   TemplateRef,
   ViewChild,
   ViewContainerRef,
   ViewEncapsulation,
+  inject,
 } from '@angular/core';
-import {By} from '@angular/platform-browser';
-import {Location} from '@angular/common';
-import {SpyLocation} from '@angular/common/testing';
-import {Directionality} from '@angular/cdk/bidi';
-import {Overlay, OverlayContainer} from '@angular/cdk/overlay';
-import {A, ESCAPE} from '@angular/cdk/keycodes';
-import {_supportsShadowDom} from '@angular/cdk/platform';
 import {
-  dispatchKeyboardEvent,
-  createKeyboardEvent,
-  dispatchEvent,
-} from '@angular/cdk/testing/private';
+  ComponentFixture,
+  TestBed,
+  fakeAsync,
+  flush,
+  flushMicrotasks,
+  tick,
+} from '@angular/core/testing';
+import {By} from '@angular/platform-browser';
+import {Subject} from 'rxjs';
 import {DIALOG_DATA, Dialog, DialogModule, DialogRef} from './index';
 
 describe('Dialog', () => {
@@ -41,11 +42,12 @@ describe('Dialog', () => {
   let viewContainerFixture: ComponentFixture<ComponentWithChildViewContainer>;
   let mockLocation: SpyLocation;
   let overlay: Overlay;
+  let scrolledSubject = new Subject();
 
   beforeEach(fakeAsync(() => {
     TestBed.configureTestingModule({
-      imports: [DialogModule],
-      declarations: [
+      imports: [
+        DialogModule,
         ComponentWithChildViewContainer,
         ComponentWithTemplateRef,
         PizzaMsg,
@@ -59,10 +61,12 @@ describe('Dialog', () => {
       providers: [
         {provide: Location, useClass: SpyLocation},
         {provide: TEMPLATE_INJECTOR_TEST_TOKEN, useValue: 'hello from test module'},
+        {
+          provide: ScrollDispatcher,
+          useFactory: () => ({scrolled: () => scrolledSubject}),
+        },
       ],
     });
-
-    TestBed.compileComponents();
 
     dialog = TestBed.inject(Dialog);
     mockLocation = TestBed.inject(Location) as SpyLocation;
@@ -83,13 +87,25 @@ describe('Dialog', () => {
 
     expect(overlayContainerElement.textContent).toContain('Pizza');
     expect(dialogRef.componentInstance instanceof PizzaMsg).toBe(true);
+    expect(dialogRef.componentRef instanceof ComponentRef).toBe(true);
     expect(dialogRef.componentInstance!.dialogRef).toBe(dialogRef);
 
     viewContainerFixture.detectChanges();
     viewContainerFixture.detectChanges();
     let dialogContainerElement = overlayContainerElement.querySelector('cdk-dialog-container')!;
     expect(dialogContainerElement.getAttribute('role')).toBe('dialog');
-    expect(dialogContainerElement.getAttribute('aria-modal')).toBe('true');
+    expect(dialogContainerElement.getAttribute('aria-modal')).toBe('false');
+  });
+
+  it('should be able to set aria-modal', () => {
+    dialog.open(PizzaMsg, {
+      viewContainerRef: testViewContainerRef,
+      ariaModal: true,
+    });
+    viewContainerFixture.detectChanges();
+
+    const container = overlayContainerElement.querySelector('cdk-dialog-container')!;
+    expect(container.getAttribute('aria-modal')).toBe('true');
   });
 
   it('should open a dialog with a template', () => {
@@ -112,7 +128,7 @@ describe('Dialog', () => {
 
     let dialogContainerElement = overlayContainerElement.querySelector('cdk-dialog-container')!;
     expect(dialogContainerElement.getAttribute('role')).toBe('dialog');
-    expect(dialogContainerElement.getAttribute('aria-modal')).toBe('true');
+    expect(dialogContainerElement.getAttribute('aria-modal')).toBe('false');
 
     dialogRef.close();
   });
@@ -274,17 +290,20 @@ describe('Dialog', () => {
     const spy = jasmine.createSpy('backdropClick spy');
     dialogRef.backdropClick.subscribe(spy);
     viewContainerFixture.detectChanges();
+    flush();
 
     const backdrop = overlayContainerElement.querySelector('.cdk-overlay-backdrop') as HTMLElement;
 
     backdrop.click();
     viewContainerFixture.detectChanges();
+    flush();
     expect(spy).toHaveBeenCalledTimes(1);
 
     // Additional clicks after the dialog has closed should not be emitted
     dialogRef.disableClose = false;
     backdrop.click();
     viewContainerFixture.detectChanges();
+    flush();
     expect(spy).toHaveBeenCalledTimes(1);
   }));
 
@@ -295,6 +314,7 @@ describe('Dialog', () => {
     dialogRef.keydownEvents.subscribe(spy);
 
     viewContainerFixture.detectChanges();
+    flush();
 
     let backdrop = overlayContainerElement.querySelector('.cdk-overlay-backdrop') as HTMLElement;
     let container = overlayContainerElement.querySelector('cdk-dialog-container') as HTMLElement;
@@ -504,24 +524,28 @@ describe('Dialog', () => {
   }));
 
   it('should close all dialogs when the user goes forwards/backwards in history', fakeAsync(() => {
-    dialog.open(PizzaMsg);
+    const closeSpy = jasmine.createSpy('closed');
+    dialog.open(PizzaMsg).closed.subscribe(closeSpy);
     viewContainerFixture.detectChanges();
-    dialog.open(PizzaMsg);
+    dialog.open(PizzaMsg).closed.subscribe(closeSpy);
     viewContainerFixture.detectChanges();
 
     expect(overlayContainerElement.querySelectorAll('cdk-dialog-container').length).toBe(2);
+    expect(closeSpy).not.toHaveBeenCalled();
 
     mockLocation.simulateUrlPop('');
     viewContainerFixture.detectChanges();
     flush();
 
     expect(overlayContainerElement.querySelectorAll('cdk-dialog-container').length).toBe(0);
+    expect(closeSpy).toHaveBeenCalledTimes(2);
   }));
 
   it('should close all open dialogs when the location hash changes', fakeAsync(() => {
-    dialog.open(PizzaMsg);
+    const closeSpy = jasmine.createSpy('closed');
+    dialog.open(PizzaMsg).closed.subscribe(closeSpy);
     viewContainerFixture.detectChanges();
-    dialog.open(PizzaMsg);
+    dialog.open(PizzaMsg).closed.subscribe(closeSpy);
     viewContainerFixture.detectChanges();
 
     expect(overlayContainerElement.querySelectorAll('cdk-dialog-container').length).toBe(2);
@@ -531,6 +555,28 @@ describe('Dialog', () => {
     flush();
 
     expect(overlayContainerElement.querySelectorAll('cdk-dialog-container').length).toBe(0);
+  }));
+
+  it('should close the dialog when detached externally', fakeAsync(() => {
+    const closeSpy = jasmine.createSpy('closed');
+    dialog
+      .open(PizzaMsg, {scrollStrategy: overlay.scrollStrategies.close()})
+      .closed.subscribe(closeSpy);
+    viewContainerFixture.detectChanges();
+    dialog
+      .open(PizzaMsg, {scrollStrategy: overlay.scrollStrategies.close()})
+      .closed.subscribe(closeSpy);
+    viewContainerFixture.detectChanges();
+
+    expect(overlayContainerElement.querySelectorAll('cdk-dialog-container').length).toBe(2);
+    expect(closeSpy).not.toHaveBeenCalled();
+
+    scrolledSubject.next();
+    viewContainerFixture.detectChanges();
+    flush();
+
+    expect(overlayContainerElement.querySelectorAll('cdk-dialog-container').length).toBe(0);
+    expect(closeSpy).toHaveBeenCalledTimes(2);
   }));
 
   it('should have the componentInstance available in the afterClosed callback', fakeAsync(() => {
@@ -723,9 +769,11 @@ describe('Dialog', () => {
       fakeAsync(() => {
         const templateInjectFixture = TestBed.createComponent(TemplateInjectorParentComponent);
         templateInjectFixture.detectChanges();
+        flush();
 
         dialog.open(templateInjectFixture.componentInstance.templateRef);
         templateInjectFixture.detectChanges();
+        flush();
 
         expect(templateInjectFixture.componentInstance.innerComponentValue).toBe(
           'hello from parent component',
@@ -806,7 +854,7 @@ describe('Dialog', () => {
       });
 
       viewContainerFixture.detectChanges();
-      flushMicrotasks();
+      flush();
 
       expect(document.activeElement!.tagName)
         .withContext('Expected first tabbable element (input) in the dialog to be focused.')
@@ -841,7 +889,7 @@ describe('Dialog', () => {
       flushMicrotasks();
 
       let firstHeader = overlayContainerElement.querySelector(
-        'h1[tabindex="-1"]',
+        'h2[tabindex="-1"]',
       ) as HTMLInputElement;
 
       expect(document.activeElement)
@@ -876,9 +924,8 @@ describe('Dialog', () => {
 
       let dialogRef = dialog.open(PizzaMsg, {viewContainerRef: testViewContainerRef});
 
-      flushMicrotasks();
       viewContainerFixture.detectChanges();
-      flushMicrotasks();
+      flush();
 
       expect(document.activeElement!.id).not.toBe(
         'dialog-trigger',
@@ -886,7 +933,6 @@ describe('Dialog', () => {
       );
 
       dialogRef.close();
-      flushMicrotasks();
       viewContainerFixture.detectChanges();
       flush();
 
@@ -905,18 +951,18 @@ describe('Dialog', () => {
       viewContainerFixture.destroy();
       const fixture = TestBed.createComponent(ShadowDomComponent);
       fixture.detectChanges();
+      flush();
       const button = fixture.debugElement.query(By.css('button'))!.nativeElement;
 
       button.focus();
 
       const dialogRef = dialog.open(PizzaMsg);
-      flushMicrotasks();
       fixture.detectChanges();
-      flushMicrotasks();
+      flush();
 
       const spy = spyOn(button, 'focus').and.callThrough();
       dialogRef.close();
-      flushMicrotasks();
+      flush();
       fixture.detectChanges();
       tick(500);
 
@@ -960,7 +1006,7 @@ describe('Dialog', () => {
       dialog.open(DialogWithoutFocusableElements);
 
       viewContainerFixture.detectChanges();
-      flushMicrotasks();
+      flush();
 
       expect(document.activeElement!.tagName.toLowerCase())
         .withContext('Expected dialog container to be focused.')
@@ -979,14 +1025,12 @@ describe('Dialog', () => {
         restoreFocus: false,
       });
 
-      flushMicrotasks();
       viewContainerFixture.detectChanges();
-      flushMicrotasks();
+      flush();
 
       expect(document.activeElement!.id).not.toBe('dialog-trigger');
 
       dialogRef.close();
-      flushMicrotasks();
       viewContainerFixture.detectChanges();
       flush();
 
@@ -1082,8 +1126,7 @@ describe('Dialog with a parent Dialog', () => {
 
   beforeEach(fakeAsync(() => {
     TestBed.configureTestingModule({
-      imports: [DialogModule],
-      declarations: [ComponentThatProvidesMatDialog],
+      imports: [DialogModule, ComponentThatProvidesMatDialog],
       providers: [
         {
           provide: OverlayContainer,
@@ -1096,7 +1139,6 @@ describe('Dialog with a parent Dialog', () => {
       ],
     });
 
-    TestBed.compileComponents();
     parentDialog = TestBed.inject(Dialog);
     fixture = TestBed.createComponent(ComponentThatProvidesMatDialog);
     childDialog = fixture.componentInstance.dialog;
@@ -1172,22 +1214,26 @@ describe('Dialog with a parent Dialog', () => {
   }));
 });
 
-@Directive({selector: 'dir-with-view-container'})
+@Directive({
+  selector: 'dir-with-view-container',
+})
 class DirectiveWithViewContainer {
-  constructor(public viewContainerRef: ViewContainerRef) {}
+  viewContainerRef = inject(ViewContainerRef);
 }
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: 'hello',
+  standalone: false,
 })
 class ComponentWithOnPushViewContainer {
-  constructor(public viewContainerRef: ViewContainerRef) {}
+  viewContainerRef = inject(ViewContainerRef);
 }
 
 @Component({
   selector: 'arbitrary-component',
   template: `<dir-with-view-container></dir-with-view-container>`,
+  imports: [DirectiveWithViewContainer],
 })
 class ComponentWithChildViewContainer {
   @ViewChild(DirectiveWithViewContainer) childWithViewContainer: DirectiveWithViewContainer;
@@ -1201,6 +1247,7 @@ class ComponentWithChildViewContainer {
   selector: 'arbitrary-component-with-template-ref',
   template: `<ng-template let-data let-dialogRef="dialogRef">
       Cheese {{localValue}} {{data?.value}}{{setDialogRef(dialogRef)}}</ng-template>`,
+  imports: [DialogModule],
 })
 class ComponentWithTemplateRef {
   localValue: string;
@@ -1215,19 +1262,21 @@ class ComponentWithTemplateRef {
 }
 
 /** Simple component for testing ComponentPortal. */
-@Component({template: '<p>Pizza</p> <input> <button>Close</button>'})
+@Component({
+  template: '<p>Pizza</p> <input> <button>Close</button>',
+  imports: [DialogModule],
+})
 class PizzaMsg {
-  constructor(
-    public dialogRef: DialogRef<PizzaMsg>,
-    public dialogInjector: Injector,
-    public directionality: Directionality,
-  ) {}
+  dialogRef = inject<DialogRef<PizzaMsg>>(DialogRef);
+  dialogInjector = inject(Injector);
+  directionality = inject(Directionality);
 }
 
 @Component({
   template: `
-    <h1>This is the title</h1>
+    <h2>This is the title</h2>
   `,
+  imports: [DialogModule],
 })
 class ContentElementDialog {
   closeButtonAriaLabel: string;
@@ -1236,27 +1285,45 @@ class ContentElementDialog {
 @Component({
   template: '',
   providers: [Dialog],
+  imports: [DialogModule],
 })
 class ComponentThatProvidesMatDialog {
-  constructor(public dialog: Dialog) {}
+  dialog = inject(Dialog);
 }
 
 /** Simple component for testing ComponentPortal. */
-@Component({template: ''})
+@Component({
+  template: '',
+  imports: [DialogModule],
+})
 class DialogWithInjectedData {
-  constructor(@Inject(DIALOG_DATA) public data: any) {}
+  data = inject(DIALOG_DATA);
 }
 
-@Component({template: '<p>Pasta</p>'})
+@Component({
+  template: '<p>Pasta</p>',
+  imports: [DialogModule],
+})
 class DialogWithoutFocusableElements {}
 
 @Component({
   template: `<button>I'm a button</button>`,
   encapsulation: ViewEncapsulation.ShadowDom,
+  standalone: false,
 })
 class ShadowDomComponent {}
 
 const TEMPLATE_INJECTOR_TEST_TOKEN = new InjectionToken<string>('TEMPLATE_INJECTOR_TEST_TOKEN');
+
+@Directive({
+  selector: 'template-injector-inner',
+})
+class TemplateInjectorInnerDirective {
+  constructor() {
+    const parent = inject(TemplateInjectorParentComponent);
+    parent.innerComponentValue = inject(TEMPLATE_INJECTOR_TEST_TOKEN);
+  }
+}
 
 @Component({
   template: `<ng-template><template-injector-inner></template-injector-inner></ng-template>`,
@@ -1266,17 +1333,9 @@ const TEMPLATE_INJECTOR_TEST_TOKEN = new InjectionToken<string>('TEMPLATE_INJECT
       useValue: 'hello from parent component',
     },
   ],
+  imports: [TemplateInjectorInnerDirective],
 })
 class TemplateInjectorParentComponent {
   @ViewChild(TemplateRef) templateRef: TemplateRef<any>;
   innerComponentValue = '';
-}
-
-@Directive({
-  selector: 'template-injector-inner',
-})
-class TemplateInjectorInnerDirective {
-  constructor(parent: TemplateInjectorParentComponent) {
-    parent.innerComponentValue = inject(TEMPLATE_INJECTOR_TEST_TOKEN);
-  }
 }

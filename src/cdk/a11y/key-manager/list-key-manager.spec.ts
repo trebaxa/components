@@ -1,7 +1,7 @@
 import {DOWN_ARROW, END, HOME, LEFT_ARROW, RIGHT_ARROW, TAB, UP_ARROW} from '@angular/cdk/keycodes';
 import {createKeyboardEvent} from '../../testing/private';
-import {QueryList} from '@angular/core';
-import {fakeAsync, tick} from '@angular/core/testing';
+import {Component, QueryList, signal} from '@angular/core';
+import {TestBed, fakeAsync, tick} from '@angular/core/testing';
 import {take} from 'rxjs/operators';
 import {FocusOrigin} from '../focus-monitor/focus-monitor';
 import {ActiveDescendantKeyManager} from './activedescendant-key-manager';
@@ -106,6 +106,33 @@ describe('Key managers', () => {
       expect(keyManager.activeItem).toBeNull();
     });
 
+    it('should maintain the active item when the signal-based items change', () => {
+      keyManager.destroy();
+
+      @Component({template: ''})
+      class App {}
+
+      const fixture = TestBed.createComponent(App);
+      fixture.detectChanges();
+      const items = signal([
+        new FakeFocusable('one'),
+        new FakeFocusable('two'),
+        new FakeFocusable('three'),
+      ]);
+
+      keyManager = new ListKeyManager<FakeFocusable>(items, fixture.componentRef.injector);
+      keyManager.setFirstItemActive();
+      spyOn(keyManager, 'setActiveItem').and.callThrough();
+
+      expect(keyManager.activeItemIndex).toBe(0);
+      expect(keyManager.activeItem!.getLabel()).toBe('one');
+      items.update(current => [new FakeFocusable('zero'), ...current]);
+      fixture.detectChanges();
+
+      expect(keyManager.activeItemIndex).toBe(1);
+      expect(keyManager.activeItem!.getLabel()).toBe('one');
+    });
+
     describe('Key events', () => {
       it('should emit tabOut when the tab key is pressed', () => {
         const spy = jasmine.createSpy('tabOut spy');
@@ -150,6 +177,7 @@ describe('Key managers', () => {
 
         keyManager.setActiveItem(0);
         itemList.reset([new FakeFocusable('zero'), ...itemList.toArray()]);
+        itemList.notifyOnChanges();
         keyManager.setActiveItem(0);
 
         expect(spy).toHaveBeenCalledTimes(1);
@@ -342,6 +370,7 @@ describe('Key managers', () => {
           const items = itemList.toArray();
           items[1].disabled = true;
           itemList.reset(items);
+          itemList.notifyOnChanges();
 
           // Next event should skip past disabled item from 0 to 2
           keyManager.onKeydown(this.nextKeyEvent);
@@ -367,6 +396,7 @@ describe('Key managers', () => {
           items[1].disabled = undefined;
           items[2].disabled = undefined;
           itemList.reset(items);
+          itemList.notifyOnChanges();
 
           keyManager.onKeydown(this.nextKeyEvent);
           expect(keyManager.activeItemIndex)
@@ -416,6 +446,7 @@ describe('Key managers', () => {
           const items = itemList.toArray();
           items[2].disabled = true;
           itemList.reset(items);
+          itemList.notifyOnChanges();
 
           keyManager.onKeydown(this.nextKeyEvent);
           expect(keyManager.activeItemIndex)
@@ -558,6 +589,7 @@ describe('Key managers', () => {
         const items = itemList.toArray();
         items[0].disabled = true;
         itemList.reset(items);
+        itemList.notifyOnChanges();
 
         keyManager.setFirstItemActive();
         expect(keyManager.activeItemIndex)
@@ -580,6 +612,7 @@ describe('Key managers', () => {
         const items = itemList.toArray();
         items[2].disabled = true;
         itemList.reset(items);
+        itemList.notifyOnChanges();
 
         keyManager.setLastItemActive();
         expect(keyManager.activeItemIndex)
@@ -602,6 +635,7 @@ describe('Key managers', () => {
         const items = itemList.toArray();
         items[1].disabled = true;
         itemList.reset(items);
+        itemList.notifyOnChanges();
 
         expect(keyManager.activeItemIndex)
           .withContext(`Expected first item of the list to be active.`)
@@ -629,6 +663,7 @@ describe('Key managers', () => {
         const items = itemList.toArray();
         items[1].disabled = true;
         itemList.reset(items);
+        itemList.notifyOnChanges();
 
         keyManager.onKeydown(fakeKeyEvents.downArrow);
         keyManager.onKeydown(fakeKeyEvents.downArrow);
@@ -706,6 +741,7 @@ describe('Key managers', () => {
         const items = itemList.toArray();
         items.forEach(item => (item.disabled = true));
         itemList.reset(items);
+        itemList.notifyOnChanges();
 
         keyManager.onKeydown(fakeKeyEvents.downArrow);
       });
@@ -730,6 +766,7 @@ describe('Key managers', () => {
         const items = itemList.toArray();
         items[1].disabled = true;
         itemList.reset(items);
+        itemList.notifyOnChanges();
 
         expect(keyManager.activeItemIndex).toBe(0);
 
@@ -744,6 +781,7 @@ describe('Key managers', () => {
         const items = itemList.toArray();
         items[1].skipItem = true;
         itemList.reset(items);
+        itemList.notifyOnChanges();
 
         expect(keyManager.activeItemIndex).toBe(0);
 
@@ -839,6 +877,7 @@ describe('Key managers', () => {
           new FakeFocusable('две'),
           new FakeFocusable('три'),
         ]);
+        itemList.notifyOnChanges();
 
         const keyboardEvent = createKeyboardEvent('keydown', 68, 'д');
 
@@ -854,6 +893,7 @@ describe('Key managers', () => {
           new FakeFocusable('321'),
           new FakeFocusable('`!?'),
         ]);
+        itemList.notifyOnChanges();
 
         keyManager.onKeydown(createKeyboardEvent('keydown', 192, '`')); // types "`"
         tick(debounceInterval);
@@ -874,6 +914,7 @@ describe('Key managers', () => {
         const items = itemList.toArray();
         items[0].disabled = true;
         itemList.reset(items);
+        itemList.notifyOnChanges();
 
         keyManager.onKeydown(createKeyboardEvent('keydown', 79, 'o')); // types "o"
         tick(debounceInterval);
@@ -889,6 +930,7 @@ describe('Key managers', () => {
           new FakeFocusable('Boromir'),
           new FakeFocusable('Aragorn'),
         ]);
+        itemList.notifyOnChanges();
 
         keyManager.setActiveItem(1);
         keyManager.onKeydown(createKeyboardEvent('keydown', 66, 'b'));
@@ -905,6 +947,7 @@ describe('Key managers', () => {
           new FakeFocusable('Boromir'),
           new FakeFocusable('Aragorn'),
         ]);
+        itemList.notifyOnChanges();
 
         keyManager.setActiveItem(3);
         keyManager.onKeydown(createKeyboardEvent('keydown', 66, 'b'));

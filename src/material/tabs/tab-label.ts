@@ -3,17 +3,10 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {
-  Directive,
-  Inject,
-  InjectionToken,
-  Optional,
-  TemplateRef,
-  ViewContainerRef,
-} from '@angular/core';
+import {Directive, InjectionToken, inject} from '@angular/core';
 import {CdkPortal} from '@angular/cdk/portal';
 
 /**
@@ -35,11 +28,5 @@ export const MAT_TAB = new InjectionToken<any>('MAT_TAB');
   providers: [{provide: MAT_TAB_LABEL, useExisting: MatTabLabel}],
 })
 export class MatTabLabel extends CdkPortal {
-  constructor(
-    templateRef: TemplateRef<any>,
-    viewContainerRef: ViewContainerRef,
-    @Inject(MAT_TAB) @Optional() public _closestTab: any,
-  ) {
-    super(templateRef, viewContainerRef);
-  }
+  _closestTab = inject(MAT_TAB, {optional: true});
 }

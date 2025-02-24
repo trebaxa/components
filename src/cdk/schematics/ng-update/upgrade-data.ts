@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {Migration} from '../update-tool/migration';
@@ -29,6 +29,8 @@ import {
   PropertyNameUpgradeData,
   SymbolRemovalUpgradeData,
   symbolRemoval,
+  cssTokens,
+  CssTokenUpgradeData,
 } from './data';
 
 /** Upgrade data for the Angular CDK. */
@@ -37,6 +39,7 @@ export const cdkUpgradeData: UpgradeData = {
   classNames,
   constructorChecks,
   cssSelectors,
+  cssTokens,
   elementSelectors,
   inputNames,
   methodCallChecks,
@@ -54,6 +57,7 @@ export interface UpgradeData {
   classNames: VersionChanges<ClassNameUpgradeData>;
   constructorChecks: VersionChanges<ConstructorChecksUpgradeData>;
   cssSelectors: VersionChanges<CssSelectorUpgradeData>;
+  cssTokens: VersionChanges<CssTokenUpgradeData>;
   elementSelectors: VersionChanges<ElementSelectorUpgradeData>;
   inputNames: VersionChanges<InputNameUpgradeData>;
   methodCallChecks: VersionChanges<MethodCallUpgradeData>;

@@ -1,25 +1,25 @@
 import {Directionality} from '@angular/cdk/bidi';
-import {BACKSPACE, DELETE, ENTER} from '@angular/cdk/keycodes';
+import {BACKSPACE, DELETE, ENTER, SPACE} from '@angular/cdk/keycodes';
 import {
   createKeyboardEvent,
   dispatchEvent,
   dispatchFakeEvent,
   dispatchKeyboardEvent,
-} from '../../cdk/testing/private';
+} from '@angular/cdk/testing/private';
 import {Component, DebugElement, ElementRef, ViewChild} from '@angular/core';
-import {waitForAsync, ComponentFixture, TestBed, flush, fakeAsync} from '@angular/core/testing';
+import {ComponentFixture, TestBed, fakeAsync, flush, waitForAsync} from '@angular/core/testing';
 import {By} from '@angular/platform-browser';
 import {Subject} from 'rxjs';
 import {
-  MatChipEditedEvent,
   MatChipEditInput,
+  MatChipEditedEvent,
   MatChipEvent,
   MatChipGrid,
   MatChipRow,
   MatChipsModule,
 } from './index';
 
-describe('MDC-based Row Chips', () => {
+describe('Row Chips', () => {
   let fixture: ComponentFixture<any>;
   let chipDebugElement: DebugElement;
   let chipNativeElement: HTMLElement;
@@ -29,8 +29,7 @@ describe('MDC-based Row Chips', () => {
 
   beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
-      imports: [MatChipsModule],
-      declarations: [SingleChip],
+      imports: [MatChipsModule, SingleChip],
       providers: [
         {
           provide: Directionality,
@@ -41,8 +40,6 @@ describe('MDC-based Row Chips', () => {
         },
       ],
     });
-
-    TestBed.compileComponents();
   }));
 
   describe('MatChipRow', () => {
@@ -72,6 +69,7 @@ describe('MDC-based Row Chips', () => {
 
         // Force a destroy callback
         testComponent.shouldShow = false;
+        fixture.changeDetectorRef.markForCheck();
         fixture.detectChanges();
 
         expect(testComponent.chipDestroy).toHaveBeenCalledTimes(1);
@@ -81,6 +79,7 @@ describe('MDC-based Row Chips', () => {
         expect(chipNativeElement.classList).toContain('mat-primary');
 
         testComponent.color = 'warn';
+        fixture.changeDetectorRef.markForCheck();
         fixture.detectChanges();
 
         expect(chipNativeElement.classList).not.toContain('mat-primary');
@@ -96,11 +95,8 @@ describe('MDC-based Row Chips', () => {
         expect(testComponent.chipRemove).toHaveBeenCalledWith({chip: chipInstance});
       });
 
-      it('should prevent the default click action', () => {
-        const event = dispatchFakeEvent(chipNativeElement, 'mousedown');
-        fixture.detectChanges();
-
-        expect(event.defaultPrevented).toBe(true);
+      it('should have a tabindex', () => {
+        expect(chipNativeElement.getAttribute('tabindex')).toBe('-1');
       });
 
       it('should have the correct role', () => {
@@ -109,6 +105,7 @@ describe('MDC-based Row Chips', () => {
 
       it('should be able to set a custom role', () => {
         chipInstance.role = 'button';
+        fixture.changeDetectorRef.markForCheck();
         fixture.detectChanges();
 
         expect(chipNativeElement.getAttribute('role')).toBe('button');
@@ -119,6 +116,7 @@ describe('MDC-based Row Chips', () => {
       describe('when removable is true', () => {
         beforeEach(() => {
           testComponent.removable = true;
+          fixture.changeDetectorRef.markForCheck();
           fixture.detectChanges();
         });
 
@@ -127,7 +125,7 @@ describe('MDC-based Row Chips', () => {
 
           spyOn(testComponent, 'chipRemove');
 
-          chipInstance._handleKeydown(DELETE_EVENT);
+          dispatchEvent(chipNativeElement, DELETE_EVENT);
           fixture.detectChanges();
 
           expect(testComponent.chipRemove).toHaveBeenCalled();
@@ -138,16 +136,31 @@ describe('MDC-based Row Chips', () => {
 
           spyOn(testComponent, 'chipRemove');
 
-          chipInstance._handleKeydown(BACKSPACE_EVENT);
+          dispatchEvent(chipNativeElement, BACKSPACE_EVENT);
           fixture.detectChanges();
 
           expect(testComponent.chipRemove).toHaveBeenCalled();
+        });
+
+        it('should not remove for repeated BACKSPACE event', () => {
+          const BACKSPACE_EVENT = createKeyboardEvent('keydown', BACKSPACE);
+          Object.defineProperty(BACKSPACE_EVENT, 'repeat', {
+            get: () => true,
+          });
+
+          spyOn(testComponent, 'chipRemove');
+
+          dispatchEvent(chipNativeElement, BACKSPACE_EVENT);
+          fixture.detectChanges();
+
+          expect(testComponent.chipRemove).not.toHaveBeenCalled();
         });
       });
 
       describe('when removable is false', () => {
         beforeEach(() => {
           testComponent.removable = false;
+          fixture.changeDetectorRef.markForCheck();
           fixture.detectChanges();
         });
 
@@ -156,7 +169,7 @@ describe('MDC-based Row Chips', () => {
 
           spyOn(testComponent, 'chipRemove');
 
-          chipInstance._handleKeydown(DELETE_EVENT);
+          dispatchEvent(chipNativeElement, DELETE_EVENT);
           fixture.detectChanges();
 
           expect(testComponent.chipRemove).not.toHaveBeenCalled();
@@ -168,7 +181,7 @@ describe('MDC-based Row Chips', () => {
           spyOn(testComponent, 'chipRemove');
 
           // Use the delete to remove the chip
-          chipInstance._handleKeydown(BACKSPACE_EVENT);
+          dispatchEvent(chipNativeElement, BACKSPACE_EVENT);
           fixture.detectChanges();
 
           expect(testComponent.chipRemove).not.toHaveBeenCalled();
@@ -183,14 +196,15 @@ describe('MDC-based Row Chips', () => {
         expect(primaryActionElement.getAttribute('aria-disabled')).toBe('false');
 
         testComponent.disabled = true;
+        fixture.changeDetectorRef.markForCheck();
         fixture.detectChanges();
 
         expect(primaryActionElement.getAttribute('aria-disabled')).toBe('true');
       });
 
       describe('focus management', () => {
-        it('sends focus to first grid cell on mousedown', () => {
-          dispatchFakeEvent(chipNativeElement, 'mousedown');
+        it('sends focus to first grid cell on root chip focus', () => {
+          dispatchFakeEvent(chipNativeElement, 'focus');
           fixture.detectChanges();
 
           expect(document.activeElement).toHaveClass('mdc-evolution-chip__action--primary');
@@ -214,6 +228,7 @@ describe('MDC-based Row Chips', () => {
     describe('editable behavior', () => {
       beforeEach(() => {
         testComponent.editable = true;
+        fixture.changeDetectorRef.markForCheck();
         fixture.detectChanges();
       });
 
@@ -238,6 +253,7 @@ describe('MDC-based Row Chips', () => {
 
       beforeEach(fakeAsync(() => {
         testComponent.editable = true;
+        fixture.changeDetectorRef.markForCheck();
         fixture.detectChanges();
         dispatchFakeEvent(chipNativeElement, 'dblclick');
         fixture.detectChanges();
@@ -259,14 +275,18 @@ describe('MDC-based Row Chips', () => {
         return chipNativeElement.querySelector('.mat-chip-edit-input')!;
       }
 
-      it('should set the role of the primary action based on whether it is editable', () => {
+      it('should set the role of the primary action to gridcell', () => {
         testComponent.editable = false;
+        fixture.changeDetectorRef.markForCheck();
         fixture.detectChanges();
-        expect(primaryAction.hasAttribute('role')).toBe(false);
+        expect(primaryAction.getAttribute('role')).toBe('gridcell');
 
         testComponent.editable = true;
+        fixture.changeDetectorRef.markForCheck();
         fixture.detectChanges();
-        expect(primaryAction.getAttribute('role')).toBe('button');
+        // Test regression of bug where element is mislabeled as a button role. Element that does not perform its
+        // action on click event is not a button by ARIA spec (#27106).
+        expect(primaryAction.getAttribute('role')).toBe('gridcell');
       });
 
       it('should not delete the chip on DELETE or BACKSPACE', () => {
@@ -305,6 +325,7 @@ describe('MDC-based Row Chips', () => {
       it('should use the default edit input if none is projected', () => {
         keyDownOnPrimaryAction(ENTER, 'Enter');
         testComponent.useCustomEditInput = false;
+        fixture.changeDetectorRef.markForCheck();
         fixture.detectChanges();
         dispatchFakeEvent(chipNativeElement, 'dblclick');
         fixture.detectChanges();
@@ -331,17 +352,26 @@ describe('MDC-based Row Chips', () => {
         flush();
         expect(document.activeElement).not.toBe(primaryAction);
       }));
+
+      it('should not prevent SPACE events when editing', fakeAsync(() => {
+        const event = dispatchKeyboardEvent(getEditInput(), 'keydown', SPACE);
+        fixture.detectChanges();
+        flush();
+
+        expect(event.defaultPrevented).toBe(false);
+      }));
     });
 
     describe('a11y', () => {
       it('should apply `ariaLabel` and `ariaDesciption` to the primary gridcell', () => {
         fixture.componentInstance.ariaLabel = 'chip name';
         fixture.componentInstance.ariaDescription = 'chip description';
+        fixture.changeDetectorRef.markForCheck();
 
         fixture.detectChanges();
 
         const primaryGridCell = (fixture.nativeElement as HTMLElement).querySelector(
-          '[role="gridcell"].mdc-evolution-chip__cell--primary .mat-mdc-chip-action',
+          '[role="gridcell"].mdc-evolution-chip__cell--primary.mat-mdc-chip-action',
         );
         expect(primaryGridCell)
           .withContext('expected to find the grid cell for the primary chip action')
@@ -377,19 +407,24 @@ describe('MDC-based Row Chips', () => {
 @Component({
   template: `
     <mat-chip-grid #chipGrid>
-      <div *ngIf="shouldShow">
-        <mat-chip-row [removable]="removable"
-                 [color]="color" [disabled]="disabled" [editable]="editable"
-                 (destroyed)="chipDestroy($event)"
-                 (removed)="chipRemove($event)" (edited)="chipEdit($event)"
-                 [aria-label]="ariaLabel" [aria-description]="ariaDescription">
-          {{name}}
-          <button matChipRemove>x</button>
-          <span *ngIf="useCustomEditInput" class="projected-edit-input" matChipEditInput></span>
-        </mat-chip-row>
-        <input matInput [matChipInputFor]="chipGrid" #chipInput>
-      </div>
+      @if (shouldShow) {
+        <div>
+          <mat-chip-row [removable]="removable"
+                  [color]="color" [disabled]="disabled" [editable]="editable"
+                  (destroyed)="chipDestroy($event)"
+                  (removed)="chipRemove($event)" (edited)="chipEdit($event)"
+                  [aria-label]="ariaLabel" [aria-description]="ariaDescription">
+            {{name}}
+            <button matChipRemove>x</button>
+            @if (useCustomEditInput) {
+              <span class="projected-edit-input" matChipEditInput></span>
+            }
+          </mat-chip-row>
+          <input matInput [matChipInputFor]="chipGrid" #chipInput>
+        </div>
+      }
     </mat-chip-grid>`,
+  imports: [MatChipsModule],
 })
 class SingleChip {
   @ViewChild(MatChipGrid) chipList: MatChipGrid;

@@ -1,7 +1,7 @@
 import {Direction} from '@angular/cdk/bidi';
 import {CdkScrollable, ScrollingModule} from '@angular/cdk/scrolling';
 import {Component, ElementRef, Input, ViewChild} from '@angular/core';
-import {waitForAsync, ComponentFixture, TestBed} from '@angular/core/testing';
+import {ComponentFixture, TestBed, waitForAsync} from '@angular/core/testing';
 
 function expectOverlapping(el1: ElementRef<Element>, el2: ElementRef<Element>, expected = true) {
   const r1 = el1.nativeElement.getBoundingClientRect();
@@ -26,9 +26,8 @@ describe('CdkScrollable', () => {
 
   beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
-      imports: [ScrollingModule],
-      declarations: [ScrollableViewport],
-    }).compileComponents();
+      imports: [ScrollingModule, ScrollableViewport],
+    });
   }));
 
   beforeEach(() => {
@@ -130,6 +129,7 @@ describe('CdkScrollable', () => {
   describe('in RTL context', () => {
     beforeEach(() => {
       testComponent.dir = 'rtl';
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
       maxOffset =
         testComponent.scrollContainer.nativeElement.scrollHeight -
@@ -228,8 +228,7 @@ describe('CdkScrollable', () => {
         <div #lastRowEnd class="cell"></div>
       </div>
     </div>`,
-  styles: [
-    `
+  styles: `
     .scroll-container {
       width: 100px;
       height: 100px;
@@ -247,7 +246,7 @@ describe('CdkScrollable', () => {
       height: 100px;
     }
   `,
-  ],
+  imports: [ScrollingModule],
 })
 class ScrollableViewport {
   @Input() dir: Direction;

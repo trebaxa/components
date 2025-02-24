@@ -3,23 +3,22 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {BooleanInput, coerceBooleanProperty} from '@angular/cdk/coercion';
 import {DOWN_ARROW, hasModifierKey, ModifierKey} from '@angular/cdk/keycodes';
 import {
   Directive,
   ElementRef,
   EventEmitter,
-  Inject,
   Input,
   OnDestroy,
-  Optional,
   Output,
   AfterViewInit,
   OnChanges,
   SimpleChanges,
+  booleanAttribute,
+  inject,
 } from '@angular/core';
 import {
   AbstractControl,
@@ -56,7 +55,11 @@ export class MatDatepickerInputEvent<D, S = unknown> {
   }
 }
 
-/** Function that can be used to filter out dates from a calendar. */
+/**
+ * Function that can be used to filter out dates from a calendar.
+ * Datepicker can sometimes receive a null value as input for the date argument.
+ * This doesn't represent a "null date" but rather signifies that no date has been selected yet in the calendar.
+ */
 export type DateFilterFn<D> = (date: D | null) => boolean;
 
 /**
@@ -78,6 +81,10 @@ export interface _MatFormFieldPartial {
 export abstract class MatDatepickerInputBase<S, D = ExtractDateTypeFromSelection<S>>
   implements ControlValueAccessor, AfterViewInit, OnChanges, OnDestroy, Validator
 {
+  protected _elementRef = inject<ElementRef<HTMLInputElement>>(ElementRef);
+  _dateAdapter = inject<DateAdapter<D>>(DateAdapter, {optional: true})!;
+  private _dateFormats = inject<MatDateFormats>(MAT_DATE_FORMATS, {optional: true})!;
+
   /** Whether the component has been initialized. */
   private _isInitialized: boolean;
 
@@ -92,12 +99,12 @@ export abstract class MatDatepickerInputBase<S, D = ExtractDateTypeFromSelection
   protected _model: MatDateSelectionModel<S, D> | undefined;
 
   /** Whether the datepicker-input is disabled. */
-  @Input()
+  @Input({transform: booleanAttribute})
   get disabled(): boolean {
     return !!this._disabled || this._parentDisabled();
   }
-  set disabled(value: BooleanInput) {
-    const newValue = coerceBooleanProperty(value);
+  set disabled(value: boolean) {
+    const newValue = value;
     const element = this._elementRef.nativeElement;
 
     if (this._disabled !== newValue) {
@@ -238,11 +245,9 @@ export abstract class MatDatepickerInputBase<S, D = ExtractDateTypeFromSelection
   /** Whether the last value set on the input was valid. */
   protected _lastValueValid = false;
 
-  constructor(
-    protected _elementRef: ElementRef<HTMLInputElement>,
-    @Optional() public _dateAdapter: DateAdapter<D>,
-    @Optional() @Inject(MAT_DATE_FORMATS) private _dateFormats: MatDateFormats,
-  ) {
+  constructor(...args: unknown[]);
+
+  constructor() {
     if (typeof ngDevMode === 'undefined' || ngDevMode) {
       if (!this._dateAdapter) {
         throw createMissingDateImplError('DateAdapter');
@@ -253,7 +258,7 @@ export abstract class MatDatepickerInputBase<S, D = ExtractDateTypeFromSelection
     }
 
     // Update the displayed date when the locale changes.
-    this._localeSubscription = _dateAdapter.localeChanges.subscribe(() => {
+    this._localeSubscription = this._dateAdapter.localeChanges.subscribe(() => {
       this._assignValueProgrammatically(this.value);
     });
   }

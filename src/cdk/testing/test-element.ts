@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {ElementDimensions} from './element-dimensions';
@@ -65,6 +65,7 @@ export enum TestKey {
   F11,
   F12,
   META,
+  COMMA, // Commas are a common separator key.
 }
 
 /**

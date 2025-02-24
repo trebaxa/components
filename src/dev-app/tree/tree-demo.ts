@@ -3,13 +3,29 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
-import {Component} from '@angular/core';
 import {CdkTreeModule} from '@angular/cdk/tree';
-import {CommonModule} from '@angular/common';
-import {CdkTreeExamplesModule} from '@angular/components-examples/cdk/tree';
-import {TreeExamplesModule} from '@angular/components-examples/material/tree';
+import {
+  CdkTreeFlatExample,
+  CdkTreeNestedExample,
+  CdkTreeFlatLevelAccessorExample,
+  CdkTreeNestedLevelAccessorExample,
+  CdkTreeNestedChildrenAccessorExample,
+  CdkTreeFlatChildrenAccessorExample,
+  CdkTreeComplexExample,
+  CdkTreeCustomKeyManagerExample,
+} from '@angular/components-examples/cdk/tree';
+import {
+  TreeDynamicExample,
+  TreeFlatOverviewExample,
+  TreeLegacyKeyboardInterfaceExample,
+  TreeLoadmoreExample,
+  TreeNestedOverviewExample,
+  TreeNestedChildAccessorOverviewExample,
+  TreeFlatChildAccessorOverviewExample,
+} from '@angular/components-examples/material/tree';
+import {ChangeDetectionStrategy, Component} from '@angular/core';
 import {FormsModule} from '@angular/forms';
 import {MatButtonModule} from '@angular/material/button';
 import {MatCheckboxModule} from '@angular/material/checkbox';
@@ -23,14 +39,25 @@ import {MatTreeModule} from '@angular/material/tree';
 @Component({
   selector: 'tree-demo',
   templateUrl: 'tree-demo.html',
-  styleUrls: ['tree-demo.css'],
-  standalone: true,
+  styleUrl: 'tree-demo.css',
   imports: [
     CdkTreeModule,
-    CdkTreeExamplesModule,
-    CommonModule,
+    CdkTreeCustomKeyManagerExample,
+    CdkTreeFlatExample,
+    CdkTreeNestedExample,
+    CdkTreeFlatChildrenAccessorExample,
+    CdkTreeFlatLevelAccessorExample,
+    CdkTreeNestedChildrenAccessorExample,
+    CdkTreeNestedLevelAccessorExample,
+    CdkTreeComplexExample,
     FormsModule,
-    TreeExamplesModule,
+    TreeDynamicExample,
+    TreeFlatChildAccessorOverviewExample,
+    TreeFlatOverviewExample,
+    TreeLegacyKeyboardInterfaceExample,
+    TreeLoadmoreExample,
+    TreeNestedChildAccessorOverviewExample,
+    TreeNestedOverviewExample,
     MatButtonModule,
     MatExpansionModule,
     MatCheckboxModule,
@@ -40,5 +67,6 @@ import {MatTreeModule} from '@angular/material/tree';
     MatTreeModule,
     MatProgressBarModule,
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TreeDemo {}

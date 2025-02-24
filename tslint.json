@@ -1,10 +1,6 @@
 {
   "extends": ["rxjs-tslint-rules"],
-  "rulesDirectory": [
-    "./tools/tslint-rules/",
-    "node_modules/vrsource-tslint-rules/rules",
-    "node_modules/codelyzer"
-  ],
+  "rulesDirectory": ["./tools/tslint-rules/", "node_modules/vrsource-tslint-rules/rules"],
   "rules": {
     "ban-types": [true, ["ReadonlyArray<.+>", "Use 'readonly T[]' instead."]],
     // Disable this flag because of SHA tslint#48b0c597f9257712c7d1f04b55ed0aa60e333f6a
@@ -20,7 +16,7 @@
     "no-arg": true,
     "no-internal-module": true,
     "no-trailing-whitespace": true,
-    "no-shadowed-variable": true,
+    "no-shadowed-variable": false, // Disabled, because it breaks in TS 5.2
     "no-unused-expression": true,
     "no-unused-variable": true,
     "no-var-keyword": true,
@@ -55,17 +51,8 @@
     "no-namespace": true,
     "jsdoc-format": [true, "check-multiline-start"],
     "no-duplicate-imports": true,
-    "await-promise": [true, "PromiseLike"],
+    "await-promise": [true, "PromiseLike", "ElementArrayFinder"],
     "array-type": [true, "array"],
-
-    // Codelyzer
-    "template-banana-in-box": true,
-    "contextual-lifecycle": true,
-    "contextual-decorator": true,
-    "no-output-on-prefix": true,
-    "prefer-output-readonly": true,
-    "template-no-negated-async": true,
-    "use-lifecycle-interface": true,
 
     // RxJS
     "rxjs-no-unsafe-takeuntil": true,
@@ -74,19 +61,18 @@
     // Custom Rules
     "ts-loader": true,
     "no-exposed-todo": true,
-    "no-type-only-import-export": true,
     "no-private-getters": [true, "^_"],
     "no-undecorated-base-class-di": true,
     "no-undecorated-class-with-angular-features": true,
     "setters-after-getters": true,
-    "ng-on-changes-property-access": true,
+    "lifecycle-hook-interface": true,
     "require-breaking-change-version": true,
     "no-nested-ternary": true,
-    "prefer-const-enum": true,
-    "no-lifecycle-invocation": [true, "**/!(*.spec).ts"],
+    "prefer-plain-enum": true,
+    "no-lifecycle-invocation": [true, ["**/*.spec.ts"]],
     "lightweight-tokens": [
       true,
-      ["src/**/!(*.spec).ts"],
+      ["**/*.spec.ts"],
       // Directionality is always used in Angular Material and therefore does not
       // need a lightweight token. Date Adapter is not very significant and does not
       // need a dedicated token.
@@ -104,49 +90,85 @@
     "validate-decorators": [
       true,
       {
-        "Component": {
-          "argument": 0,
-          "properties": {
-            "!host": "\\[class\\]",
-            "!preserveWhitespaces": ".*",
-            "!styles": ".*",
-            "!moduleId": ".*",
-            "changeDetection": "\\.OnPush$",
-            "encapsulation": "\\.None$"
+        "Component": [
+          {
+            "argument": 0,
+            "properties": {
+              "!preserveWhitespaces": ".*",
+              "!styles": ".*",
+              "!moduleId": ".*",
+              "encapsulation": "\\.None$"
+            },
+            "excludeFiles": ["**/dev-app/**"]
+          },
+          // Enforce OnPush & standalone even in the dev-app.
+          {
+            "argument": 0,
+            "properties": {
+              "changeDetection": "\\.OnPush$",
+              "!standalone": ".*"
+            }
           }
-        },
-        "Directive": {
-          "argument": 0,
-          "properties": {
-            "!host": "\\[class\\]"
+        ],
+        "Directive": [
+          {
+            "argument": 0,
+            "properties": {
+              "!host": "\\[class\\]"
+            },
+            "excludeFiles": ["**/dev-app/**"]
+          },
+          // Enforce standalone even in the dev-app.
+          {
+            "argument": 0,
+            "properties": {
+              "!standalone": ".*"
+            }
           }
-        },
-        "NgModule": {
-          "argument": 0,
-          "properties": {
-            "*": "^(?!\\s*$).+"
+        ],
+        "NgModule": [
+          {
+            "argument": 0,
+            "properties": {
+              "*": "^(?!\\s*$).+"
+            },
+            "excludeFiles": ["**/dev-app/**"]
           }
-        },
-        "ContentChildren": {
-          "argument": 1,
-          "required": true,
-          "properties": {
-            "descendants": "^(true|false)$"
+        ],
+        "ContentChildren": [
+          {
+            "argument": 1,
+            "required": true,
+            "properties": {
+              "descendants": "^(true|false)$"
+            },
+            "excludeFiles": ["**/dev-app/**"]
           }
-        }
+        ]
       },
-      "src/!(e2e-app|components-examples|universal-app|dev-app)/**/!(*.spec).ts"
+      [
+        // Internal code that doesn't need to follow the same standards.
+        "**/+(e2e-app|components-examples|universal-app|integration)/**",
+        "**/*.spec.ts"
+      ]
     ],
     "require-license-banner": [
       true,
-      "src/!(e2e-app|components-examples|universal-app)/**/!(*.spec).ts"
+      [
+        // Internal files that don't need license banners.
+        "**/+(e2e-app|components-examples|universal-app|dev-app|integration|tools|scripts)/**",
+        "**/*.spec.ts"
+      ]
     ],
     "no-cross-entry-point-relative-imports": [
       true,
-      "src/!(e2e-app|components-examples|universal-app|dev-app)/**/!(*.spec).ts",
-      "!src/+(cdk|material)/schematics/**/*",
-      "!src/cdk/testing/+(private|tests)/**/*",
-      "!src/google-maps/testing/**/*"
+      [
+        // Files that we don't publish to npm so the relative imports don't matter.
+        "**/+(dev-app|components-examples|schematics|tools)/**",
+        "**/google-maps/testing/**",
+        "**/cdk/testing/+(tests|private)/**",
+        "**/*.spec.ts"
+      ]
     ],
     "file-name-casing": [
       true,
@@ -159,7 +181,20 @@
     ],
     "no-unescaped-html-tag": true,
     // Ensures that all rxjs imports come only from `rxjs` and `rxjs/operators`.
-    "import-blacklist": [true, ["^rxjs(?!$|/operators$).*", "^@material/"]]
+    "import-blacklist": [true, ["^rxjs(?!$|/operators$).*"]],
+    "no-zone-dependencies": [
+      true,
+      [
+        // Allow in tests that specficially test integration with Zone.js.
+        "**/*.zone.spec.ts",
+        // TODO: Test harnesses infrastructure still relies on Zone.js.
+        "**/src/cdk/testing/testbed/task-state-zone-interceptor.ts",
+        "**/src/cdk/testing/testbed/testbed-harness-environment.ts",
+        "**/src/cdk/testing/tests/testbed.spec.ts",
+        // TODO: Tooltip harness still relies on Zone.js.
+        "**/src/material/tooltip/testing/tooltip-harness.spec.ts"
+      ]
+    ]
   },
   "linterOptions": {
     "exclude": [
@@ -172,6 +207,7 @@
       "src/cdk/schematics/ng-update/test-cases/**/*_expected_output.ts",
       "src/material/schematics/ng-update/test-cases/**/*_input.ts",
       "src/material/schematics/ng-update/test-cases/**/*_expected_output.ts",
+      "src/material/schematics/ng-generate/theme-color/index.ts",
       // These CLI-generated projects are not necessarily compliant with the lint
       // rules and they should remain as unmodified as possible.
       "integration/ng-add/**/*",

@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {PositionStrategy} from './position-strategy';
@@ -17,11 +17,11 @@ import {
   validateVerticalPosition,
 } from './connected-position';
 import {Observable, Subscription, Subject} from 'rxjs';
-import {OverlayReference} from '../overlay-reference';
 import {isElementScrolledOutsideView, isElementClippedByScrolling} from './scroll-clip';
 import {coerceCssPixelValue, coerceArray} from '@angular/cdk/coercion';
 import {Platform} from '@angular/cdk/platform';
 import {OverlayContainer} from '../overlay-container';
+import {OverlayRef} from '../overlay-ref';
 
 // TODO: refactor clipping detection into a separate thing (part of scrolling module)
 // TODO: doesn't handle both flexible width and height when it has to scroll along both axis.
@@ -41,8 +41,8 @@ export type FlexibleConnectedPositionStrategyOrigin =
       height?: number;
     });
 
-/** Equivalent of `ClientRect` without some of the properties we don't care about. */
-type Dimensions = Omit<ClientRect, 'x' | 'y' | 'toJSON'>;
+/** Equivalent of `DOMRect` without some of the properties we don't care about. */
+type Dimensions = Omit<DOMRect, 'x' | 'y' | 'toJSON'>;
 
 /**
  * A strategy for positioning overlays. Using this strategy, an overlay is given an
@@ -53,7 +53,7 @@ type Dimensions = Omit<ClientRect, 'x' | 'y' | 'toJSON'>;
  */
 export class FlexibleConnectedPositionStrategy implements PositionStrategy {
   /** The overlay to which this strategy is attached. */
-  private _overlayRef: OverlayReference;
+  private _overlayRef: OverlayRef;
 
   /** Whether we're performing the very first positioning of the overlay. */
   private _isInitialRender: boolean;
@@ -115,6 +115,9 @@ export class FlexibleConnectedPositionStrategy implements PositionStrategy {
   /** The last position to have been calculated as the best fit position. */
   private _lastPosition: ConnectedPosition | null;
 
+  /** The last calculated scroll visibility. Only tracked  */
+  private _lastScrollVisibility: ScrollingVisibility | null;
+
   /** Subject that emits whenever the position changes. */
   private readonly _positionChanges = new Subject<ConnectedOverlayPositionChange>();
 
@@ -155,7 +158,7 @@ export class FlexibleConnectedPositionStrategy implements PositionStrategy {
   }
 
   /** Attaches this position strategy to an overlay. */
-  attach(overlayRef: OverlayReference): void {
+  attach(overlayRef: OverlayRef): void {
     if (
       this._overlayRef &&
       overlayRef !== this._overlayRef &&
@@ -710,18 +713,28 @@ export class FlexibleConnectedPositionStrategy implements PositionStrategy {
       this._addPanelClasses(position.panelClass);
     }
 
-    // Save the last connected position in case the position needs to be re-calculated.
-    this._lastPosition = position;
-
     // Notify that the position has been changed along with its change properties.
     // We only emit if we've got any subscriptions, because the scroll visibility
     // calculations can be somewhat expensive.
     if (this._positionChanges.observers.length) {
-      const scrollableViewProperties = this._getScrollVisibility();
-      const changeEvent = new ConnectedOverlayPositionChange(position, scrollableViewProperties);
-      this._positionChanges.next(changeEvent);
+      const scrollVisibility = this._getScrollVisibility();
+
+      // We're recalculating on scroll, but we only want to emit if anything
+      // changed since downstream code might be hitting the `NgZone`.
+      if (
+        position !== this._lastPosition ||
+        !this._lastScrollVisibility ||
+        !compareScrollVisibility(this._lastScrollVisibility, scrollVisibility)
+      ) {
+        const changeEvent = new ConnectedOverlayPositionChange(position, scrollVisibility);
+        this._positionChanges.next(changeEvent);
+      }
+
+      this._lastScrollVisibility = scrollVisibility;
     }
 
+    // Save the last connected position in case the position needs to be re-calculated.
+    this._lastPosition = position;
     this._isInitialRender = false;
   }
 
@@ -768,7 +781,7 @@ export class FlexibleConnectedPositionStrategy implements PositionStrategy {
     } else if (position.overlayY === 'bottom') {
       // Overlay is opening "upward" and thus is bound by the top viewport edge. We need to add
       // the viewport margin back in, because the viewport rect is narrowed down to remove the
-      // margin, whereas the `origin` position is calculated based on its `ClientRect`.
+      // margin, whereas the `origin` position is calculated based on its `DOMRect`.
       bottom = viewport.height - origin.y + this._viewportMargin * 2;
       height = viewport.height - bottom + this._viewportMargin;
     } else {
@@ -802,7 +815,7 @@ export class FlexibleConnectedPositionStrategy implements PositionStrategy {
     let width: number, left: number, right: number;
 
     if (isBoundedByLeftViewportEdge) {
-      right = viewport.width - origin.x + this._viewportMargin;
+      right = viewport.width - origin.x + this._viewportMargin * 2;
       width = origin.x - this._viewportMargin;
     } else if (isBoundedByRightViewportEdge) {
       left = origin.x;
@@ -1155,7 +1168,7 @@ export class FlexibleConnectedPositionStrategy implements PositionStrategy {
     }
   }
 
-  /** Returns the ClientRect of the current origin. */
+  /** Returns the DOMRect of the current origin. */
   private _getOriginRect(): Dimensions {
     const origin = this._origin;
 
@@ -1273,9 +1286,9 @@ function getPixelValue(input: number | string | null | undefined): number | null
 }
 
 /**
- * Gets a version of an element's bounding `ClientRect` where all the values are rounded down to
+ * Gets a version of an element's bounding `DOMRect` where all the values are rounded down to
  * the nearest pixel. This allows us to account for the cases where there may be sub-pixel
- * deviations in the `ClientRect` returned by the browser (e.g. when zoomed in with a percentage
+ * deviations in the `DOMRect` returned by the browser (e.g. when zoomed in with a percentage
  * size, see #21350).
  */
 function getRoundedBoundingClientRect(clientRect: Dimensions): Dimensions {
@@ -1287,6 +1300,20 @@ function getRoundedBoundingClientRect(clientRect: Dimensions): Dimensions {
     width: Math.floor(clientRect.width),
     height: Math.floor(clientRect.height),
   };
+}
+
+/** Returns whether two `ScrollingVisibility` objects are identical. */
+function compareScrollVisibility(a: ScrollingVisibility, b: ScrollingVisibility): boolean {
+  if (a === b) {
+    return true;
+  }
+
+  return (
+    a.isOriginClipped === b.isOriginClipped &&
+    a.isOriginOutsideView === b.isOriginOutsideView &&
+    a.isOverlayClipped === b.isOverlayClipped &&
+    a.isOverlayOutsideView === b.isOverlayOutsideView
+  );
 }
 
 export const STANDARD_DROPDOWN_BELOW_POSITIONS: ConnectedPosition[] = [

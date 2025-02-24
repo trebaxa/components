@@ -1,8 +1,9 @@
 import {DOCUMENT} from '@angular/common';
 import {waitForAsync, inject, TestBed} from '@angular/core/testing';
-import {Component, NgModule, ViewChild, ViewContainerRef} from '@angular/core';
+import {Component, NgModule, ViewChild, ViewContainerRef, inject as inject_1} from '@angular/core';
 import {PortalModule, CdkPortal} from '@angular/cdk/portal';
 import {Overlay, OverlayContainer, OverlayModule, FullscreenOverlayContainer} from './index';
+import {TemplatePortalDirective} from '../portal/portal-directives';
 
 describe('FullscreenOverlayContainer', () => {
   let overlay: Overlay;
@@ -25,38 +26,38 @@ describe('FullscreenOverlayContainer', () => {
             // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy
             fakeDocument = {
               body: document.body,
+              head: document.head,
               fullscreenElement: document.createElement('div'),
               fullscreenEnabled: true,
-              addEventListener: function (eventName: string, listener: EventListener) {
+              addEventListener: (eventName: string, listener: EventListener) => {
                 if (eventName === 'fullscreenchange') {
                   fullscreenListeners.add(listener);
                 } else {
                   document.addEventListener(eventName, listener);
                 }
               },
-              removeEventListener: function (eventName: string, listener: EventListener) {
+              removeEventListener: (eventName: string, listener: EventListener) => {
                 if (eventName === 'fullscreenchange') {
                   fullscreenListeners.delete(listener);
                 } else {
                   document.addEventListener(eventName, listener);
                 }
               },
-              querySelectorAll: function (...args: [string]) {
-                return document.querySelectorAll(...args);
-              },
-              createElement: function (...args: [string, (ElementCreationOptions | undefined)?]) {
-                return document.createElement(...args);
-              },
-              getElementsByClassName: function (...args: [string]) {
-                return document.getElementsByClassName(...args);
-              },
+              querySelectorAll: (...args: [string]) => document.querySelectorAll(...args),
+              createElement: (...args: [string, (ElementCreationOptions | undefined)?]) =>
+                document.createElement(...args),
+              getElementsByClassName: (...args: [string]) =>
+                document.getElementsByClassName(...args),
+              querySelector: (...args: [string]) => document.querySelector(...args),
+              createTextNode: (...args: [string]) => document.createTextNode(...args),
+              createComment: (...args: [string]) => document.createComment(...args),
             };
 
             return fakeDocument;
           },
         },
       ],
-    }).compileComponents();
+    });
   }));
 
   beforeEach(inject([Overlay], (o: Overlay) => {
@@ -112,16 +113,16 @@ describe('FullscreenOverlayContainer', () => {
 @Component({
   template: `<ng-template cdk-portal>Cake</ng-template>`,
   providers: [Overlay],
+  imports: [TemplatePortalDirective],
 })
 class TestComponentWithTemplatePortals {
-  @ViewChild(CdkPortal) templatePortal: CdkPortal;
+  viewContainerRef = inject_1(ViewContainerRef);
 
-  constructor(public viewContainerRef: ViewContainerRef) {}
+  @ViewChild(CdkPortal) templatePortal: CdkPortal;
 }
 
 @NgModule({
-  imports: [OverlayModule, PortalModule],
-  declarations: [TestComponentWithTemplatePortals],
+  imports: [OverlayModule, PortalModule, TestComponentWithTemplatePortals],
   providers: [
     {
       provide: OverlayContainer,

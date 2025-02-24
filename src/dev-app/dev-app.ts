@@ -3,10 +3,10 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {Component, ViewEncapsulation} from '@angular/core';
+import {ChangeDetectionStrategy, Component, ViewEncapsulation} from '@angular/core';
 import {RouterModule} from '@angular/router';
 import {DevAppLayout} from './dev-app/dev-app-layout';
 
@@ -15,7 +15,7 @@ import {DevAppLayout} from './dev-app/dev-app-layout';
   selector: 'dev-app',
   template: '<dev-app-layout><router-outlet></router-outlet></dev-app-layout>',
   encapsulation: ViewEncapsulation.None,
-  standalone: true,
   imports: [DevAppLayout, RouterModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DevApp {}

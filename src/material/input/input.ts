@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {BooleanInput, coerceBooleanProperty} from '@angular/cdk/coercion';
@@ -11,19 +11,24 @@ import {getSupportedInputTypes, Platform} from '@angular/cdk/platform';
 import {AutofillMonitor} from '@angular/cdk/text-field';
 import {
   AfterViewInit,
+  booleanAttribute,
   Directive,
   DoCheck,
+  effect,
   ElementRef,
-  Inject,
+  inject,
+  InjectionToken,
   Input,
+  isSignal,
   NgZone,
   OnChanges,
   OnDestroy,
-  Optional,
-  Self,
+  Renderer2,
+  WritableSignal,
 } from '@angular/core';
+import {_IdGenerator} from '@angular/cdk/a11y';
 import {FormGroupDirective, NgControl, NgForm, Validators} from '@angular/forms';
-import {CanUpdateErrorState, ErrorStateMatcher, mixinErrorState} from '@angular/material/core';
+import {ErrorStateMatcher, _ErrorStateTracker} from '@angular/material/core';
 import {MatFormFieldControl, MatFormField, MAT_FORM_FIELD} from '@angular/material/form-field';
 import {Subject} from 'rxjs';
 import {getMatInputUnsupportedTypeError} from './input-errors';
@@ -42,32 +47,14 @@ const MAT_INPUT_INVALID_TYPES = [
   'submit',
 ];
 
-let nextUniqueId = 0;
+/** Object that can be used to configure the default options for the input. */
+export interface MatInputConfig {
+  /** Whether disabled inputs should be interactive. */
+  disabledInteractive?: boolean;
+}
 
-// Boilerplate for applying mixins to MatInput.
-/** @docs-private */
-const _MatInputBase = mixinErrorState(
-  class {
-    /**
-     * Emits whenever the component state changes and should cause the parent
-     * form field to update. Implemented as part of `MatFormFieldControl`.
-     * @docs-private
-     */
-    readonly stateChanges = new Subject<void>();
-
-    constructor(
-      public _defaultErrorStateMatcher: ErrorStateMatcher,
-      public _parentForm: NgForm,
-      public _parentFormGroup: FormGroupDirective,
-      /**
-       * Form control bound to the component.
-       * Implemented as part of `MatFormFieldControl`.
-       * @docs-private
-       */
-      public ngControl: NgControl,
-    ) {}
-  },
-);
+/** Injection token that can be used to provide the default options for the input. */
+export const MAT_INPUT_CONFIG = new InjectionToken<MatInputConfig>('MAT_INPUT_CONFIG');
 
 @Directive({
   selector: `input[matInput], textarea[matInput], select[matNativeControl],
@@ -81,15 +68,17 @@ const _MatInputBase = mixinErrorState(
     '[class.mat-input-server]': '_isServer',
     '[class.mat-mdc-form-field-textarea-control]': '_isInFormField && _isTextarea',
     '[class.mat-mdc-form-field-input-control]': '_isInFormField',
+    '[class.mat-mdc-input-disabled-interactive]': 'disabledInteractive',
     '[class.mdc-text-field__input]': '_isInFormField',
     '[class.mat-mdc-native-select-inline]': '_isInlineSelect()',
     // Native input properties that are overwritten by Angular inputs need to be synced with
     // the native input element. Otherwise property bindings for those don't work.
     '[id]': 'id',
-    '[disabled]': 'disabled',
+    '[disabled]': 'disabled && !disabledInteractive',
     '[required]': 'required',
     '[attr.name]': 'name || null',
-    '[attr.readonly]': 'readonly && !_isNativeSelect || null',
+    '[attr.readonly]': '_getReadonlyAttribute()',
+    '[attr.aria-disabled]': 'disabled && disabledInteractive ? "true" : null',
     // Only mark the input as invalid for assistive technology if it has a value since the
     // state usually overlaps with `aria-required` when the input is empty and can be redundant.
     '[attr.aria-invalid]': '(empty && required) ? null : errorState',
@@ -104,19 +93,29 @@ const _MatInputBase = mixinErrorState(
   providers: [{provide: MatFormFieldControl, useExisting: MatInput}],
 })
 export class MatInput
-  extends _MatInputBase
-  implements
-    MatFormFieldControl<any>,
-    OnChanges,
-    OnDestroy,
-    AfterViewInit,
-    DoCheck,
-    CanUpdateErrorState
+  implements MatFormFieldControl<any>, OnChanges, OnDestroy, AfterViewInit, DoCheck
 {
-  protected _uid = `mat-input-${nextUniqueId++}`;
+  protected _elementRef =
+    inject<ElementRef<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>>(ElementRef);
+  protected _platform = inject(Platform);
+  ngControl = inject(NgControl, {optional: true, self: true})!;
+  private _autofillMonitor = inject(AutofillMonitor);
+  private _ngZone = inject(NgZone);
+  protected _formField? = inject<MatFormField>(MAT_FORM_FIELD, {optional: true});
+  private _renderer = inject(Renderer2);
+
+  protected _uid = inject(_IdGenerator).getId('mat-input-');
   protected _previousNativeValue: any;
   private _inputValueAccessor: {value: any};
+  private _signalBasedValueAccessor?: {value: WritableSignal<any>};
   private _previousPlaceholder: string | null;
+  private _errorStateTracker: _ErrorStateTracker;
+  private _config = inject(MAT_INPUT_CONFIG, {optional: true});
+  private _cleanupIosKeyup: (() => void) | undefined;
+  private _cleanupWebkitWheel: (() => void) | undefined;
+
+  /** `aria-describedby` IDs assigned by the form field. */
+  private _formFieldDescribedBy: string[] | undefined;
 
   /** Whether the component is being rendered on the server. */
   readonly _isServer: boolean;
@@ -140,7 +139,7 @@ export class MatInput
    * Implemented as part of MatFormFieldControl.
    * @docs-private
    */
-  override readonly stateChanges: Subject<void> = new Subject<void>();
+  readonly stateChanges: Subject<void> = new Subject<void>();
 
   /**
    * Implemented as part of MatFormFieldControl.
@@ -218,6 +217,7 @@ export class MatInput
     return this._type;
   }
   set type(value: string) {
+    const prevType = this._type;
     this._type = value || 'text';
     this._validateType();
 
@@ -227,11 +227,21 @@ export class MatInput
     if (!this._isTextarea && getSupportedInputTypes().has(this._type)) {
       (this._elementRef.nativeElement as HTMLInputElement).type = this._type;
     }
+
+    if (this._type !== prevType) {
+      this._ensureWheelDefaultBehavior();
+    }
   }
   protected _type = 'text';
 
   /** An object used to control when error messages are shown. */
-  @Input() override errorStateMatcher: ErrorStateMatcher;
+  @Input()
+  get errorStateMatcher() {
+    return this._errorStateTracker.matcher;
+  }
+  set errorStateMatcher(value: ErrorStateMatcher) {
+    this._errorStateTracker.matcher = value;
+  }
 
   /**
    * Implemented as part of MatFormFieldControl.
@@ -245,11 +255,18 @@ export class MatInput
    */
   @Input()
   get value(): string {
-    return this._inputValueAccessor.value;
+    return this._signalBasedValueAccessor
+      ? this._signalBasedValueAccessor.value()
+      : this._inputValueAccessor.value;
   }
   set value(value: any) {
     if (value !== this.value) {
-      this._inputValueAccessor.value = value;
+      if (this._signalBasedValueAccessor) {
+        this._signalBasedValueAccessor.value.set(value);
+      } else {
+        this._inputValueAccessor.value = value;
+      }
+
       this.stateChanges.next();
     }
   }
@@ -264,6 +281,18 @@ export class MatInput
   }
   private _readonly = false;
 
+  /** Whether the input should remain interactive when it is disabled. */
+  @Input({transform: booleanAttribute})
+  disabledInteractive: boolean;
+
+  /** Whether the input is in an error state. */
+  get errorState() {
+    return this._errorStateTracker.errorState;
+  }
+  set errorState(value: boolean) {
+    this._errorStateTracker.errorState = value;
+  }
+
   protected _neverEmptyInputTypes = [
     'date',
     'datetime',
@@ -273,28 +302,28 @@ export class MatInput
     'week',
   ].filter(t => getSupportedInputTypes().has(t));
 
-  constructor(
-    protected _elementRef: ElementRef<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>,
-    protected _platform: Platform,
-    @Optional() @Self() ngControl: NgControl,
-    @Optional() _parentForm: NgForm,
-    @Optional() _parentFormGroup: FormGroupDirective,
-    _defaultErrorStateMatcher: ErrorStateMatcher,
-    @Optional() @Self() @Inject(MAT_INPUT_VALUE_ACCESSOR) inputValueAccessor: any,
-    private _autofillMonitor: AutofillMonitor,
-    ngZone: NgZone,
-    // TODO: Remove this once the legacy appearance has been removed. We only need
-    // to inject the form field for determining whether the placeholder has been promoted.
-    @Optional() @Inject(MAT_FORM_FIELD) protected _formField?: MatFormField,
-  ) {
-    super(_defaultErrorStateMatcher, _parentForm, _parentFormGroup, ngControl);
+  constructor(...args: unknown[]);
+
+  constructor() {
+    const parentForm = inject(NgForm, {optional: true});
+    const parentFormGroup = inject(FormGroupDirective, {optional: true});
+    const defaultErrorStateMatcher = inject(ErrorStateMatcher);
+    const accessor = inject(MAT_INPUT_VALUE_ACCESSOR, {optional: true, self: true});
 
     const element = this._elementRef.nativeElement;
     const nodeName = element.nodeName.toLowerCase();
 
-    // If no input value accessor was explicitly specified, use the element as the input value
-    // accessor.
-    this._inputValueAccessor = inputValueAccessor || element;
+    if (accessor) {
+      if (isSignal(accessor.value)) {
+        this._signalBasedValueAccessor = accessor;
+      } else {
+        this._inputValueAccessor = accessor;
+      }
+    } else {
+      // If no input value accessor was explicitly specified, use the element as the input value
+      // accessor.
+      this._inputValueAccessor = element;
+    }
 
     this._previousNativeValue = this.value;
 
@@ -304,21 +333,37 @@ export class MatInput
     // On some versions of iOS the caret gets stuck in the wrong place when holding down the delete
     // key. In order to get around this we need to "jiggle" the caret loose. Since this bug only
     // exists on iOS, we only bother to install the listener on iOS.
-    if (_platform.IOS) {
-      ngZone.runOutsideAngular(() => {
-        _elementRef.nativeElement.addEventListener('keyup', this._iOSKeyupListener);
+    if (this._platform.IOS) {
+      this._ngZone.runOutsideAngular(() => {
+        this._cleanupIosKeyup = this._renderer.listen(element, 'keyup', this._iOSKeyupListener);
       });
     }
 
+    this._errorStateTracker = new _ErrorStateTracker(
+      defaultErrorStateMatcher,
+      this.ngControl,
+      parentFormGroup,
+      parentForm,
+      this.stateChanges,
+    );
     this._isServer = !this._platform.isBrowser;
     this._isNativeSelect = nodeName === 'select';
     this._isTextarea = nodeName === 'textarea';
-    this._isInFormField = !!_formField;
+    this._isInFormField = !!this._formField;
+    this.disabledInteractive = this._config?.disabledInteractive || false;
 
     if (this._isNativeSelect) {
       this.controlType = (element as HTMLSelectElement).multiple
         ? 'mat-native-select-multiple'
         : 'mat-native-select';
+    }
+
+    if (this._signalBasedValueAccessor) {
+      effect(() => {
+        // Read the value so the effect can register the dependency.
+        this._signalBasedValueAccessor!.value();
+        this.stateChanges.next();
+      });
     }
   }
 
@@ -342,9 +387,8 @@ export class MatInput
       this._autofillMonitor.stopMonitoring(this._elementRef.nativeElement);
     }
 
-    if (this._platform.IOS) {
-      this._elementRef.nativeElement.removeEventListener('keyup', this._iOSKeyupListener);
-    }
+    this._cleanupIosKeyup?.();
+    this._cleanupWebkitWheel?.();
   }
 
   ngDoCheck() {
@@ -379,12 +423,34 @@ export class MatInput
     this._elementRef.nativeElement.focus(options);
   }
 
+  /** Refreshes the error state of the input. */
+  updateErrorState() {
+    this._errorStateTracker.updateErrorState();
+  }
+
   /** Callback for the cases where the focused state of the input changes. */
   _focusChanged(isFocused: boolean) {
-    if (isFocused !== this.focused) {
-      this.focused = isFocused;
-      this.stateChanges.next();
+    if (isFocused === this.focused) {
+      return;
     }
+
+    if (!this._isNativeSelect && isFocused && this.disabled && this.disabledInteractive) {
+      const element = this._elementRef.nativeElement as HTMLInputElement;
+
+      // Focusing an input that has text will cause all the text to be selected. Clear it since
+      // the user won't be able to change it. This is based on the internal implementation.
+      if (element.type === 'number') {
+        // setSelectionRange doesn't work on number inputs so it needs to be set briefly to text.
+        element.type = 'text';
+        element.setSelectionRange(0, 0);
+        element.type = 'number';
+      } else {
+        element.setSelectionRange(0, 0);
+      }
+    }
+
+    this.focused = isFocused;
+    this.stateChanges.next();
   }
 
   _onInput() {
@@ -480,7 +546,7 @@ export class MatInput
         !!(selectElement.selectedIndex > -1 && firstOption && firstOption.label)
       );
     } else {
-      return this.focused || !this.empty;
+      return (this.focused && !this.disabled) || !this.empty;
     }
   }
 
@@ -489,10 +555,29 @@ export class MatInput
    * @docs-private
    */
   setDescribedByIds(ids: string[]) {
-    if (ids.length) {
-      this._elementRef.nativeElement.setAttribute('aria-describedby', ids.join(' '));
+    const element = this._elementRef.nativeElement;
+    const existingDescribedBy = element.getAttribute('aria-describedby');
+    let toAssign: string[];
+
+    // In some cases there might be some `aria-describedby` IDs that were assigned directly,
+    // like by the `AriaDescriber` (see #30011). Attempt to preserve them by taking the previous
+    // attribute value and filtering out the IDs that came from the previous `setDescribedByIds`
+    // call. Note the `|| ids` here allows us to avoid duplicating IDs on the first render.
+    if (existingDescribedBy) {
+      const exclude = this._formFieldDescribedBy || ids;
+      toAssign = ids.concat(
+        existingDescribedBy.split(' ').filter(id => id && !exclude.includes(id)),
+      );
     } else {
-      this._elementRef.nativeElement.removeAttribute('aria-describedby');
+      toAssign = ids;
+    }
+
+    this._formFieldDescribedBy = ids;
+
+    if (toAssign.length) {
+      element.setAttribute('aria-describedby', toAssign.join(' '));
+    } else {
+      element.removeAttribute('aria-describedby');
     }
   }
 
@@ -533,4 +618,44 @@ export class MatInput
       el.setSelectionRange(0, 0);
     }
   };
+
+  private _webkitBlinkWheelListener = (): void => {
+    // This is a noop function and is used to enable mouse wheel input
+    // on number inputs
+    // on blink and webkit browsers.
+  };
+
+  /**
+   * In blink and webkit browsers a focused number input does not increment or decrement its value
+   * on mouse wheel interaction unless a wheel event listener is attached to it or one of its
+   * ancestors or a passive wheel listener is attached somewhere in the DOM. For example: Hitting
+   * a tooltip once enables the mouse wheel input for all number inputs as long as it exists. In
+   * order to get reliable and intuitive behavior we apply a wheel event on our own thus making
+   * sure increment and decrement by mouse wheel works every time.
+   * @docs-private
+   */
+  private _ensureWheelDefaultBehavior(): void {
+    this._cleanupWebkitWheel?.();
+
+    if (this._type === 'number' && (this._platform.BLINK || this._platform.WEBKIT)) {
+      this._cleanupWebkitWheel = this._renderer.listen(
+        this._elementRef.nativeElement,
+        'wheel',
+        this._webkitBlinkWheelListener,
+      );
+    }
+  }
+
+  /** Gets the value to set on the `readonly` attribute. */
+  protected _getReadonlyAttribute(): string | null {
+    if (this._isNativeSelect) {
+      return null;
+    }
+
+    if (this.readonly || (this.disabled && this.disabledInteractive)) {
+      return 'true';
+    }
+
+    return null;
+  }
 }

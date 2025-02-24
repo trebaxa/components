@@ -3,33 +3,38 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {EmbeddedViewRef, ElementRef, NgZone, ViewContainerRef, TemplateRef} from '@angular/core';
-import {ViewportRuler} from '@angular/cdk/scrolling';
-import {Direction} from '@angular/cdk/bidi';
-import {
-  normalizePassiveListenerOptions,
-  _getEventTarget,
-  _getShadowRoot,
-} from '@angular/cdk/platform';
-import {coerceBooleanProperty, coerceElement} from '@angular/cdk/coercion';
 import {isFakeMousedownFromScreenReader, isFakeTouchstartFromScreenReader} from '@angular/cdk/a11y';
-import {Subscription, Subject, Observable} from 'rxjs';
-import {DropListRefInternal as DropListRef} from './drop-list-ref';
-import {DragDropRegistry} from './drag-drop-registry';
+import {Direction} from '@angular/cdk/bidi';
+import {coerceElement} from '@angular/cdk/coercion';
+import {_getEventTarget, _getShadowRoot, _bindEventWithOptions} from '@angular/cdk/platform';
+import {ViewportRuler} from '@angular/cdk/scrolling';
 import {
-  combineTransforms,
+  ElementRef,
+  EmbeddedViewRef,
+  NgZone,
+  Renderer2,
+  TemplateRef,
+  ViewContainerRef,
+  signal,
+} from '@angular/core';
+import {Observable, Subject, Subscription} from 'rxjs';
+import {deepCloneNode} from './dom/clone-node';
+import {adjustDomRect, getMutableClientRect} from './dom/dom-rect';
+import {ParentPositionTracker} from './dom/parent-position-tracker';
+import {getRootNode} from './dom/root-node';
+import {
   DragCSSStyleDeclaration,
-  extendStyles,
+  combineTransforms,
+  getTransform,
   toggleNativeDragInteractions,
   toggleVisibility,
 } from './dom/styling';
-import {getTransformTransitionDurationInMs} from './dom/transition-duration';
-import {getMutableClientRect, adjustClientRect} from './dom/client-rect';
-import {ParentPositionTracker} from './dom/parent-position-tracker';
-import {deepCloneNode} from './dom/clone-node';
+import {DragDropRegistry} from './drag-drop-registry';
+import type {DropListRef} from './drop-list-ref';
+import {DragPreviewTemplate, PreviewRef} from './preview-ref';
 
 /** Object that can be used to configure the behavior of DragRef. */
 export interface DragRefConfig {
@@ -53,10 +58,16 @@ export interface DragRefConfig {
 }
 
 /** Options that can be used to bind a passive event listener. */
-const passiveEventListenerOptions = normalizePassiveListenerOptions({passive: true});
+const passiveEventListenerOptions = {passive: true};
 
 /** Options that can be used to bind an active event listener. */
-const activeEventListenerOptions = normalizePassiveListenerOptions({passive: false});
+const activeEventListenerOptions = {passive: false};
+
+/** Event options that can be used to bind an active, capturing event. */
+const activeCapturingEventOptions = {
+  passive: false,
+  capture: true,
+};
 
 /**
  * Time in milliseconds for which to ignore mouse events, after
@@ -69,23 +80,11 @@ const MOUSE_EVENT_IGNORE_TIME = 800;
 // TODO(crisbeto): add an API for moving a draggable up/down the
 // list programmatically. Useful for keyboard controls.
 
-/**
- * Internal compile-time-only representation of a `DragRef`.
- * Used to avoid circular import issues between the `DragRef` and the `DropListRef`.
- * @docs-private
- */
-export interface DragRefInternal extends DragRef {}
-
 /** Template that can be used to create a drag helper element (e.g. a preview or a placeholder). */
 interface DragHelperTemplate<T = any> {
   template: TemplateRef<T> | null;
   viewContainer: ViewContainerRef;
   context: T;
-}
-
-/** Template that can be used to create a drag preview element. */
-interface DragPreviewTemplate<T = any> extends DragHelperTemplate<T> {
-  matchSize?: boolean;
 }
 
 /** Point on the page or within an element. */
@@ -118,11 +117,11 @@ export type PreviewContainer = 'global' | 'parent' | ElementRef<HTMLElement> | H
  * Reference to a draggable item. Used to manipulate or dispose of the item.
  */
 export class DragRef<T = any> {
-  /** Element displayed next to the user's pointer while the element is dragged. */
-  private _preview: HTMLElement;
+  private _rootElementCleanups: (() => void)[] | undefined;
+  private _cleanupShadowRootSelectStart: (() => void) | undefined;
 
-  /** Reference to the view of the preview element. */
-  private _previewRef: EmbeddedViewRef<any> | null;
+  /** Element displayed next to the user's pointer while the element is dragged. */
+  private _preview: PreviewRef | null;
 
   /** Container into which to insert the preview. */
   private _previewContainer: PreviewContainer | undefined;
@@ -163,7 +162,7 @@ export class DragRef<T = any> {
    * Whether the dragging sequence has been started. Doesn't
    * necessarily mean that the element has been moved.
    */
-  private _hasStartedDragging = false;
+  private _hasStartedDragging = signal(false);
 
   /** Whether the element has moved since the user started dragging it. */
   private _hasMoved: boolean;
@@ -241,13 +240,13 @@ export class DragRef<T = any> {
   private _nativeInteractionsEnabled = true;
 
   /** Client rect of the root element when the dragging sequence has started. */
-  private _initialClientRect?: ClientRect;
+  private _initialDomRect?: DOMRect;
 
   /** Cached dimensions of the preview element. Should be read via `_getPreviewRect`. */
-  private _previewRect?: ClientRect;
+  private _previewRect?: DOMRect;
 
   /** Cached dimensions of the boundary element. */
-  private _boundaryRect?: ClientRect;
+  private _boundaryRect?: DOMRect;
 
   /** Element that will be used as a template to create the draggable item's preview. */
   private _previewTemplate?: DragPreviewTemplate | null;
@@ -289,17 +288,21 @@ export class DragRef<T = any> {
   /** Class to be added to the preview element. */
   previewClass: string | string[] | undefined;
 
+  /**
+   * If the parent of the dragged element has a `scale` transform, it can throw off the
+   * positioning when the user starts dragging. Use this input to notify the CDK of the scale.
+   */
+  scale: number = 1;
+
   /** Whether starting to drag this element is disabled. */
   get disabled(): boolean {
     return this._disabled || !!(this._dropContainer && this._dropContainer.disabled);
   }
   set disabled(value: boolean) {
-    const newValue = coerceBooleanProperty(value);
-
-    if (newValue !== this._disabled) {
-      this._disabled = newValue;
+    if (value !== this._disabled) {
+      this._disabled = value;
       this._toggleNativeDragInteractions();
-      this._handles.forEach(handle => toggleNativeDragInteractions(handle, newValue));
+      this._handles.forEach(handle => toggleNativeDragInteractions(handle, value));
     }
   }
   private _disabled = false;
@@ -364,7 +367,7 @@ export class DragRef<T = any> {
   constrainPosition?: (
     userPointerPosition: Point,
     dragRef: DragRef,
-    dimensions: ClientRect,
+    dimensions: DOMRect,
     pickupPositionInElement: Point,
   ) => Point;
 
@@ -374,7 +377,8 @@ export class DragRef<T = any> {
     private _document: Document,
     private _ngZone: NgZone,
     private _viewportRuler: ViewportRuler,
-    private _dragDropRegistry: DragDropRegistry<DragRef, DropListRef>,
+    private _dragDropRegistry: DragDropRegistry,
+    private _renderer: Renderer2,
   ) {
     this.withRootElement(element).withParent(_config.parentDragRef || null);
     this._parentPositions = new ParentPositionTracker(_document);
@@ -449,15 +453,30 @@ export class DragRef<T = any> {
     const element = coerceElement(rootElement);
 
     if (element !== this._rootElement) {
-      if (this._rootElement) {
-        this._removeRootElementListeners(this._rootElement);
-      }
-
-      this._ngZone.runOutsideAngular(() => {
-        element.addEventListener('mousedown', this._pointerDown, activeEventListenerOptions);
-        element.addEventListener('touchstart', this._pointerDown, passiveEventListenerOptions);
-        element.addEventListener('dragstart', this._nativeDragStart, activeEventListenerOptions);
-      });
+      this._removeRootElementListeners();
+      this._rootElementCleanups = this._ngZone.runOutsideAngular(() => [
+        _bindEventWithOptions(
+          this._renderer,
+          element,
+          'mousedown',
+          this._pointerDown,
+          activeEventListenerOptions,
+        ),
+        _bindEventWithOptions(
+          this._renderer,
+          element,
+          'touchstart',
+          this._pointerDown,
+          passiveEventListenerOptions,
+        ),
+        _bindEventWithOptions(
+          this._renderer,
+          element,
+          'dragstart',
+          this._nativeDragStart,
+          activeEventListenerOptions,
+        ),
+      ]);
       this._initialTransform = undefined;
       this._rootElement = element;
     }
@@ -491,7 +510,7 @@ export class DragRef<T = any> {
 
   /** Removes the dragging functionality from the DOM element. */
   dispose() {
-    this._removeRootElementListeners(this._rootElement);
+    this._removeRootElementListeners();
 
     // Do this check before removing from the registry since it'll
     // stop being considered as dragged once it is removed.
@@ -505,7 +524,7 @@ export class DragRef<T = any> {
     this._destroyPreview();
     this._destroyPlaceholder();
     this._dragDropRegistry.removeDragItem(this);
-    this._removeSubscriptions();
+    this._removeListeners();
     this.beforeStarted.complete();
     this.started.complete();
     this.released.complete();
@@ -531,7 +550,7 @@ export class DragRef<T = any> {
 
   /** Checks whether the element is currently being dragged. */
   isDragging(): boolean {
-    return this._hasStartedDragging && this._dragDropRegistry.isDragging(this);
+    return this._hasStartedDragging() && this._dragDropRegistry.isDragging(this);
   }
 
   /** Resets a standalone drag item to its initial position. */
@@ -617,17 +636,18 @@ export class DragRef<T = any> {
   }
 
   /** Unsubscribes from the global subscriptions. */
-  private _removeSubscriptions() {
+  private _removeListeners() {
     this._pointerMoveSubscription.unsubscribe();
     this._pointerUpSubscription.unsubscribe();
     this._scrollSubscription.unsubscribe();
+    this._cleanupShadowRootSelectStart?.();
+    this._cleanupShadowRootSelectStart = undefined;
   }
 
   /** Destroys the preview element and its ViewRef. */
   private _destroyPreview() {
-    this._preview?.remove();
-    this._previewRef?.destroy();
-    this._preview = this._previewRef = null!;
+    this._preview?.destroy();
+    this._preview = null;
   }
 
   /** Destroys the placeholder element and its ViewRef. */
@@ -657,7 +677,7 @@ export class DragRef<T = any> {
   private _pointerMove = (event: MouseEvent | TouchEvent) => {
     const pointerPosition = this._getPointerPositionOnPage(event);
 
-    if (!this._hasStartedDragging) {
+    if (!this._hasStartedDragging()) {
       const distanceX = Math.abs(pointerPosition.x - this._pickupPositionOnPage.x);
       const distanceY = Math.abs(pointerPosition.y - this._pickupPositionOnPage.y);
       const isOverThreshold = distanceX + distanceY >= this._config.dragStartThreshold;
@@ -681,8 +701,10 @@ export class DragRef<T = any> {
         if (!container || (!container.isDragging() && !container.isReceiving())) {
           // Prevent the default action as soon as the dragging sequence is considered as
           // "started" since waiting for the next event can allow the device to begin scrolling.
-          event.preventDefault();
-          this._hasStartedDragging = true;
+          if (event.cancelable) {
+            event.preventDefault();
+          }
+          this._hasStartedDragging.set(true);
           this._ngZone.run(() => this._startDragSequence(event));
         }
       }
@@ -693,7 +715,9 @@ export class DragRef<T = any> {
     // We prevent the default action down here so that we know that dragging has started. This is
     // important for touch devices where doing this too early can unnecessarily block scrolling,
     // if there's a dragging delay.
-    event.preventDefault();
+    if (event.cancelable) {
+      event.preventDefault();
+    }
 
     const constrainedPointerPosition = this._getConstrainedPointerPosition(pointerPosition);
     this._hasMoved = true;
@@ -705,7 +729,7 @@ export class DragRef<T = any> {
     } else {
       // If there's a position constraint function, we want the element's top/left to be at the
       // specific position on the page. Use the initial position as a reference if that's the case.
-      const offset = this.constrainPosition ? this._initialClientRect! : this._pickupPositionOnPage;
+      const offset = this.constrainPosition ? this._initialDomRect! : this._pickupPositionOnPage;
       const activeTransform = this._activeTransform;
       activeTransform.x = constrainedPointerPosition.x - offset.x + this._passiveTransform.x;
       activeTransform.y = constrainedPointerPosition.y - offset.y + this._passiveTransform.y;
@@ -746,7 +770,7 @@ export class DragRef<T = any> {
       return;
     }
 
-    this._removeSubscriptions();
+    this._removeListeners();
     this._dragDropRegistry.stopDragging(this);
     this._toggleNativeDragInteractions();
 
@@ -755,7 +779,7 @@ export class DragRef<T = any> {
         this._rootElementTapHighlight;
     }
 
-    if (!this._hasStartedDragging) {
+    if (!this._hasStartedDragging()) {
       return;
     }
 
@@ -797,16 +821,33 @@ export class DragRef<T = any> {
 
     this._toggleNativeDragInteractions();
 
+    // Needs to happen before the root element is moved.
+    const shadowRoot = this._getShadowRoot();
     const dropContainer = this._dropContainer;
+
+    if (shadowRoot) {
+      // In some browsers the global `selectstart` that we maintain in the `DragDropRegistry`
+      // doesn't cross the shadow boundary so we have to prevent it at the shadow root (see #28792).
+      this._ngZone.runOutsideAngular(() => {
+        this._cleanupShadowRootSelectStart = _bindEventWithOptions(
+          this._renderer,
+          shadowRoot,
+          'selectstart',
+          shadowDomSelectStart,
+          activeCapturingEventOptions,
+        );
+      });
+    }
 
     if (dropContainer) {
       const element = this._rootElement;
       const parent = element.parentNode as HTMLElement;
       const placeholder = (this._placeholder = this._createPlaceholderElement());
-      const anchor = (this._anchor = this._anchor || this._document.createComment(''));
-
-      // Needs to happen before the root element is moved.
-      const shadowRoot = this._getShadowRoot();
+      const anchor = (this._anchor =
+        this._anchor ||
+        this._document.createComment(
+          typeof ngDevMode === 'undefined' || ngDevMode ? 'cdk-drag-anchor' : '',
+        ));
 
       // Insert an anchor node so that we can restore the element's position in the DOM.
       parent.insertBefore(anchor, element);
@@ -817,14 +858,25 @@ export class DragRef<T = any> {
 
       // Create the preview after the initial transform has
       // been cached, because it can be affected by the transform.
-      this._preview = this._createPreviewElement();
+      this._preview = new PreviewRef(
+        this._document,
+        this._rootElement,
+        this._direction,
+        this._initialDomRect!,
+        this._previewTemplate || null,
+        this.previewClass || null,
+        this._pickupPositionOnPage,
+        this._initialTransform,
+        this._config.zIndex || 1000,
+        this._renderer,
+      );
+      this._preview.attach(this._getPreviewInsertionPoint(parent, shadowRoot));
 
       // We move the element out at the end of the body and we make it hidden, because keeping it in
       // place will throw off the consumer's `:last-child` selectors. We can't remove the element
       // from the DOM completely, because iOS will stop firing all subsequent events in the chain.
       toggleVisibility(element, false, dragImportantProperties);
       this._document.body.appendChild(parent.replaceChild(placeholder, element));
-      this._getPreviewInsertionPoint(parent, shadowRoot).appendChild(this._preview);
       this.started.next({source: this, event}); // Emit before notifying the container.
       dropContainer.start();
       this._initialContainer = dropContainer;
@@ -889,12 +941,13 @@ export class DragRef<T = any> {
       rootStyles.webkitTapHighlightColor = 'transparent';
     }
 
-    this._hasStartedDragging = this._hasMoved = false;
+    this._hasMoved = false;
+    this._hasStartedDragging.set(this._hasMoved);
 
     // Avoid multiple subscriptions and memory leaks when multi touch
     // (isDragging check above isn't enough because of possible temporal and/or dimensional delays)
-    this._removeSubscriptions();
-    this._initialClientRect = this._rootElement.getBoundingClientRect();
+    this._removeListeners();
+    this._initialDomRect = this._rootElement.getBoundingClientRect();
     this._pointerMoveSubscription = this._dragDropRegistry.pointerMove.subscribe(this._pointerMove);
     this._pointerUpSubscription = this._dragDropRegistry.pointerUp.subscribe(this._pointerUp);
     this._scrollSubscription = this._dragDropRegistry
@@ -912,7 +965,7 @@ export class DragRef<T = any> {
     this._pickupPositionInElement =
       previewTemplate && previewTemplate.template && !previewTemplate.matchSize
         ? {x: 0, y: 0}
-        : this._getPointerPositionInElement(this._initialClientRect, referenceElement, event);
+        : this._getPointerPositionInElement(this._initialDomRect, referenceElement, event);
     const pointerPosition =
       (this._pickupPositionOnPage =
       this._lastKnownPointerPosition =
@@ -934,7 +987,7 @@ export class DragRef<T = any> {
 
     this._destroyPreview();
     this._destroyPlaceholder();
-    this._initialClientRect =
+    this._initialDomRect =
       this._boundaryRect =
       this._previewRect =
       this._initialTransform =
@@ -1040,75 +1093,6 @@ export class DragRef<T = any> {
   }
 
   /**
-   * Creates the element that will be rendered next to the user's pointer
-   * and will be used as a preview of the element that is being dragged.
-   */
-  private _createPreviewElement(): HTMLElement {
-    const previewConfig = this._previewTemplate;
-    const previewClass = this.previewClass;
-    const previewTemplate = previewConfig ? previewConfig.template : null;
-    let preview: HTMLElement;
-
-    if (previewTemplate && previewConfig) {
-      // Measure the element before we've inserted the preview
-      // since the insertion could throw off the measurement.
-      const rootRect = previewConfig.matchSize ? this._initialClientRect : null;
-      const viewRef = previewConfig.viewContainer.createEmbeddedView(
-        previewTemplate,
-        previewConfig.context,
-      );
-      viewRef.detectChanges();
-      preview = getRootNode(viewRef, this._document);
-      this._previewRef = viewRef;
-      if (previewConfig.matchSize) {
-        matchElementSize(preview, rootRect!);
-      } else {
-        preview.style.transform = getTransform(
-          this._pickupPositionOnPage.x,
-          this._pickupPositionOnPage.y,
-        );
-      }
-    } else {
-      preview = deepCloneNode(this._rootElement);
-      matchElementSize(preview, this._initialClientRect!);
-
-      if (this._initialTransform) {
-        preview.style.transform = this._initialTransform;
-      }
-    }
-
-    extendStyles(
-      preview.style,
-      {
-        // It's important that we disable the pointer events on the preview, because
-        // it can throw off the `document.elementFromPoint` calls in the `CdkDropList`.
-        'pointer-events': 'none',
-        // We have to reset the margin, because it can throw off positioning relative to the viewport.
-        'margin': '0',
-        'position': 'fixed',
-        'top': '0',
-        'left': '0',
-        'z-index': `${this._config.zIndex || 1000}`,
-      },
-      dragImportantProperties,
-    );
-
-    toggleNativeDragInteractions(preview, false);
-    preview.classList.add('cdk-drag-preview');
-    preview.setAttribute('dir', this._direction);
-
-    if (previewClass) {
-      if (Array.isArray(previewClass)) {
-        previewClass.forEach(className => preview.classList.add(className));
-      } else {
-        preview.classList.add(previewClass);
-      }
-    }
-
-    return preview;
-  }
-
-  /**
    * Animates the preview element from its current position to the location of the drop placeholder.
    * @returns Promise that resolves when the animation completes.
    */
@@ -1121,7 +1105,7 @@ export class DragRef<T = any> {
     const placeholderRect = this._placeholder.getBoundingClientRect();
 
     // Apply the class that adds a transition to the preview.
-    this._preview.classList.add('cdk-drag-animating');
+    this._preview!.addClass('cdk-drag-animating');
 
     // Move the preview to the placeholder position.
     this._applyPreviewTransform(placeholderRect.left, placeholderRect.top);
@@ -1130,7 +1114,7 @@ export class DragRef<T = any> {
     // we need to trigger a style recalculation in order for the `cdk-drag-animating` class to
     // apply its style, we take advantage of the available info to figure out whether we need to
     // bind the event in the first place.
-    const duration = getTransformTransitionDurationInMs(this._preview);
+    const duration = this._preview!.getTransitionDuration();
 
     if (duration === 0) {
       return Promise.resolve();
@@ -1138,22 +1122,24 @@ export class DragRef<T = any> {
 
     return this._ngZone.runOutsideAngular(() => {
       return new Promise(resolve => {
-        const handler = ((event: TransitionEvent) => {
+        const handler = (event: TransitionEvent) => {
           if (
             !event ||
-            (_getEventTarget(event) === this._preview && event.propertyName === 'transform')
+            (this._preview &&
+              _getEventTarget(event) === this._preview.element &&
+              event.propertyName === 'transform')
           ) {
-            this._preview?.removeEventListener('transitionend', handler);
+            cleanupListener();
             resolve();
             clearTimeout(timeout);
           }
-        }) as EventListenerOrEventListenerObject;
+        };
 
         // If a transition is short enough, the browser might not fire the `transitionend` event.
         // Since we know how long it's supposed to take, add a timeout with a 50% buffer that'll
         // fire if the transition hasn't completed when it was supposed to.
         const timeout = setTimeout(handler as Function, duration * 1.5);
-        this._preview.addEventListener('transitionend', handler);
+        const cleanupListener = this._preview!.addEventListener('transitionend', handler);
       });
     });
   }
@@ -1188,7 +1174,7 @@ export class DragRef<T = any> {
    * @param event Event that initiated the dragging.
    */
   private _getPointerPositionInElement(
-    elementRect: ClientRect,
+    elementRect: DOMRect,
     referenceElement: HTMLElement,
     event: MouseEvent | TouchEvent,
   ): Point {
@@ -1241,17 +1227,26 @@ export class DragRef<T = any> {
   private _getConstrainedPointerPosition(point: Point): Point {
     const dropContainerLock = this._dropContainer ? this._dropContainer.lockAxis : null;
     let {x, y} = this.constrainPosition
-      ? this.constrainPosition(point, this, this._initialClientRect!, this._pickupPositionInElement)
+      ? this.constrainPosition(point, this, this._initialDomRect!, this._pickupPositionInElement)
       : point;
 
     if (this.lockAxis === 'x' || dropContainerLock === 'x') {
-      y = this._pickupPositionOnPage.y;
+      y =
+        this._pickupPositionOnPage.y -
+        (this.constrainPosition ? this._pickupPositionInElement.y : 0);
     } else if (this.lockAxis === 'y' || dropContainerLock === 'y') {
-      x = this._pickupPositionOnPage.x;
+      x =
+        this._pickupPositionOnPage.x -
+        (this.constrainPosition ? this._pickupPositionInElement.x : 0);
     }
 
     if (this._boundaryRect) {
-      const {x: pickupX, y: pickupY} = this._pickupPositionInElement;
+      // If not using a custom constrain we need to account for the pickup position in the element
+      // otherwise we do not need to do this, as it has already been accounted for
+      const {x: pickupX, y: pickupY} = !this.constrainPosition
+        ? this._pickupPositionInElement
+        : {x: 0, y: 0};
+
       const boundaryRect = this._boundaryRect;
       const {width: previewWidth, height: previewHeight} = this._getPreviewRect();
       const minY = boundaryRect.top + pickupY;
@@ -1308,10 +1303,9 @@ export class DragRef<T = any> {
   }
 
   /** Removes the manually-added event listeners from the root element. */
-  private _removeRootElementListeners(element: HTMLElement) {
-    element.removeEventListener('mousedown', this._pointerDown, activeEventListenerOptions);
-    element.removeEventListener('touchstart', this._pointerDown, passiveEventListenerOptions);
-    element.removeEventListener('dragstart', this._nativeDragStart, activeEventListenerOptions);
+  private _removeRootElementListeners() {
+    this._rootElementCleanups?.forEach(cleanup => cleanup());
+    this._rootElementCleanups = undefined;
   }
 
   /**
@@ -1320,7 +1314,8 @@ export class DragRef<T = any> {
    * @param y New transform value along the Y axis.
    */
   private _applyRootElementTransform(x: number, y: number) {
-    const transform = getTransform(x, y);
+    const scale = 1 / this.scale;
+    const transform = getTransform(x * scale, y * scale);
     const styles = this._rootElement.style;
 
     // Cache the previous transform amount only after the first drag sequence, because
@@ -1347,7 +1342,7 @@ export class DragRef<T = any> {
     // it could be completely different and the transform might not make sense anymore.
     const initialTransform = this._previewTemplate?.template ? undefined : this._initialTransform;
     const transform = getTransform(x, y);
-    this._preview.style.transform = combineTransforms(transform, initialTransform);
+    this._preview!.setTransform(combineTransforms(transform, initialTransform));
   }
 
   /**
@@ -1452,14 +1447,14 @@ export class DragRef<T = any> {
     if (scrollDifference) {
       const target = _getEventTarget<HTMLElement | Document>(event)!;
 
-      // ClientRect dimensions are based on the scroll position of the page and its parent
-      // node so we have to update the cached boundary ClientRect if the user has scrolled.
+      // DOMRect dimensions are based on the scroll position of the page and its parent
+      // node so we have to update the cached boundary DOMRect if the user has scrolled.
       if (
         this._boundaryRect &&
         target !== this._boundaryElement &&
         target.contains(this._boundaryElement)
       ) {
-        adjustClientRect(this._boundaryRect, scrollDifference.top, scrollDifference.left);
+        adjustDomRect(this._boundaryRect, scrollDifference.top, scrollDifference.left);
       }
 
       this._pickupPositionOnPage.x += scrollDifference.left;
@@ -1528,13 +1523,13 @@ export class DragRef<T = any> {
   }
 
   /** Lazily resolves and returns the dimensions of the preview. */
-  private _getPreviewRect(): ClientRect {
+  private _getPreviewRect(): DOMRect {
     // Cache the preview element rect if we haven't cached it already or if
     // we cached it too early before the element dimensions were computed.
     if (!this._previewRect || (!this._previewRect.width && !this._previewRect.height)) {
       this._previewRect = this._preview
-        ? this._preview.getBoundingClientRect()
-        : this._initialClientRect!;
+        ? this._preview!.getBoundingClientRect()
+        : this._initialDomRect!;
     }
 
     return this._previewRect;
@@ -1563,17 +1558,6 @@ export class DragRef<T = any> {
   }
 }
 
-/**
- * Gets a 3d `transform` that can be applied to an element.
- * @param x Desired position of the element along the X axis.
- * @param y Desired position of the element along the Y axis.
- */
-function getTransform(x: number, y: number): string {
-  // Round the transforms since some browsers will
-  // blur the elements for sub-pixel transforms.
-  return `translate3d(${Math.round(x)}px, ${Math.round(y)}px, 0)`;
-}
-
 /** Clamps a value between a minimum and a maximum. */
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
@@ -1587,29 +1571,7 @@ function isTouchEvent(event: MouseEvent | TouchEvent): event is TouchEvent {
   return event.type[0] === 't';
 }
 
-/**
- * Gets the root HTML element of an embedded view.
- * If the root is not an HTML element it gets wrapped in one.
- */
-function getRootNode(viewRef: EmbeddedViewRef<any>, _document: Document): HTMLElement {
-  const rootNodes: Node[] = viewRef.rootNodes;
-
-  if (rootNodes.length === 1 && rootNodes[0].nodeType === _document.ELEMENT_NODE) {
-    return rootNodes[0] as HTMLElement;
-  }
-
-  const wrapper = _document.createElement('div');
-  rootNodes.forEach(node => wrapper.appendChild(node));
-  return wrapper;
-}
-
-/**
- * Matches the target element's size to the source's size.
- * @param target Element that needs to be resized.
- * @param sourceRect Dimensions of the source element.
- */
-function matchElementSize(target: HTMLElement, sourceRect: ClientRect): void {
-  target.style.width = `${sourceRect.width}px`;
-  target.style.height = `${sourceRect.height}px`;
-  target.style.transform = getTransform(sourceRect.left, sourceRect.top);
+/** Callback invoked for `selectstart` events inside the shadow DOM. */
+function shadowDomSelectStart(event: Event) {
+  event.preventDefault();
 }

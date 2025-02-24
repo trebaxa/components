@@ -11,7 +11,6 @@
     "./tools/stylelint/no-nested-mixin.ts",
     "./tools/stylelint/no-concrete-rules.ts",
     "./tools/stylelint/no-top-level-ampersand-in-mixin.ts",
-    "./tools/stylelint/theme-mixin-api.ts",
     "./tools/stylelint/no-import.ts",
     "./tools/stylelint/single-line-comment-only.ts",
     "./tools/stylelint/no-unused-import.ts",
@@ -33,7 +32,6 @@
         "filePattern": "**/!(*-example.css)"
       }
     ],
-    "material/theme-mixin-api": true,
     "material/selector-no-deep": true,
     "material/no-nested-mixin": true,
     "material/no-unused-import": true,
@@ -43,12 +41,7 @@
         "filePattern": "\\.scss$"
       }
     ],
-    "material/no-import": [
-      true,
-      {
-        "exclude": "\\.import\\.scss$"
-      }
-    ],
+    "material/no-import": true,
     "material/no-ampersand-beyond-selector-start": [
       true,
       {
@@ -88,7 +81,7 @@
 
     "unit-case": "lower",
     "unit-no-unknown": true,
-    "unit-allowed-list": ["px", "%", "deg", "s", "ms", "em", "vh", "vw", "vmin"],
+    "unit-allowed-list": ["px", "%", "deg", "s", "ms", "em", "rem", "vh", "vw", "vmin", "fr"],
 
     "value-list-comma-space-after": "always-single-line",
     "value-list-comma-space-before": "never",
@@ -111,12 +104,13 @@
     "declaration-block-semicolon-newline-before": "never-multi-line",
     "declaration-block-semicolon-newline-after": "always-multi-line",
     "declaration-colon-space-after": "always-single-line",
-    "declaration-property-value-disallowed-list": [
-      {"/.*/": ["initial"]},
-      {"message": "The `initial` value is not supported in IE."}
-    ],
 
-    "block-closing-brace-newline-after": "always",
+    "block-closing-brace-newline-after": [
+      "always",
+      {
+        "ignoreAtRules": ["if", "else"]
+      }
+    ],
     "block-closing-brace-newline-before": "always-multi-line",
     "block-opening-brace-newline-after": "always-multi-line",
     "block-opening-brace-space-before": "always-multi-line",
@@ -143,7 +137,7 @@
     ],
     "linebreaks": "unix",
     "selector-class-pattern": [
-      "^_?(mat-|cdk-|example-|demo-|ng-|mdc-|map-|test-)",
+      "^_?(mat-|cdk-|example-|demo-|ng-|mdc-|map-|test-|youtube-player-)",
       {
         "resolveNestedSelectors": true
       }

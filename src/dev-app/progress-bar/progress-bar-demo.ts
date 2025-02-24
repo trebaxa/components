@@ -3,29 +3,22 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {Component} from '@angular/core';
-import {ThemePalette} from '@angular/material/core';
-import {CommonModule} from '@angular/common';
+import {ChangeDetectionStrategy, Component} from '@angular/core';
 import {FormsModule} from '@angular/forms';
-import {MatProgressBarModule} from '@angular/material/progress-bar';
 import {MatButtonModule} from '@angular/material/button';
 import {MatButtonToggleModule} from '@angular/material/button-toggle';
+import {ThemePalette} from '@angular/material/core';
+import {MatProgressBarModule} from '@angular/material/progress-bar';
 
 @Component({
   selector: 'progress-bar-demo',
   templateUrl: 'progress-bar-demo.html',
-  styleUrls: ['progress-bar-demo.css'],
-  standalone: true,
-  imports: [
-    CommonModule,
-    FormsModule,
-    MatProgressBarModule,
-    MatButtonModule,
-    MatButtonToggleModule,
-  ],
+  styleUrl: 'progress-bar-demo.css',
+  imports: [FormsModule, MatProgressBarModule, MatButtonModule, MatButtonToggleModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ProgressBarDemo {
   color: ThemePalette = 'primary';

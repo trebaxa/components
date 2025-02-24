@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {Observable} from 'rxjs';
@@ -67,6 +67,13 @@ export abstract class MatFormFieldControl<T> {
    * which are set by the form-field.
    */
   readonly userAriaDescribedBy?: string;
+
+  /**
+   * Whether to automatically assign the ID of the form field as the `for` attribute
+   * on the `<label>` inside the form field. Set this to true to prevent the form
+   * field from associating the label with non-native elements.
+   */
+  readonly disableAutomaticLabeling?: boolean;
 
   /** Sets the list of element IDs that currently describe this control. */
   abstract setDescribedByIds(ids: string[]): void;

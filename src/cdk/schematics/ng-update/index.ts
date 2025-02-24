@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {Rule, SchematicContext} from '@angular-devkit/schematics';
@@ -13,10 +13,10 @@ import {createMigrationSchematicRule, NullableDevkitMigration} from './devkit-mi
 
 const cdkMigrations: NullableDevkitMigration[] = [];
 
-/** Entry point for the migration schematics with target of Angular CDK 15.0.0 */
-export function updateToV15(): Rule {
+/** Entry point for the migration schematics with target of Angular CDK 18.0.0 */
+export function updateToV19(): Rule {
   return createMigrationSchematicRule(
-    TargetVersion.V15,
+    TargetVersion.V19,
     cdkMigrations,
     cdkUpgradeData,
     onMigrationComplete,

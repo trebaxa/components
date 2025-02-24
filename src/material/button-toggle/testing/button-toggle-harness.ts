@@ -3,10 +3,10 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {ComponentHarness, HarnessPredicate} from '@angular/cdk/testing';
+import {ComponentHarness, HarnessPredicate, parallel} from '@angular/cdk/testing';
 import {coerceBooleanProperty} from '@angular/cdk/coercion';
 import {MatButtonToggleAppearance} from '@angular/material/button-toggle';
 import {ButtonToggleHarnessFilters} from './button-toggle-harness-filters';
@@ -45,14 +45,18 @@ export class MatButtonToggleHarness extends ComponentHarness {
 
   /** Gets a boolean promise indicating if the button toggle is checked. */
   async isChecked(): Promise<boolean> {
-    const checked = (await this._button()).getAttribute('aria-pressed');
-    return coerceBooleanProperty(await checked);
+    const button = await this._button();
+    const [checked, pressed] = await parallel(() => [
+      button.getAttribute('aria-checked'),
+      button.getAttribute('aria-pressed'),
+    ]);
+    return coerceBooleanProperty(checked) || coerceBooleanProperty(pressed);
   }
 
   /** Gets a boolean promise indicating if the button toggle is disabled. */
   async isDisabled(): Promise<boolean> {
-    const disabled = (await this._button()).getAttribute('disabled');
-    return coerceBooleanProperty(await disabled);
+    const host = await this.host();
+    return host.hasClass('mat-button-toggle-disabled');
   }
 
   /** Gets a promise for the button toggle's name. */

@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {ChangeDetectionStrategy, Component, ViewEncapsulation} from '@angular/core';
@@ -17,7 +17,7 @@ import {CDK_MENU, CdkMenuBar, CdkMenuGroup, MENU_STACK, MenuStack} from '@angula
   selector: 'mat-menubar',
   exportAs: 'matMenubar',
   templateUrl: 'menubar.html',
-  styleUrls: ['menubar.css'],
+  styleUrl: 'menubar.css',
   encapsulation: ViewEncapsulation.None,
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {

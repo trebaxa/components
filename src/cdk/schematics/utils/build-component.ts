@@ -3,10 +3,10 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {strings, template as interpolateTemplate} from '@angular-devkit/core';
+import {strings, template as interpolateTemplate, workspaces} from '@angular-devkit/core';
 import {
   apply,
   applyTemplates,
@@ -34,17 +34,17 @@ import {readFileSync, statSync} from 'fs';
 import {dirname, join, resolve} from 'path';
 import * as ts from 'typescript';
 import {getProjectFromWorkspace} from './get-project';
-import {getDefaultComponentOptions} from './schematic-options';
-import {ProjectDefinition} from '@angular-devkit/core/src/workspace';
+import {getDefaultComponentOptions, isStandaloneSchematic} from './schematic-options';
 
 /**
  * Build a default project path for generating.
  * @param project The project to build the path for.
  */
-function buildDefaultPath(project: ProjectDefinition): string {
+function buildDefaultPath(project: workspaces.ProjectDefinition): string {
   const root = project.sourceRoot ? `/${project.sourceRoot}/` : `/${project.root}/src/`;
 
-  const projectDirName = project.extensions.projectType === ProjectType.Application ? 'app' : 'lib';
+  const projectDirName =
+    project.extensions['projectType'] === ProjectType.Application ? 'app' : 'lib';
 
   return `${root}${projectDirName}`;
 }
@@ -66,7 +66,7 @@ function readIntoSourceFile(host: Tree, modulePath: string) {
 
 function addDeclarationToNgModule(options: ComponentOptions): Rule {
   return (host: Tree) => {
-    if (options.skipImport || !options.module) {
+    if (options.skipImport || options.standalone || !options.module) {
       return host;
     }
 
@@ -187,12 +187,14 @@ export function buildComponent(
       );
 
     if (options.path === undefined) {
-      // TODO(jelbourn): figure out if the need for this `as any` is a bug due to two different
-      // incompatible `ProjectDefinition` classes in @angular-devkit
-      options.path = buildDefaultPath(project as any);
+      options.path = buildDefaultPath(project);
     }
 
-    options.module = findModuleFromOptions(host, options);
+    options.standalone = await isStandaloneSchematic(host, options);
+
+    if (!options.standalone) {
+      options.module = findModuleFromOptions(host, options);
+    }
 
     const parsedPath = parseName(options.path!, options.name);
 
@@ -207,9 +209,7 @@ export function buildComponent(
     // accidentally generate invalid stylesheets (e.g. drag-drop-comp.styl) which will
     // break the Angular CLI project. See: https://github.com/angular/components/issues/15164
     if (!supportedCssExtensions.includes(options.style!)) {
-      // TODO: Cast is necessary as we can't use the Style enum which has been introduced
-      // within CLI v7.3.0-rc.0. This would break the schematic for older CLI versions.
-      options.style = 'css' as Style;
+      options.style = Style.Css;
     }
 
     // Object that will be used as context for the EJS templates.

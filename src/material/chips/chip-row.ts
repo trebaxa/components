@@ -3,34 +3,26 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {ENTER} from '@angular/cdk/keycodes';
-import {ANIMATION_MODULE_TYPE} from '@angular/platform-browser/animations';
 import {
   AfterViewInit,
-  Attribute,
   ChangeDetectionStrategy,
-  ChangeDetectorRef,
   Component,
   ContentChild,
-  ElementRef,
   EventEmitter,
-  Inject,
   Input,
-  NgZone,
-  Optional,
   Output,
   ViewChild,
   ViewEncapsulation,
+  afterNextRender,
 } from '@angular/core';
-import {DOCUMENT} from '@angular/common';
-import {MAT_RIPPLE_GLOBAL_OPTIONS, RippleGlobalOptions} from '@angular/material/core';
-import {FocusMonitor} from '@angular/cdk/a11y';
-import {MatChip, MatChipEvent} from './chip';
-import {MatChipEditInput} from './chip-edit-input';
 import {takeUntil} from 'rxjs/operators';
+import {MatChip, MatChipEvent} from './chip';
+import {MatChipAction} from './chip-action';
+import {MatChipEditInput} from './chip-edit-input';
 import {MAT_CHIP} from './tokens';
 
 /** Represents an event fired on an individual `mat-chip` when it is edited. */
@@ -44,10 +36,9 @@ export interface MatChipEditedEvent extends MatChipEvent {
  * the matChipInputFor directive.
  */
 @Component({
-  selector: 'mat-chip-row, mat-basic-chip-row',
+  selector: 'mat-chip-row, [mat-chip-row], mat-basic-chip-row, [mat-basic-chip-row]',
   templateUrl: 'chip-row.html',
-  styleUrls: ['chip.css'],
-  inputs: ['color', 'disabled', 'disableRipple', 'tabIndex'],
+  styleUrl: 'chip.css',
   host: {
     'class': 'mat-mdc-chip mat-mdc-chip-row mdc-evolution-chip',
     '[class.mat-mdc-chip-with-avatar]': 'leadingIcon',
@@ -62,12 +53,14 @@ export interface MatChipEditedEvent extends MatChipEvent {
     '[class.mat-mdc-chip-highlighted]': 'highlighted',
     '[class.mat-mdc-chip-with-trailing-icon]': '_hasTrailingIcon()',
     '[id]': 'id',
-    '[attr.tabindex]': 'null',
+    // Has to have a negative tabindex in order to capture
+    // focus and redirect it to the primary action.
+    '[attr.tabindex]': 'disabled ? null : -1',
     '[attr.aria-label]': 'null',
     '[attr.aria-description]': 'null',
     '[attr.role]': 'role',
-    '(mousedown)': '_mousedown($event)',
-    '(dblclick)': '_doubleclick($event)',
+    '(focus)': '_handleFocus($event)',
+    '(dblclick)': '_handleDoubleclick($event)',
   },
   providers: [
     {provide: MatChip, useExisting: MatChipRow},
@@ -75,6 +68,7 @@ export interface MatChipEditedEvent extends MatChipEvent {
   ],
   encapsulation: ViewEncapsulation.None,
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [MatChipAction, MatChipEditInput],
 })
 export class MatChipRow extends MatChip implements AfterViewInit {
   protected override basicChipAttrName = 'mat-basic-chip-row';
@@ -100,28 +94,10 @@ export class MatChipRow extends MatChip implements AfterViewInit {
 
   _isEditing = false;
 
-  constructor(
-    changeDetectorRef: ChangeDetectorRef,
-    elementRef: ElementRef,
-    ngZone: NgZone,
-    focusMonitor: FocusMonitor,
-    @Inject(DOCUMENT) _document: any,
-    @Optional() @Inject(ANIMATION_MODULE_TYPE) animationMode?: string,
-    @Optional()
-    @Inject(MAT_RIPPLE_GLOBAL_OPTIONS)
-    globalRippleOptions?: RippleGlobalOptions,
-    @Attribute('tabindex') tabIndex?: string,
-  ) {
-    super(
-      changeDetectorRef,
-      elementRef,
-      ngZone,
-      focusMonitor,
-      _document,
-      animationMode,
-      globalRippleOptions,
-      tabIndex,
-    );
+  constructor(...args: unknown[]);
+
+  constructor() {
+    super();
 
     this.role = 'row';
     this._onBlur.pipe(takeUntil(this.destroyed)).subscribe(() => {
@@ -137,13 +113,9 @@ export class MatChipRow extends MatChip implements AfterViewInit {
   }
 
   /** Sends focus to the first gridcell when the user clicks anywhere inside the chip. */
-  _mousedown(event: MouseEvent) {
-    if (!this._isEditing) {
-      if (!this.disabled) {
-        this.focus();
-      }
-
-      event.preventDefault();
+  _handleFocus() {
+    if (!this._isEditing && !this.disabled) {
+      this.focus();
     }
   }
 
@@ -163,7 +135,7 @@ export class MatChipRow extends MatChip implements AfterViewInit {
     }
   }
 
-  _doubleclick(event: MouseEvent) {
+  _handleDoubleclick(event: MouseEvent) {
     if (!this.disabled && this.editable) {
       this._startEditing(event);
     }
@@ -180,19 +152,20 @@ export class MatChipRow extends MatChip implements AfterViewInit {
     // The value depends on the DOM so we need to extract it before we flip the flag.
     const value = this.value;
 
-    this._isEditing = true;
-    this._editStartPending = true;
+    this._isEditing = this._editStartPending = true;
 
-    // Defer initializing the input so it has time to be added to the DOM.
-    setTimeout(() => {
-      this._getEditInput().initialize(value);
-      this._editStartPending = false;
-    });
+    // Defer initializing the input until after it has been added to the DOM.
+    afterNextRender(
+      () => {
+        this._getEditInput().initialize(value);
+        this._editStartPending = false;
+      },
+      {injector: this._injector},
+    );
   }
 
   private _onEditFinish() {
-    this._isEditing = false;
-    this._editStartPending = false;
+    this._isEditing = this._editStartPending = false;
     this.edited.emit({chip: this, value: this._getEditInput().getValue()});
 
     // If the edit input is still focused or focus was returned to the body after it was destroyed,
@@ -203,6 +176,10 @@ export class MatChipRow extends MatChip implements AfterViewInit {
     ) {
       this.primaryAction.focus();
     }
+  }
+
+  override _isRippleDisabled(): boolean {
+    return super._isRippleDisabled() || this._isEditing;
   }
 
   /**

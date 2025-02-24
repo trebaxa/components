@@ -6,7 +6,6 @@ import {
   MatDrawerHarness,
 } from '@angular/material/sidenav/testing';
 import {HarnessLoader} from '@angular/cdk/testing';
-import {MatSidenavModule} from '@angular/material/sidenav';
 import {SidenavHarnessExample} from './sidenav-harness-example';
 import {NoopAnimationsModule} from '@angular/platform-browser/animations';
 
@@ -16,9 +15,8 @@ describe('SidenavHarnessExample', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      imports: [MatSidenavModule, NoopAnimationsModule],
-      declarations: [SidenavHarnessExample],
-    }).compileComponents();
+      imports: [NoopAnimationsModule],
+    });
 
     fixture = TestBed.createComponent(SidenavHarnessExample);
     fixture.detectChanges();

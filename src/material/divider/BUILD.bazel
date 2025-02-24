@@ -1,5 +1,6 @@
 load(
     "//tools:defaults.bzl",
+    "extract_tokens",
     "markdown_to_html",
     "ng_module",
     "ng_test_library",
@@ -33,6 +34,10 @@ sass_library(
 sass_binary(
     name = "divider_scss",
     src = "divider.scss",
+    deps = [
+        ":divider_scss_lib",
+        "//src/material/core:core_scss_lib",
+    ],
 )
 
 ng_test_library(
@@ -55,6 +60,11 @@ ng_web_test_suite(
 markdown_to_html(
     name = "overview",
     srcs = [":divider.md"],
+)
+
+extract_tokens(
+    name = "tokens",
+    srcs = [":divider_scss_lib"],
 )
 
 filegroup(

@@ -8,7 +8,7 @@
   [class.mat-datepicker-content-container-with-actions]="_actionsPortal">
   <mat-calendar
     [id]="datepicker.id"
-    [ngClass]="datepicker.panelClass"
+    [class]="datepicker.panelClass"
     [startAt]="datepicker.startAt"
     [startView]="datepicker.startView"
     [minDate]="datepicker._getMinDate()"
@@ -19,7 +19,6 @@
     [dateClass]="datepicker.dateClass"
     [comparisonStart]="comparisonStart"
     [comparisonEnd]="comparisonEnd"
-    [@fadeInCalendar]="'enter'"
     [startDateAccessibleName]="startDateAccessibleName"
     [endDateAccessibleName]="endDateAccessibleName"
     (yearSelected)="datepicker._selectYear($event)"

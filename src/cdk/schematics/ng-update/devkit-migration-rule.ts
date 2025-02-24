@@ -3,12 +3,12 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
+import {workspaces} from '@angular-devkit/core';
 import {Rule, SchematicContext, Tree} from '@angular-devkit/schematics';
 import {NodePackageInstallTask} from '@angular-devkit/schematics/tasks';
-import {ProjectDefinition} from '@angular-devkit/core/src/workspace';
 
 import {UpdateProject} from '../update-tool';
 import {WorkspacePath} from '../update-tool/file-system';
@@ -24,14 +24,15 @@ import {ClassInheritanceMigration} from './migrations/class-inheritance';
 import {ClassNamesMigration} from './migrations/class-names';
 import {ConstructorSignatureMigration} from './migrations/constructor-signature';
 import {CssSelectorsMigration} from './migrations/css-selectors';
+import {CssTokensMigration} from './migrations/css-tokens';
 import {ElementSelectorsMigration} from './migrations/element-selectors';
 import {InputNamesMigration} from './migrations/input-names';
 import {MethodCallArgumentsMigration} from './migrations/method-call-arguments';
 import {MiscTemplateMigration} from './migrations/misc-template';
 import {OutputNamesMigration} from './migrations/output-names';
 import {PropertyNamesMigration} from './migrations/property-names';
-import {UpgradeData} from './upgrade-data';
 import {SymbolRemovalMigration} from './migrations/symbol-removal';
+import {UpgradeData} from './upgrade-data';
 
 /** List of migrations which run for the CDK update. */
 export const cdkMigrations: MigrationCtor<UpgradeData>[] = [
@@ -40,6 +41,7 @@ export const cdkMigrations: MigrationCtor<UpgradeData>[] = [
   ClassNamesMigration,
   ConstructorSignatureMigration,
   CssSelectorsMigration,
+  CssTokensMigration,
   ElementSelectorsMigration,
   InputNamesMigration,
   MethodCallArgumentsMigration,
@@ -139,7 +141,7 @@ export function createMigrationSchematicRule(
 
     /** Runs the migrations for the specified workspace project. */
     function runMigrations(
-      project: ProjectDefinition,
+      project: workspaces.ProjectDefinition,
       projectName: string,
       tsconfigPath: WorkspacePath,
       additionalStylesheetPaths: string[],

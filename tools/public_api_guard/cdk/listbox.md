@@ -6,12 +6,12 @@
 
 import { ActiveDescendantKeyManager } from '@angular/cdk/a11y';
 import { AfterContentInit } from '@angular/core';
-import { BooleanInput } from '@angular/cdk/coercion';
 import { ChangeDetectorRef } from '@angular/core';
 import { ControlValueAccessor } from '@angular/forms';
 import { Highlightable } from '@angular/cdk/a11y';
 import * as i0 from '@angular/core';
 import { ListKeyManagerOption } from '@angular/cdk/a11y';
+import { NgZone } from '@angular/core';
 import { OnDestroy } from '@angular/core';
 import { QueryList } from '@angular/core';
 import { SelectionModel } from '@angular/cdk/collections';
@@ -19,6 +19,7 @@ import { Subject } from 'rxjs';
 
 // @public (undocumented)
 export class CdkListbox<T = unknown> implements AfterContentInit, OnDestroy, ControlValueAccessor {
+    constructor();
     protected readonly changeDetectorRef: ChangeDetectorRef;
     get compareWith(): undefined | ((o1: T, o2: T) => boolean);
     set compareWith(fn: undefined | ((o1: T, o2: T) => boolean));
@@ -26,13 +27,13 @@ export class CdkListbox<T = unknown> implements AfterContentInit, OnDestroy, Con
     deselectValue(value: T): void;
     protected readonly destroyed: Subject<void>;
     get disabled(): boolean;
-    set disabled(value: BooleanInput);
+    set disabled(value: boolean);
     protected readonly element: HTMLElement;
-    get enabledTabIndex(): number | null;
-    set enabledTabIndex(value: number | null);
+    get enabledTabIndex(): number | null | undefined;
+    set enabledTabIndex(value: number | null | undefined);
     focus(): void;
     protected _getAriaActiveDescendant(): string | null | undefined;
-    protected _getTabIndex(): number | null;
+    protected _getTabIndex(): number | null | undefined;
     protected _handleFocus(): void;
     protected _handleFocusIn(): void;
     protected _handleFocusOut(event: FocusEvent): void;
@@ -44,17 +45,28 @@ export class CdkListbox<T = unknown> implements AfterContentInit, OnDestroy, Con
     isValueSelected(value: T): boolean;
     protected listKeyManager: ActiveDescendantKeyManager<CdkOption<T>>;
     get multiple(): boolean;
-    set multiple(value: BooleanInput);
-    get navigateDisabledOptions(): BooleanInput;
-    set navigateDisabledOptions(skip: BooleanInput);
-    get navigationWrapDisabled(): BooleanInput;
-    set navigationWrapDisabled(wrap: BooleanInput);
+    set multiple(value: boolean);
+    get navigateDisabledOptions(): boolean;
+    set navigateDisabledOptions(skip: boolean);
+    get navigationWrapDisabled(): boolean;
+    set navigationWrapDisabled(wrap: boolean);
+    // (undocumented)
+    static ngAcceptInputType_disabled: unknown;
+    // (undocumented)
+    static ngAcceptInputType_multiple: unknown;
+    // (undocumented)
+    static ngAcceptInputType_navigateDisabledOptions: unknown;
+    // (undocumented)
+    static ngAcceptInputType_navigationWrapDisabled: unknown;
+    // (undocumented)
+    static ngAcceptInputType_useActiveDescendant: unknown;
     // (undocumented)
     ngAfterContentInit(): void;
     // (undocumented)
     ngOnDestroy(): void;
+    protected readonly ngZone: NgZone;
     protected options: QueryList<CdkOption<T>>;
-    get orientation(): 'horizontal' | 'vertical';
+    get orientation(): "horizontal" | "vertical";
     set orientation(value: 'horizontal' | 'vertical');
     registerOnChange(fn: (value: readonly T[]) => void): void;
     registerOnTouched(fn: () => {}): void;
@@ -69,13 +81,13 @@ export class CdkListbox<T = unknown> implements AfterContentInit, OnDestroy, Con
     protected triggerOption(option: CdkOption<T> | null): void;
     protected triggerRange(trigger: CdkOption<T> | null, from: number, to: number, on: boolean): void;
     get useActiveDescendant(): boolean;
-    set useActiveDescendant(shouldUseActiveDescendant: BooleanInput);
+    set useActiveDescendant(value: boolean);
     get value(): readonly T[];
     set value(value: readonly T[]);
     readonly valueChange: Subject<ListboxValueChangeEvent<T>>;
     writeValue(value: readonly T[]): void;
     // (undocumented)
-    static ɵdir: i0.ɵɵDirectiveDeclaration<CdkListbox<any>, "[cdkListbox]", ["cdkListbox"], { "id": "id"; "enabledTabIndex": "tabindex"; "value": "cdkListboxValue"; "multiple": "cdkListboxMultiple"; "disabled": "cdkListboxDisabled"; "useActiveDescendant": "cdkListboxUseActiveDescendant"; "orientation": "cdkListboxOrientation"; "compareWith": "cdkListboxCompareWith"; "navigationWrapDisabled": "cdkListboxNavigationWrapDisabled"; "navigateDisabledOptions": "cdkListboxNavigatesDisabledOptions"; }, { "valueChange": "cdkListboxValueChange"; }, ["options"], never, true, never>;
+    static ɵdir: i0.ɵɵDirectiveDeclaration<CdkListbox<any>, "[cdkListbox]", ["cdkListbox"], { "id": { "alias": "id"; "required": false; }; "enabledTabIndex": { "alias": "tabindex"; "required": false; }; "value": { "alias": "cdkListboxValue"; "required": false; }; "multiple": { "alias": "cdkListboxMultiple"; "required": false; }; "disabled": { "alias": "cdkListboxDisabled"; "required": false; }; "useActiveDescendant": { "alias": "cdkListboxUseActiveDescendant"; "required": false; }; "orientation": { "alias": "cdkListboxOrientation"; "required": false; }; "compareWith": { "alias": "cdkListboxCompareWith"; "required": false; }; "navigationWrapDisabled": { "alias": "cdkListboxNavigationWrapDisabled"; "required": false; }; "navigateDisabledOptions": { "alias": "cdkListboxNavigatesDisabledOptions"; "required": false; }; }, { "valueChange": "cdkListboxValueChange"; }, ["options"], never, true, never>;
     // (undocumented)
     static ɵfac: i0.ɵɵFactoryDeclaration<CdkListbox<any>, never>;
 }
@@ -96,13 +108,13 @@ export class CdkOption<T = unknown> implements ListKeyManagerOption, Highlightab
     deselect(): void;
     protected destroyed: Subject<void>;
     get disabled(): boolean;
-    set disabled(value: BooleanInput);
+    set disabled(value: boolean);
     readonly element: HTMLElement;
-    get enabledTabIndex(): number | null;
-    set enabledTabIndex(value: number | null);
+    get enabledTabIndex(): number | null | undefined;
+    set enabledTabIndex(value: number | null | undefined);
     focus(): void;
     getLabel(): string;
-    protected _getTabIndex(): number | null;
+    protected _getTabIndex(): number | null | undefined;
     protected _handleFocus(): void;
     get id(): string;
     set id(value: string);
@@ -110,15 +122,17 @@ export class CdkOption<T = unknown> implements ListKeyManagerOption, Highlightab
     isSelected(): boolean;
     protected readonly listbox: CdkListbox<T>;
     // (undocumented)
+    static ngAcceptInputType_disabled: unknown;
+    // (undocumented)
     ngOnDestroy(): void;
     select(): void;
     setActiveStyles(): void;
     setInactiveStyles(): void;
     toggle(): void;
-    typeaheadLabel: string;
+    typeaheadLabel: string | null;
     value: T;
     // (undocumented)
-    static ɵdir: i0.ɵɵDirectiveDeclaration<CdkOption<any>, "[cdkOption]", ["cdkOption"], { "id": "id"; "value": "cdkOption"; "typeaheadLabel": "cdkOptionTypeaheadLabel"; "disabled": "cdkOptionDisabled"; "enabledTabIndex": "tabindex"; }, {}, never, never, true, never>;
+    static ɵdir: i0.ɵɵDirectiveDeclaration<CdkOption<any>, "[cdkOption]", ["cdkOption"], { "id": { "alias": "id"; "required": false; }; "value": { "alias": "cdkOption"; "required": false; }; "typeaheadLabel": { "alias": "cdkOptionTypeaheadLabel"; "required": false; }; "disabled": { "alias": "cdkOptionDisabled"; "required": false; }; "enabledTabIndex": { "alias": "tabindex"; "required": false; }; }, {}, never, never, true, never>;
     // (undocumented)
     static ɵfac: i0.ɵɵFactoryDeclaration<CdkOption<any>, never>;
 }

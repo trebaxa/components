@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {DOCUMENT} from '@angular/common';
@@ -39,9 +39,8 @@ export function getMatIconNameNotFoundError(iconName: string): Error {
  */
 export function getMatIconNoHttpProviderError(): Error {
   return Error(
-    'Could not find HttpClient provider for use with Angular Material icons. ' +
-      'Please include the HttpClientModule from @angular/common/http in your ' +
-      'app imports.',
+    'Could not find HttpClient for use with Angular Material icons. ' +
+      'Please add provideHttpClient() to your providers.',
   );
 }
 
@@ -147,7 +146,7 @@ export class MatIconRegistry implements OnDestroy {
   /**
    * The CSS classes to apply when an `<mat-icon>` component has no icon name, url, or font
    * specified. The default 'material-icons' value assumes that the material icon font has been
-   * loaded as described at http://google.github.io/material-design-icons/#icon-font-for-the-web
+   * loaded as described at https://google.github.io/material-design-icons/#icon-font-for-the-web
    */
   private _defaultFontSetClass = ['material-icons', 'mat-ligature-font'];
 

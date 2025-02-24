@@ -3,23 +3,18 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
-  AfterContentInit,
-  ChangeDetectorRef,
-  ContentChildren,
-  Directive,
-  ElementRef,
-  forwardRef,
-  inject,
-  Input,
-  OnDestroy,
-  Output,
-  QueryList,
-} from '@angular/core';
-import {ActiveDescendantKeyManager, Highlightable, ListKeyManagerOption} from '@angular/cdk/a11y';
+  _IdGenerator,
+  ActiveDescendantKeyManager,
+  Highlightable,
+  ListKeyManagerOption,
+} from '@angular/cdk/a11y';
+import {Directionality} from '@angular/cdk/bidi';
+import {coerceArray} from '@angular/cdk/coercion';
+import {SelectionModel} from '@angular/cdk/collections';
 import {
   A,
   DOWN_ARROW,
@@ -32,15 +27,27 @@ import {
   SPACE,
   UP_ARROW,
 } from '@angular/cdk/keycodes';
-import {BooleanInput, coerceArray, coerceBooleanProperty} from '@angular/cdk/coercion';
-import {SelectionModel} from '@angular/cdk/collections';
+import {Platform} from '@angular/cdk/platform';
+import {
+  AfterContentInit,
+  booleanAttribute,
+  ChangeDetectorRef,
+  ContentChildren,
+  Directive,
+  ElementRef,
+  forwardRef,
+  inject,
+  Input,
+  NgZone,
+  OnDestroy,
+  Output,
+  QueryList,
+  Renderer2,
+  signal,
+} from '@angular/core';
+import {ControlValueAccessor, NG_VALUE_ACCESSOR} from '@angular/forms';
 import {defer, merge, Observable, Subject} from 'rxjs';
 import {filter, map, startWith, switchMap, takeUntil} from 'rxjs/operators';
-import {ControlValueAccessor, NG_VALUE_ACCESSOR} from '@angular/forms';
-import {Directionality} from '@angular/cdk/bidi';
-
-/** The next id to use for creating unique DOM IDs. */
-let nextId = 0;
 
 /**
  * An implementation of SelectionModel that internally always represents the selection as a
@@ -78,7 +85,6 @@ class ListboxSelectionModel<T> extends SelectionModel<T> {
 /** A selectable option in a listbox. */
 @Directive({
   selector: '[cdkOption]',
-  standalone: true,
   exportAs: 'cdkOption',
   host: {
     'role': 'option',
@@ -102,7 +108,7 @@ export class CdkOption<T = unknown> implements ListKeyManagerOption, Highlightab
     this._id = value;
   }
   private _id: string;
-  private _generatedId = `cdk-option-${nextId++}`;
+  private _generatedId = inject(_IdGenerator).getId('cdk-option-');
 
   /** The value of this option. */
   @Input('cdkOption') value: T;
@@ -111,29 +117,29 @@ export class CdkOption<T = unknown> implements ListKeyManagerOption, Highlightab
    * The text used to locate this item during listbox typeahead. If not specified,
    * the `textContent` of the item will be used.
    */
-  @Input('cdkOptionTypeaheadLabel') typeaheadLabel: string;
+  @Input('cdkOptionTypeaheadLabel') typeaheadLabel: string | null;
 
   /** Whether this option is disabled. */
-  @Input('cdkOptionDisabled')
+  @Input({alias: 'cdkOptionDisabled', transform: booleanAttribute})
   get disabled(): boolean {
-    return this.listbox.disabled || this._disabled;
+    return this.listbox.disabled || this._disabled();
   }
-  set disabled(value: BooleanInput) {
-    this._disabled = coerceBooleanProperty(value);
+  set disabled(value: boolean) {
+    this._disabled.set(value);
   }
-  private _disabled: boolean = false;
+  private _disabled = signal(false);
 
   /** The tabindex of the option when it is enabled. */
   @Input('tabindex')
   get enabledTabIndex() {
-    return this._enabledTabIndex === undefined
+    return this._enabledTabIndex() === undefined
       ? this.listbox.enabledTabIndex
-      : this._enabledTabIndex;
+      : this._enabledTabIndex();
   }
   set enabledTabIndex(value) {
-    this._enabledTabIndex = value;
+    this._enabledTabIndex.set(value);
   }
-  private _enabledTabIndex?: number | null;
+  private _enabledTabIndex = signal<number | null | undefined>(undefined);
 
   /** The option's host element */
   readonly element: HTMLElement = inject(ElementRef).nativeElement;
@@ -191,7 +197,13 @@ export class CdkOption<T = unknown> implements ListKeyManagerOption, Highlightab
    * No-op implemented as a part of `Highlightable`.
    * @docs-private
    */
-  setActiveStyles() {}
+  setActiveStyles() {
+    // If the listbox is using `aria-activedescendant` the option won't have focus so the
+    // browser won't scroll them into view automatically so we need to do it ourselves.
+    if (this.listbox.useActiveDescendant) {
+      this.element.scrollIntoView({block: 'nearest', inline: 'nearest'});
+    }
+  }
 
   /**
    * No-op implemented as a part of `Highlightable`.
@@ -221,7 +233,6 @@ export class CdkOption<T = unknown> implements ListKeyManagerOption, Highlightab
 
 @Directive({
   selector: '[cdkListbox]',
-  standalone: true,
   exportAs: 'cdkListbox',
   host: {
     'role': 'listbox',
@@ -246,6 +257,8 @@ export class CdkOption<T = unknown> implements ListKeyManagerOption, Highlightab
   ],
 })
 export class CdkListbox<T = unknown> implements AfterContentInit, OnDestroy, ControlValueAccessor {
+  private _cleanupWindowBlur: (() => void) | undefined;
+
   /** The id of the option's host element. */
   @Input()
   get id() {
@@ -255,17 +268,17 @@ export class CdkListbox<T = unknown> implements AfterContentInit, OnDestroy, Con
     this._id = value;
   }
   private _id: string;
-  private _generatedId = `cdk-listbox-${nextId++}`;
+  private _generatedId = inject(_IdGenerator).getId('cdk-listbox-');
 
   /** The tabindex to use when the listbox is enabled. */
   @Input('tabindex')
   get enabledTabIndex() {
-    return this._enabledTabIndex === undefined ? 0 : this._enabledTabIndex;
+    return this._enabledTabIndex() === undefined ? 0 : this._enabledTabIndex();
   }
   set enabledTabIndex(value) {
-    this._enabledTabIndex = value;
+    this._enabledTabIndex.set(value);
   }
-  private _enabledTabIndex?: number | null;
+  private _enabledTabIndex = signal<number | null | undefined>(undefined);
 
   /** The value selected in the listbox, represented as an array of option values. */
   @Input('cdkListboxValue')
@@ -280,12 +293,12 @@ export class CdkListbox<T = unknown> implements AfterContentInit, OnDestroy, Con
    * Whether the listbox allows multiple options to be selected. If the value switches from `true`
    * to `false`, and more than one option is selected, all options are deselected.
    */
-  @Input('cdkListboxMultiple')
+  @Input({alias: 'cdkListboxMultiple', transform: booleanAttribute})
   get multiple(): boolean {
     return this.selectionModel.multiple;
   }
-  set multiple(value: BooleanInput) {
-    this.selectionModel.multiple = coerceBooleanProperty(value);
+  set multiple(value: boolean) {
+    this.selectionModel.multiple = value;
 
     if (this.options) {
       this._updateInternalValue();
@@ -293,24 +306,24 @@ export class CdkListbox<T = unknown> implements AfterContentInit, OnDestroy, Con
   }
 
   /** Whether the listbox is disabled. */
-  @Input('cdkListboxDisabled')
-  get disabled(): boolean {
-    return this._disabled;
+  @Input({alias: 'cdkListboxDisabled', transform: booleanAttribute})
+  get disabled() {
+    return this._disabled();
   }
-  set disabled(value: BooleanInput) {
-    this._disabled = coerceBooleanProperty(value);
+  set disabled(value: boolean) {
+    this._disabled.set(value);
   }
-  private _disabled: boolean = false;
+  private _disabled = signal(false);
 
   /** Whether the listbox will use active descendant or will move focus onto the options. */
-  @Input('cdkListboxUseActiveDescendant')
-  get useActiveDescendant(): boolean {
-    return this._useActiveDescendant;
+  @Input({alias: 'cdkListboxUseActiveDescendant', transform: booleanAttribute})
+  get useActiveDescendant() {
+    return this._useActiveDescendant();
   }
-  set useActiveDescendant(shouldUseActiveDescendant: BooleanInput) {
-    this._useActiveDescendant = coerceBooleanProperty(shouldUseActiveDescendant);
+  set useActiveDescendant(value: boolean) {
+    this._useActiveDescendant.set(value);
   }
-  private _useActiveDescendant: boolean = false;
+  private _useActiveDescendant = signal(false);
 
   /** The orientation of the listbox. Only affects keyboard interaction, not visual layout. */
   @Input('cdkListboxOrientation')
@@ -340,23 +353,23 @@ export class CdkListbox<T = unknown> implements AfterContentInit, OnDestroy, Con
    * Whether the keyboard navigation should wrap when the user presses arrow down on the last item
    * or arrow up on the first item.
    */
-  @Input('cdkListboxNavigationWrapDisabled')
+  @Input({alias: 'cdkListboxNavigationWrapDisabled', transform: booleanAttribute})
   get navigationWrapDisabled() {
     return this._navigationWrapDisabled;
   }
-  set navigationWrapDisabled(wrap: BooleanInput) {
-    this._navigationWrapDisabled = coerceBooleanProperty(wrap);
+  set navigationWrapDisabled(wrap: boolean) {
+    this._navigationWrapDisabled = wrap;
     this.listKeyManager?.withWrap(!this._navigationWrapDisabled);
   }
   private _navigationWrapDisabled = false;
 
   /** Whether keyboard navigation should skip over disabled items. */
-  @Input('cdkListboxNavigatesDisabledOptions')
+  @Input({alias: 'cdkListboxNavigatesDisabledOptions', transform: booleanAttribute})
   get navigateDisabledOptions() {
     return this._navigateDisabledOptions;
   }
-  set navigateDisabledOptions(skip: BooleanInput) {
-    this._navigateDisabledOptions = coerceBooleanProperty(skip);
+  set navigateDisabledOptions(skip: boolean) {
+    this._navigateDisabledOptions = skip;
     this.listKeyManager?.skipPredicate(
       this._navigateDisabledOptions ? this._skipNonePredicate : this._skipDisabledPredicate,
     );
@@ -380,6 +393,9 @@ export class CdkListbox<T = unknown> implements AfterContentInit, OnDestroy, Con
 
   /** The host element of the listbox. */
   protected readonly element: HTMLElement = inject(ElementRef).nativeElement;
+
+  /** The Angular zone. */
+  protected readonly ngZone = inject(NgZone);
 
   /** The change detector for this listbox. */
   protected readonly changeDetectorRef = inject(ChangeDetectorRef);
@@ -409,6 +425,9 @@ export class CdkListbox<T = unknown> implements AfterContentInit, OnDestroy, Con
   /** The directionality of the page. */
   private readonly _dir = inject(Directionality, {optional: true});
 
+  /** Whether the component is being rendered in the browser. */
+  private readonly _isBrowser: boolean = inject(Platform).isBrowser;
+
   /** A predicate that skips disabled options. */
   private readonly _skipDisabledPredicate = (option: CdkOption<T>) => option.disabled;
 
@@ -417,6 +436,24 @@ export class CdkListbox<T = unknown> implements AfterContentInit, OnDestroy, Con
 
   /** Whether the listbox currently has focus. */
   private _hasFocus = false;
+
+  /** A reference to the option that was active before the listbox lost focus. */
+  private _previousActiveOption: CdkOption<T> | null = null;
+
+  constructor() {
+    if (this._isBrowser) {
+      const renderer = inject(Renderer2);
+
+      this._cleanupWindowBlur = this.ngZone.runOutsideAngular(() => {
+        return renderer.listen('window', 'blur', () => {
+          if (this.element.contains(document.activeElement) && this._previousActiveOption) {
+            this._setActiveOption(this._previousActiveOption);
+            this._previousActiveOption = null;
+          }
+        });
+      });
+    }
+  }
 
   ngAfterContentInit() {
     if (typeof ngDevMode === 'undefined' || ngDevMode) {
@@ -440,6 +477,7 @@ export class CdkListbox<T = unknown> implements AfterContentInit, OnDestroy, Con
   }
 
   ngOnDestroy() {
+    this._cleanupWindowBlur?.();
     this.listKeyManager?.destroy();
     this.destroyed.next();
     this.destroyed.complete();
@@ -579,6 +617,7 @@ export class CdkListbox<T = unknown> implements AfterContentInit, OnDestroy, Con
    */
   setDisabledState(isDisabled: boolean): void {
     this.disabled = isDisabled;
+    this.changeDetectorRef.markForCheck();
   }
 
   /** Focus the listbox's host element. */
@@ -672,7 +711,7 @@ export class CdkListbox<T = unknown> implements AfterContentInit, OnDestroy, Con
 
   /** Called when the user presses keydown on the listbox. */
   protected _handleKeydown(event: KeyboardEvent) {
-    if (this._disabled) {
+    if (this.disabled) {
       return;
     }
 
@@ -783,6 +822,11 @@ export class CdkListbox<T = unknown> implements AfterContentInit, OnDestroy, Con
    * @param event The focusout event
    */
   protected _handleFocusOut(event: FocusEvent) {
+    // Some browsers (e.g. Chrome and Firefox) trigger the focusout event when the user returns back to the document.
+    // To prevent losing the active option in this case, we store it in `_previousActiveOption` and restore it on the window `blur` event
+    // This ensures that the `activeItem` matches the actual focused element when the user returns to the document.
+    this._previousActiveOption = this.listKeyManager.activeItem;
+
     const otherElement = event.relatedTarget as Element;
     if (this.element !== otherElement && !this.element.contains(otherElement)) {
       this._onTouched();
@@ -793,7 +837,7 @@ export class CdkListbox<T = unknown> implements AfterContentInit, OnDestroy, Con
 
   /** Get the id of the active option if active descendant is being used. */
   protected _getAriaActiveDescendant(): string | null | undefined {
-    return this._useActiveDescendant ? this.listKeyManager?.activeItem?.id : null;
+    return this.useActiveDescendant ? this.listKeyManager?.activeItem?.id : null;
   }
 
   /** Get the tabindex for the listbox. */
@@ -826,6 +870,17 @@ export class CdkListbox<T = unknown> implements AfterContentInit, OnDestroy, Con
     }
 
     this.listKeyManager.change.subscribe(() => this._focusActiveOption());
+
+    this.options.changes.pipe(takeUntil(this.destroyed)).subscribe(() => {
+      const activeOption = this.listKeyManager.activeItem;
+
+      // If the active option was deleted, we need to reset
+      // the key manager so it can allow focus back in.
+      if (activeOption && !this.options.find(option => option === activeOption)) {
+        this.listKeyManager.setActiveItem(-1);
+        this.changeDetectorRef.markForCheck();
+      }
+    });
   }
 
   /** Focus the active option. */

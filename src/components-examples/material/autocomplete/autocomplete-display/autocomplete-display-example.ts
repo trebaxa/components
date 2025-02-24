@@ -1,7 +1,11 @@
 import {Component, OnInit} from '@angular/core';
-import {FormControl} from '@angular/forms';
+import {FormControl, FormsModule, ReactiveFormsModule} from '@angular/forms';
 import {Observable} from 'rxjs';
 import {map, startWith} from 'rxjs/operators';
+import {AsyncPipe} from '@angular/common';
+import {MatAutocompleteModule} from '@angular/material/autocomplete';
+import {MatInputModule} from '@angular/material/input';
+import {MatFormFieldModule} from '@angular/material/form-field';
 
 export interface User {
   name: string;
@@ -13,7 +17,15 @@ export interface User {
 @Component({
   selector: 'autocomplete-display-example',
   templateUrl: 'autocomplete-display-example.html',
-  styleUrls: ['autocomplete-display-example.css'],
+  styleUrl: 'autocomplete-display-example.css',
+  imports: [
+    FormsModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatAutocompleteModule,
+    ReactiveFormsModule,
+    AsyncPipe,
+  ],
 })
 export class AutocompleteDisplayExample implements OnInit {
   myControl = new FormControl<string | User>('');

@@ -3,18 +3,18 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
+import {booleanAttribute} from '@angular/core';
 import {
   ComponentHarnessConstructor,
   ContentContainerComponentHarness,
   HarnessPredicate,
 } from '@angular/cdk/testing';
-import {coerceBooleanProperty} from '@angular/cdk/coercion';
 import {ButtonHarnessFilters, ButtonVariant} from './button-harness-filters';
 
-/** Harness for interacting with a MDC-based mat-button in tests. */
+/** Harness for interacting with a mat-button in tests. */
 export class MatButtonHarness extends ContentContainerComponentHarness {
   // TODO(jelbourn) use a single class, like `.mat-button-base`
   static hostSelector = `[mat-button], [mat-raised-button], [mat-flat-button],
@@ -60,8 +60,11 @@ export class MatButtonHarness extends ContentContainerComponentHarness {
 
   /** Gets a boolean promise indicating if the button is disabled. */
   async isDisabled(): Promise<boolean> {
-    const disabled = (await this.host()).getAttribute('disabled');
-    return coerceBooleanProperty(await disabled);
+    const host = await this.host();
+    return (
+      booleanAttribute(await host.getAttribute('disabled')) ||
+      (await host.hasClass('mat-mdc-button-disabled'))
+    );
   }
 
   /** Gets a promise for the button's label text. */

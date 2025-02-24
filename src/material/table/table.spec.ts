@@ -14,11 +14,14 @@ import {MatSort, MatSortHeader, MatSortModule} from '@angular/material/sort';
 import {MatPaginator, MatPaginatorModule} from '@angular/material/paginator';
 import {NoopAnimationsModule} from '@angular/platform-browser/animations';
 
-describe('MDC-based MatTable', () => {
+describe('MatTable', () => {
   beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
-      imports: [MatTableModule, MatPaginatorModule, MatSortModule, NoopAnimationsModule],
-      declarations: [
+      imports: [
+        MatTableModule,
+        MatPaginatorModule,
+        MatSortModule,
+        NoopAnimationsModule,
         MatTableApp,
         MatTableWithWhenRowApp,
         ArrayDataSourceMatTableApp,
@@ -30,7 +33,7 @@ describe('MDC-based MatTable', () => {
         NestedTableApp,
         MatFlexTableApp,
       ],
-    }).compileComponents();
+    });
   }));
 
   describe('with basic data source', () => {
@@ -237,14 +240,14 @@ describe('MDC-based MatTable', () => {
     let dataSource: MatTableDataSource<TestData>;
     let component: ArrayDataSourceMatTableApp;
 
-    beforeEach(fakeAsync(() => {
+    beforeEach(() => {
       fixture = TestBed.createComponent(ArrayDataSourceMatTableApp);
       fixture.detectChanges();
 
       tableElement = fixture.nativeElement.querySelector('table');
       component = fixture.componentInstance;
       dataSource = fixture.componentInstance.dataSource;
-    }));
+    });
 
     it('should create table and display data source contents', () => {
       expectTableToMatchContent(tableElement, [
@@ -259,6 +262,7 @@ describe('MDC-based MatTable', () => {
     it('changing data should update the table contents', () => {
       // Add data
       component.underlyingDataSource.addData();
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
       expectTableToMatchContent(tableElement, [
         ['Column A', 'Column B', 'Column C'],
@@ -273,6 +277,7 @@ describe('MDC-based MatTable', () => {
       const modifiedData = dataSource.data.slice();
       modifiedData.shift();
       dataSource.data = modifiedData;
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
       expectTableToMatchContent(tableElement, [
         ['Column A', 'Column B', 'Column C'],
@@ -312,6 +317,7 @@ describe('MDC-based MatTable', () => {
     it('should be able to filter the table contents', fakeAsync(() => {
       // Change filter to a_1, should match one row
       dataSource.filter = 'a_1';
+      flushMicrotasks(); // Resolve promise that updates paginator's length
       fixture.detectChanges();
       expect(dataSource.filteredData.length).toBe(1);
       expect(dataSource.filteredData[0]).toBe(dataSource.data[0]);
@@ -321,11 +327,11 @@ describe('MDC-based MatTable', () => {
         ['Footer A', 'Footer B', 'Footer C'],
       ]);
 
-      flushMicrotasks(); // Resolve promise that updates paginator's length
       expect(dataSource.paginator!.length).toBe(1);
 
       // Change filter to '  A_2  ', should match one row (ignores case and whitespace)
       dataSource.filter = '  A_2  ';
+      flushMicrotasks();
       fixture.detectChanges();
       expect(dataSource.filteredData.length).toBe(1);
       expect(dataSource.filteredData[0]).toBe(dataSource.data[1]);
@@ -337,6 +343,7 @@ describe('MDC-based MatTable', () => {
 
       // Change filter to empty string, should match all rows
       dataSource.filter = '';
+      flushMicrotasks();
       fixture.detectChanges();
       expect(dataSource.filteredData.length).toBe(3);
       expect(dataSource.filteredData[0]).toBe(dataSource.data[0]);
@@ -370,6 +377,7 @@ describe('MDC-based MatTable', () => {
         return dataStr.indexOf(filter) != -1;
       };
       dataSource.filter = 'zebra';
+      flushMicrotasks();
       fixture.detectChanges();
       expectTableToMatchContent(tableElement, [
         ['Column A', 'Column B', 'Column C'],
@@ -379,6 +387,7 @@ describe('MDC-based MatTable', () => {
 
       // Change the filter to a falsy value that might come in from the view.
       dataSource.filter = 0 as any;
+      flushMicrotasks();
       fixture.detectChanges();
       expectTableToMatchContent(tableElement, [
         ['Column A', 'Column B', 'Column C'],
@@ -390,6 +399,7 @@ describe('MDC-based MatTable', () => {
       // Set the value to the last character of the first
       // column plus the first character of the second column.
       dataSource.filter = '1b';
+      flushMicrotasks();
       fixture.detectChanges();
       expect(dataSource.filteredData.length).toBe(0);
       expectTableToMatchContent(tableElement, [
@@ -603,6 +613,7 @@ describe('MDC-based MatTable', () => {
       ]);
 
       dataSource.data = null!;
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
       expectTableToMatchContent(tableElement, [
         ['Column A', 'Column B', 'Column C'],
@@ -610,6 +621,7 @@ describe('MDC-based MatTable', () => {
       ]);
 
       component.underlyingDataSource.addData();
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
       expectTableToMatchContent(tableElement, [
         ['Column A', 'Column B', 'Column C'],
@@ -622,6 +634,7 @@ describe('MDC-based MatTable', () => {
       ]);
 
       dataSource.data = {} as any;
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
       expectTableToMatchContent(tableElement, [
         ['Column A', 'Column B', 'Column C'],
@@ -707,6 +720,7 @@ class FakeDataSource extends DataSource<TestData> {
       <tr mat-footer-row *matFooterRowDef="columnsToRender"></tr>
     </table>
   `,
+  imports: [MatTableModule, MatPaginatorModule, MatSortModule],
 })
 class MatTableApp {
   dataSource: FakeDataSource | null = new FakeDataSource();
@@ -741,6 +755,7 @@ class MatTableApp {
       </tr>
     </table>
   `,
+  imports: [MatTableModule, MatPaginatorModule, MatSortModule],
 })
 class NativeHtmlTableApp {
   dataSource: FakeDataSource | null = new FakeDataSource();
@@ -794,6 +809,7 @@ class NativeHtmlTableApp {
       <tr mat-row *matRowDef="let row; columns: columnsToRender"></tr>
     </table>
   `,
+  imports: [MatTableModule, MatPaginatorModule, MatSortModule],
 })
 class NestedTableApp {
   dataSource: FakeDataSource | null = new FakeDataSource();
@@ -812,6 +828,7 @@ class NestedTableApp {
       <tr mat-row *matRowDef="let row; columns: columnsToRender"></tr>
     </table>
   `,
+  imports: [MatTableModule, MatPaginatorModule, MatSortModule],
 })
 class StickyTableApp {
   dataSource = new FakeDataSource();
@@ -839,6 +856,7 @@ class StickyTableApp {
       <tr mat-footer-row *matFooterRowDef="['column_a']"></tr>
     </table>
   `,
+  imports: [MatTableModule, MatPaginatorModule, MatSortModule],
 })
 class MatTableWithWhenRowApp {
   multiTemplateDataRows = false;
@@ -876,6 +894,7 @@ class MatTableWithWhenRowApp {
 
     <mat-paginator [pageSize]="5"></mat-paginator>
   `,
+  imports: [MatTableModule, MatPaginatorModule, MatSortModule],
 })
 class ArrayDataSourceMatTableApp implements AfterViewInit {
   underlyingDataSource = new FakeDataSource();
@@ -928,6 +947,7 @@ class ArrayDataSourceMatTableApp implements AfterViewInit {
       <tr mat-row *matRowDef="let row; columns: columnsToRender"></tr>
     </table>
   `,
+  imports: [MatTableModule, MatPaginatorModule, MatSortModule],
 })
 class MatTableWithSortApp implements OnInit {
   underlyingDataSource = new FakeDataSource();
@@ -979,6 +999,7 @@ class MatTableWithSortApp implements OnInit {
 
     <mat-paginator [pageSize]="5"></mat-paginator>
   `,
+  imports: [MatTableModule, MatPaginatorModule, MatSortModule],
 })
 class MatTableWithPaginatorApp implements OnInit {
   underlyingDataSource = new FakeDataSource();
@@ -1020,6 +1041,7 @@ class MatTableWithPaginatorApp implements OnInit {
       </ng-container>
     </table>
   `,
+  imports: [MatTableModule, MatPaginatorModule, MatSortModule],
 })
 class TableWithNgContainerRow {
   dataSource: FakeDataSource | null = new FakeDataSource();
@@ -1057,6 +1079,7 @@ class TableWithNgContainerRow {
       <mat-footer-row *matFooterRowDef="columnsToRender"></mat-footer-row>
     </mat-table>
   `,
+  imports: [MatTableModule, MatPaginatorModule, MatSortModule],
 })
 class MatFlexTableApp {
   dataSource: FakeDataSource | null = new FakeDataSource();

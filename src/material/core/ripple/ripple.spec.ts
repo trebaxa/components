@@ -8,7 +8,7 @@ import {
   dispatchTouchEvent,
 } from '@angular/cdk/testing/private';
 import {Component, ViewChild, ViewEncapsulation} from '@angular/core';
-import {ComponentFixture, inject, TestBed} from '@angular/core/testing';
+import {ComponentFixture, TestBed, inject} from '@angular/core/testing';
 import {NoopAnimationsModule} from '@angular/platform-browser/animations';
 import {
   MAT_RIPPLE_GLOBAL_OPTIONS,
@@ -37,8 +37,8 @@ describe('MatRipple', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      imports: [MatRippleModule],
-      declarations: [
+      imports: [
+        MatRippleModule,
         BasicRippleContainer,
         RippleContainerWithInputBindings,
         RippleContainerWithoutBindings,
@@ -201,7 +201,7 @@ describe('MatRipple', () => {
 
     it('should ignore fake mouse events from screen readers', () => {
       const event = createMouseEvent('mousedown');
-      Object.defineProperties(event, {offsetX: {get: () => 0}, offsetY: {get: () => 0}});
+      Object.defineProperties(event, {buttons: {get: () => 0}, detail: {get: () => 0}});
 
       dispatchEvent(rippleTarget, event);
 
@@ -254,6 +254,7 @@ describe('MatRipple', () => {
       let radius = Math.sqrt(TARGET_HEIGHT * TARGET_HEIGHT + TARGET_WIDTH * TARGET_WIDTH) / 2;
 
       rippleDirective.centered = true;
+      fixture.changeDetectorRef.markForCheck();
       rippleDirective.launch(0, 0);
 
       let rippleElement = rippleTarget.querySelector('.mat-ripple-element') as HTMLElement;
@@ -276,23 +277,13 @@ describe('MatRipple', () => {
       rippleTarget = fixture.debugElement.nativeElement.querySelector('.mat-ripple');
 
       fixture.componentInstance.isDestroyed = true;
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
 
       dispatchMouseEvent(rippleTarget, 'mousedown');
       dispatchMouseEvent(rippleTarget, 'mouseup');
 
       expect(rippleTarget.querySelectorAll('.mat-ripple-element').length).toBe(0);
-    });
-
-    it('does not run events inside the NgZone', () => {
-      const spy = jasmine.createSpy('zone unstable callback');
-      const subscription = fixture.ngZone!.onUnstable.subscribe(spy);
-
-      dispatchMouseEvent(rippleTarget, 'mousedown');
-      dispatchMouseEvent(rippleTarget, 'mouseup');
-
-      expect(spy).not.toHaveBeenCalled();
-      subscription.unsubscribe();
     });
 
     it('should only persist the latest ripple on pointer down', () => {
@@ -511,8 +502,7 @@ describe('MatRipple', () => {
       // The testing module has been initialized in the root describe group for the ripples.
       TestBed.resetTestingModule();
       TestBed.configureTestingModule({
-        imports: [MatRippleModule, ...extraImports],
-        declarations: [testComponent],
+        imports: [MatRippleModule, ...extraImports, testComponent],
         providers: [{provide: MAT_RIPPLE_GLOBAL_OPTIONS, useValue: rippleConfig}],
       });
 
@@ -612,8 +602,7 @@ describe('MatRipple', () => {
     beforeEach(() => {
       TestBed.resetTestingModule();
       TestBed.configureTestingModule({
-        imports: [NoopAnimationsModule, MatRippleModule],
-        declarations: [BasicRippleContainer],
+        imports: [NoopAnimationsModule, MatRippleModule, BasicRippleContainer],
       });
 
       fixture = TestBed.createComponent(BasicRippleContainer);
@@ -644,6 +633,7 @@ describe('MatRipple', () => {
       const backgroundColor = 'rgba(12, 34, 56, 0.8)';
 
       controller.color = backgroundColor;
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
 
       dispatchMouseEvent(rippleTarget, 'mousedown');
@@ -655,6 +645,7 @@ describe('MatRipple', () => {
 
     it('does not respond to events when disabled input is set', () => {
       controller.disabled = true;
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
 
       dispatchMouseEvent(rippleTarget, 'mousedown');
@@ -663,6 +654,7 @@ describe('MatRipple', () => {
       expect(rippleTarget.querySelectorAll('.mat-ripple-element').length).toBe(0);
 
       controller.disabled = false;
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
 
       dispatchMouseEvent(rippleTarget, 'mousedown');
@@ -680,6 +672,7 @@ describe('MatRipple', () => {
 
       spyOn(controller.ripple, 'fadeOutAllNonPersistent').and.callThrough();
       controller.disabled = true;
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
 
       expect(controller.ripple.fadeOutAllNonPersistent).toHaveBeenCalled();
@@ -700,6 +693,7 @@ describe('MatRipple', () => {
 
       // Set the trigger element, and now events should create ripples.
       controller.trigger = alternateTrigger;
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
 
       dispatchMouseEvent(alternateTrigger, 'mousedown');
@@ -710,6 +704,7 @@ describe('MatRipple', () => {
 
     it('expands ripple from center if centered input is set', () => {
       controller.centered = true;
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
 
       let elementRect = rippleTarget.getBoundingClientRect();
@@ -737,6 +732,7 @@ describe('MatRipple', () => {
       let customRadius = 42;
 
       controller.radius = customRadius;
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
 
       let elementRect = rippleTarget.getBoundingClientRect();
@@ -758,6 +754,7 @@ describe('MatRipple', () => {
 
     it('should be able to specify animation config through binding', () => {
       controller.animationConfig = {enterDuration: 120, exitDuration: 150};
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
 
       dispatchMouseEvent(rippleTarget, 'mousedown');
@@ -839,6 +836,7 @@ describe('MatRipple', () => {
          style="position: relative; width:300px; height:200px;">
     </div>
   `,
+  imports: [MatRippleModule],
 })
 class BasicRippleContainer {
   @ViewChild('ripple') ripple: MatRipple;
@@ -857,6 +855,7 @@ class BasicRippleContainer {
     </div>
     <div class="alternateTrigger"></div>
   `,
+  imports: [MatRippleModule],
 })
 class RippleContainerWithInputBindings {
   animationConfig: RippleAnimationConfig;
@@ -870,11 +869,13 @@ class RippleContainerWithInputBindings {
 
 @Component({
   template: `<div id="container" #ripple="matRipple" matRipple></div>`,
+  imports: [MatRippleModule],
 })
 class RippleContainerWithoutBindings {}
 
 @Component({
-  template: `<div id="container" matRipple *ngIf="!isDestroyed"></div>`,
+  template: `@if (!isDestroyed) {<div id="container" matRipple></div>}`,
+  imports: [MatRippleModule],
 })
 class RippleContainerWithNgIf {
   @ViewChild(MatRipple) ripple: MatRipple;
@@ -882,25 +883,28 @@ class RippleContainerWithNgIf {
 }
 
 @Component({
-  styles: [`* { transition: none !important; }`],
+  styles: `* { transition: none !important; }`,
   template: `<div id="container" matRipple></div>`,
   encapsulation: ViewEncapsulation.None,
+  imports: [MatRippleModule],
 })
 class RippleCssTransitionNone {}
 
 @Component({
-  styles: [`* { transition-duration: 0ms !important; }`],
+  styles: `* { transition-duration: 0ms !important; }`,
   template: `<div id="container" matRipple></div>`,
   encapsulation: ViewEncapsulation.None,
+  imports: [MatRippleModule],
 })
 class RippleCssTransitionDurationZero {}
 
 @Component({
   template: `
-    <div *ngIf="show" (click)="show = false" matRipple>
-      Click to remove this element.
-    </div>
+    @if (show) {
+      <div (click)="show = false" matRipple>Click to remove this element.</div>
+    }
   `,
+  imports: [MatRippleModule],
 })
 class RippleWithDomRemovalOnClick {
   show = true;

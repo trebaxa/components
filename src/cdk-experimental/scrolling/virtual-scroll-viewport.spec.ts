@@ -1,6 +1,6 @@
 import {CdkVirtualScrollViewport, ScrollingModule} from '@angular/cdk/scrolling';
 import {Component, Input, ViewChild, ViewEncapsulation} from '@angular/core';
-import {waitForAsync, ComponentFixture, fakeAsync, flush, TestBed} from '@angular/core/testing';
+import {ComponentFixture, TestBed, fakeAsync, flush, waitForAsync} from '@angular/core/testing';
 import {ScrollingModule as ExperimentalScrollingModule} from './scrolling-module';
 
 describe('CdkVirtualScrollViewport', () => {
@@ -11,9 +11,8 @@ describe('CdkVirtualScrollViewport', () => {
 
     beforeEach(waitForAsync(() => {
       TestBed.configureTestingModule({
-        imports: [ScrollingModule, ExperimentalScrollingModule],
-        declarations: [AutoSizeVirtualScroll],
-      }).compileComponents();
+        imports: [ScrollingModule, ExperimentalScrollingModule, AutoSizeVirtualScroll],
+      });
     }));
 
     beforeEach(() => {
@@ -48,9 +47,13 @@ describe('CdkVirtualScrollViewport', () => {
     }));
 
     it('should throw if maxBufferPx is less than minBufferPx', fakeAsync(() => {
-      testComponent.minBufferPx = 100;
-      testComponent.maxBufferPx = 99;
-      expect(() => finishInit(fixture)).toThrow();
+      expect(() => {
+        testComponent.minBufferPx = 100;
+        testComponent.maxBufferPx = 99;
+        finishInit(fixture);
+      }).toThrowError(
+        'CDK virtual scroll: maxBufferPx must be greater than or equal to minBufferPx',
+      );
     }));
 
     // TODO(mmalerba): Add test that it corrects the initial render if it didn't render enough,
@@ -81,8 +84,7 @@ function finishInit(fixture: ComponentFixture<any>) {
       </div>
     </cdk-virtual-scroll-viewport>
   `,
-  styles: [
-    `
+  styles: `
     .cdk-virtual-scroll-content-wrapper {
       display: flex;
       flex-direction: column;
@@ -92,8 +94,8 @@ function finishInit(fixture: ComponentFixture<any>) {
       flex-direction: row;
     }
   `,
-  ],
   encapsulation: ViewEncapsulation.None,
+  imports: [ScrollingModule, ExperimentalScrollingModule],
 })
 class AutoSizeVirtualScroll {
   @ViewChild(CdkVirtualScrollViewport, {static: true}) viewport: CdkVirtualScrollViewport;

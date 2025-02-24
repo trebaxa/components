@@ -1,24 +1,29 @@
-import {waitForAsync, TestBed, inject} from '@angular/core/testing';
-import {Component, ViewChild, QueryList, ViewChildren} from '@angular/core';
+import {FocusMonitor} from '@angular/cdk/a11y';
+import {DOWN_ARROW, END, HOME, UP_ARROW} from '@angular/cdk/keycodes';
+import {
+  createKeyboardEvent,
+  dispatchEvent,
+  dispatchKeyboardEvent,
+} from '@angular/cdk/testing/private';
+import {Component, QueryList, ViewChild, ViewChildren} from '@angular/core';
+import {TestBed, inject, waitForAsync} from '@angular/core/testing';
 import {By} from '@angular/platform-browser';
 import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
 import {
-  MatExpansionModule,
   MatAccordion,
+  MatExpansionModule,
   MatExpansionPanel,
   MatExpansionPanelHeader,
 } from './index';
-import {dispatchKeyboardEvent, createKeyboardEvent, dispatchEvent} from '../../cdk/testing/private';
-import {DOWN_ARROW, UP_ARROW, HOME, END} from '@angular/cdk/keycodes';
-import {FocusMonitor} from '@angular/cdk/a11y';
 
 describe('MatAccordion', () => {
   let focusMonitor: FocusMonitor;
 
   beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
-      imports: [BrowserAnimationsModule, MatExpansionModule],
-      declarations: [
+      imports: [
+        BrowserAnimationsModule,
+        MatExpansionModule,
         AccordionWithHideToggle,
         AccordionWithTogglePosition,
         NestedPanel,
@@ -26,7 +31,6 @@ describe('MatAccordion', () => {
         NestedAccordions,
       ],
     });
-    TestBed.compileComponents();
 
     inject([FocusMonitor], (fm: FocusMonitor) => {
       focusMonitor = fm;
@@ -54,6 +58,7 @@ describe('MatAccordion', () => {
   it('should allow multiple items to be expanded simultaneously', () => {
     const fixture = TestBed.createComponent(SetOfItems);
     fixture.componentInstance.multi = true;
+    fixture.changeDetectorRef.markForCheck();
     fixture.detectChanges();
 
     const panels = fixture.debugElement.queryAll(By.css('.mat-expansion-panel'));
@@ -74,6 +79,7 @@ describe('MatAccordion', () => {
 
     fixture.componentInstance.multi = true;
     fixture.componentInstance.panels.toArray()[1].expanded = true;
+    fixture.changeDetectorRef.markForCheck();
     fixture.detectChanges();
     expect(panels[0].classes['mat-expanded']).toBeFalsy();
     expect(panels[1].classes['mat-expanded']).toBeTruthy();
@@ -97,6 +103,7 @@ describe('MatAccordion', () => {
 
     fixture.componentInstance.multi = true;
     fixture.componentInstance.panels.toArray()[1].disabled = true;
+    fixture.changeDetectorRef.markForCheck();
     fixture.detectChanges();
     fixture.componentInstance.accordion.openAll();
     fixture.detectChanges();
@@ -130,6 +137,7 @@ describe('MatAccordion', () => {
       .toBeTruthy();
 
     fixture.componentInstance.hideToggle = true;
+    fixture.changeDetectorRef.markForCheck();
     fixture.detectChanges();
 
     expect(panel.nativeElement.querySelector('.mat-expansion-indicator'))
@@ -148,6 +156,7 @@ describe('MatAccordion', () => {
       .toBeTruthy();
 
     fixture.componentInstance.togglePosition = 'before';
+    fixture.changeDetectorRef.markForCheck();
     fixture.detectChanges();
 
     expect(panel.nativeElement.querySelector('.mat-expansion-toggle-indicator-before'))
@@ -219,6 +228,7 @@ describe('MatAccordion', () => {
     focusMonitor.focusVia(headerElements[0].nativeElement, 'keyboard');
     headers.forEach(header => spyOn(header, 'focus'));
     panels[1].disabled = true;
+    fixture.changeDetectorRef.markForCheck();
     fixture.detectChanges();
 
     dispatchKeyboardEvent(headerElements[0].nativeElement, 'keydown', DOWN_ARROW);
@@ -303,11 +313,14 @@ describe('MatAccordion', () => {
 @Component({
   template: `
   <mat-accordion [multi]="multi">
-    <mat-expansion-panel *ngFor="let i of [0, 1, 2, 3]">
-      <mat-expansion-panel-header>Summary {{i}}</mat-expansion-panel-header>
-      <p>Content</p>
-    </mat-expansion-panel>
+    @for (i of [0, 1, 2, 3]; track i) {
+      <mat-expansion-panel>
+        <mat-expansion-panel-header>Summary {{i}}</mat-expansion-panel-header>
+        <p>Content</p>
+      </mat-expansion-panel>
+    }
   </mat-accordion>`,
+  imports: [MatExpansionModule],
 })
 class SetOfItems {
   @ViewChild(MatAccordion) accordion: MatAccordion;
@@ -335,6 +348,7 @@ class SetOfItems {
       Content 1
     </mat-expansion-panel>
   </mat-accordion>`,
+  imports: [MatExpansionModule],
 })
 class NestedAccordions {
   @ViewChildren(MatExpansionPanelHeader) headers: QueryList<MatExpansionPanelHeader>;
@@ -353,6 +367,7 @@ class NestedAccordions {
       </mat-expansion-panel>
     </mat-expansion-panel>
   </mat-accordion>`,
+  imports: [MatExpansionModule],
 })
 class NestedPanel {
   @ViewChild('outerPanel') outerPanel: MatExpansionPanel;
@@ -367,6 +382,7 @@ class NestedPanel {
       <p>Content</p>
     </mat-expansion-panel>
   </mat-accordion>`,
+  imports: [MatExpansionModule],
 })
 class AccordionWithHideToggle {
   hideToggle = false;
@@ -380,6 +396,7 @@ class AccordionWithHideToggle {
       <p>Content</p>
     </mat-expansion-panel>
   </mat-accordion>`,
+  imports: [MatExpansionModule],
 })
 class AccordionWithTogglePosition {
   togglePosition = 'after';

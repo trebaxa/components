@@ -3,20 +3,23 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {ChangeDetectionStrategy, Component, OnDestroy, ViewEncapsulation} from '@angular/core';
+import {AsyncPipe} from '@angular/common';
 import {CdkVirtualScrollViewport, ScrollingModule} from '@angular/cdk/scrolling';
 import {ScrollingModule as ExperimentalScrollingModule} from '@angular/cdk-experimental/scrolling';
-import {CommonModule} from '@angular/common';
 import {FormsModule} from '@angular/forms';
 import {MatButtonModule} from '@angular/material/button';
 import {MatFormFieldModule} from '@angular/material/form-field';
 import {MatInputModule} from '@angular/material/input';
 import {MatSelectModule} from '@angular/material/select';
 import {BehaviorSubject} from 'rxjs';
-import {CdkScrollingExamplesModule} from '@angular/components-examples/cdk/scrolling';
+import {
+  CdkVirtualScrollParentScrollingExample,
+  CdkVirtualScrollWindowScrollingExample,
+} from '@angular/components-examples/cdk/scrolling';
 
 type State = {
   name: string;
@@ -26,12 +29,11 @@ type State = {
 @Component({
   selector: 'virtual-scroll-demo',
   templateUrl: 'virtual-scroll-demo.html',
-  styleUrls: ['virtual-scroll-demo.css'],
+  styleUrl: 'virtual-scroll-demo.css',
   encapsulation: ViewEncapsulation.None,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  standalone: true,
   imports: [
-    CommonModule,
+    AsyncPipe,
     ExperimentalScrollingModule,
     FormsModule,
     MatButtonModule,
@@ -39,7 +41,8 @@ type State = {
     MatInputModule,
     MatSelectModule,
     ScrollingModule,
-    CdkScrollingExamplesModule,
+    CdkVirtualScrollParentScrollingExample,
+    CdkVirtualScrollWindowScrollingExample,
   ],
 })
 export class VirtualScrollDemo implements OnDestroy {

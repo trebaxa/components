@@ -3,14 +3,14 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {ContentContainerComponentHarness, HarnessPredicate} from '@angular/cdk/testing';
 import {GridTileHarnessFilters} from './grid-list-harness-filters';
 
 /** Selectors for the various `mat-grid-tile` sections that may contain user content. */
-export const enum MatGridTileSection {
+export enum MatGridTileSection {
   HEADER = '.mat-grid-tile-header',
   FOOTER = '.mat-grid-tile-footer',
 }

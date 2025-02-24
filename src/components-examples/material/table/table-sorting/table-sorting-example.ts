@@ -1,7 +1,7 @@
 import {LiveAnnouncer} from '@angular/cdk/a11y';
-import {AfterViewInit, Component, ViewChild} from '@angular/core';
-import {MatSort, Sort} from '@angular/material/sort';
-import {MatTableDataSource} from '@angular/material/table';
+import {AfterViewInit, Component, ViewChild, inject} from '@angular/core';
+import {MatSort, Sort, MatSortModule} from '@angular/material/sort';
+import {MatTableDataSource, MatTableModule} from '@angular/material/table';
 
 export interface PeriodicElement {
   name: string;
@@ -26,14 +26,15 @@ const ELEMENT_DATA: PeriodicElement[] = [
  */
 @Component({
   selector: 'table-sorting-example',
-  styleUrls: ['table-sorting-example.css'],
+  styleUrl: 'table-sorting-example.css',
   templateUrl: 'table-sorting-example.html',
+  imports: [MatTableModule, MatSortModule],
 })
 export class TableSortingExample implements AfterViewInit {
+  private _liveAnnouncer = inject(LiveAnnouncer);
+
   displayedColumns: string[] = ['position', 'name', 'weight', 'symbol'];
   dataSource = new MatTableDataSource(ELEMENT_DATA);
-
-  constructor(private _liveAnnouncer: LiveAnnouncer) {}
 
   @ViewChild(MatSort) sort: MatSort;
 

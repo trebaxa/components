@@ -1,26 +1,32 @@
 import {Component} from '@angular/core';
-import {animate, state, style, transition, trigger} from '@angular/animations';
+import {MatIconModule} from '@angular/material/icon';
+import {MatButtonModule} from '@angular/material/button';
+import {MatTableModule} from '@angular/material/table';
 
 /**
  * @title Table with expandable rows
  */
 @Component({
   selector: 'table-expandable-rows-example',
-  styleUrls: ['table-expandable-rows-example.css'],
+  styleUrl: 'table-expandable-rows-example.css',
   templateUrl: 'table-expandable-rows-example.html',
-  animations: [
-    trigger('detailExpand', [
-      state('collapsed', style({height: '0px', minHeight: '0'})),
-      state('expanded', style({height: '*'})),
-      transition('expanded <=> collapsed', animate('225ms cubic-bezier(0.4, 0.0, 0.2, 1)')),
-    ]),
-  ],
+  imports: [MatTableModule, MatButtonModule, MatIconModule],
 })
 export class TableExpandableRowsExample {
   dataSource = ELEMENT_DATA;
   columnsToDisplay = ['name', 'weight', 'symbol', 'position'];
   columnsToDisplayWithExpand = [...this.columnsToDisplay, 'expand'];
   expandedElement: PeriodicElement | null;
+
+  /** Checks whether an element is expanded. */
+  isExpanded(element: PeriodicElement) {
+    return this.expandedElement === element;
+  }
+
+  /** Toggles the expanded state of an element. */
+  toggle(element: PeriodicElement) {
+    this.expandedElement = this.isExpanded(element) ? null : element;
+  }
 }
 
 export interface PeriodicElement {

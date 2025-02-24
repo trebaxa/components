@@ -3,20 +3,18 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 import {CdkScrollableModule} from '@angular/cdk/scrolling';
-import {CommonModule} from '@angular/common';
 import {NgModule} from '@angular/core';
 import {MatCommonModule} from '@angular/material/core';
 import {MatDrawer, MatDrawerContainer, MatDrawerContent} from './drawer';
 import {MatSidenav, MatSidenavContainer, MatSidenavContent} from './sidenav';
 
 @NgModule({
-  imports: [CommonModule, MatCommonModule, CdkScrollableModule],
-  exports: [
-    CdkScrollableModule,
+  imports: [
     MatCommonModule,
+    CdkScrollableModule,
     MatDrawer,
     MatDrawerContainer,
     MatDrawerContent,
@@ -24,7 +22,9 @@ import {MatSidenav, MatSidenavContainer, MatSidenavContent} from './sidenav';
     MatSidenavContainer,
     MatSidenavContent,
   ],
-  declarations: [
+  exports: [
+    CdkScrollableModule,
+    MatCommonModule,
     MatDrawer,
     MatDrawerContainer,
     MatDrawerContent,

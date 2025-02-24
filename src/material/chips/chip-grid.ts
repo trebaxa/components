@@ -3,28 +3,25 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {BooleanInput, coerceBooleanProperty} from '@angular/cdk/coercion';
-import {hasModifierKey, TAB} from '@angular/cdk/keycodes';
+import {DOWN_ARROW, hasModifierKey, TAB, UP_ARROW} from '@angular/cdk/keycodes';
 import {
   AfterContentInit,
   AfterViewInit,
+  booleanAttribute,
   ChangeDetectionStrategy,
-  ChangeDetectorRef,
   Component,
   ContentChildren,
   DoCheck,
-  ElementRef,
   EventEmitter,
   Input,
   OnDestroy,
-  Optional,
   Output,
   QueryList,
-  Self,
   ViewEncapsulation,
+  inject,
 } from '@angular/core';
 import {
   ControlValueAccessor,
@@ -33,15 +30,14 @@ import {
   NgForm,
   Validators,
 } from '@angular/forms';
-import {CanUpdateErrorState, ErrorStateMatcher, mixinErrorState} from '@angular/material/core';
+import {_ErrorStateTracker, ErrorStateMatcher} from '@angular/material/core';
 import {MatFormFieldControl} from '@angular/material/form-field';
-import {MatChipTextControl} from './chip-text-control';
-import {Observable, Subject, merge} from 'rxjs';
+import {merge, Observable, Subject} from 'rxjs';
 import {takeUntil} from 'rxjs/operators';
 import {MatChipEvent} from './chip';
 import {MatChipRow} from './chip-row';
 import {MatChipSet} from './chip-set';
-import {Directionality} from '@angular/cdk/bidi';
+import {MatChipTextControl} from './chip-text-control';
 
 /** Change event object that is emitted when the chip grid value has changed. */
 export class MatChipGridChange {
@@ -54,53 +50,21 @@ export class MatChipGridChange {
 }
 
 /**
- * Boilerplate for applying mixins to MatChipGrid.
- * @docs-private
- */
-class MatChipGridBase extends MatChipSet {
-  /**
-   * Emits whenever the component state changes and should cause the parent
-   * form-field to update. Implemented as part of `MatFormFieldControl`.
-   * @docs-private
-   */
-  readonly stateChanges = new Subject<void>();
-
-  constructor(
-    elementRef: ElementRef,
-    changeDetectorRef: ChangeDetectorRef,
-    dir: Directionality,
-    public _defaultErrorStateMatcher: ErrorStateMatcher,
-    public _parentForm: NgForm,
-    public _parentFormGroup: FormGroupDirective,
-    /**
-     * Form control bound to the component.
-     * Implemented as part of `MatFormFieldControl`.
-     * @docs-private
-     */
-    public ngControl: NgControl,
-  ) {
-    super(elementRef, changeDetectorRef, dir);
-  }
-}
-const _MatChipGridMixinBase = mixinErrorState(MatChipGridBase);
-
-/**
  * An extension of the MatChipSet component used with MatChipRow chips and
  * the matChipInputFor directive.
  */
 @Component({
   selector: 'mat-chip-grid',
   template: `
-    <span class="mdc-evolution-chip-set__chips" role="presentation">
+    <div class="mdc-evolution-chip-set__chips" role="presentation">
       <ng-content></ng-content>
-    </span>
+    </div>
   `,
-  styleUrls: ['chip-set.css'],
-  inputs: ['tabIndex'],
+  styleUrl: 'chip-set.css',
   host: {
     'class': 'mat-mdc-chip-set mat-mdc-chip-grid mdc-evolution-chip-set',
     '[attr.role]': 'role',
-    '[tabIndex]': '_chips && _chips.length === 0 ? -1 : tabIndex',
+    '[attr.tabindex]': '(disabled || (_chips && _chips.length === 0)) ? -1 : tabIndex',
     '[attr.aria-disabled]': 'disabled.toString()',
     '[attr.aria-invalid]': 'errorState',
     '[class.mat-mdc-chip-list-disabled]': 'disabled',
@@ -114,16 +78,17 @@ const _MatChipGridMixinBase = mixinErrorState(MatChipGridBase);
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MatChipGrid
-  extends _MatChipGridMixinBase
+  extends MatChipSet
   implements
     AfterContentInit,
     AfterViewInit,
-    CanUpdateErrorState,
     ControlValueAccessor,
     DoCheck,
     MatFormFieldControl<any>,
     OnDestroy
 {
+  ngControl = inject(NgControl, {optional: true, self: true})!;
+
   /**
    * Implemented as part of MatFormFieldControl.
    * @docs-private
@@ -134,6 +99,7 @@ export class MatChipGrid
   protected _chipInput: MatChipTextControl;
 
   protected override _defaultRole = 'grid';
+  private _errorStateTracker: _ErrorStateTracker;
 
   /**
    * List of element ids to propagate to the chipInput's aria-describedby attribute.
@@ -156,13 +122,14 @@ export class MatChipGrid
    * Implemented as part of MatFormFieldControl.
    * @docs-private
    */
-  @Input()
+  @Input({transform: booleanAttribute})
   override get disabled(): boolean {
     return this.ngControl ? !!this.ngControl.disabled : this._disabled;
   }
-  override set disabled(value: BooleanInput) {
-    this._disabled = coerceBooleanProperty(value);
+  override set disabled(value: boolean) {
+    this._disabled = value;
     this._syncChipsState();
+    this.stateChanges.next();
   }
 
   /**
@@ -206,12 +173,12 @@ export class MatChipGrid
    * Implemented as part of MatFormFieldControl.
    * @docs-private
    */
-  @Input()
+  @Input({transform: booleanAttribute})
   get required(): boolean {
     return this._required ?? this.ngControl?.control?.hasValidator(Validators.required) ?? false;
   }
-  set required(value: BooleanInput) {
-    this._required = coerceBooleanProperty(value);
+  set required(value: boolean) {
+    this._required = value;
     this.stateChanges.next();
   }
   protected _required: boolean | undefined;
@@ -238,7 +205,13 @@ export class MatChipGrid
   protected _value: any[] = [];
 
   /** An object used to control when error messages are shown. */
-  @Input() override errorStateMatcher: ErrorStateMatcher;
+  @Input()
+  get errorStateMatcher() {
+    return this._errorStateTracker.matcher;
+  }
+  set errorStateMatcher(value: ErrorStateMatcher) {
+    this._errorStateTracker.matcher = value;
+  }
 
   /** Combined stream of all of the child chips' blur events. */
   get chipBlurChanges(): Observable<MatChipEvent> {
@@ -261,29 +234,44 @@ export class MatChipGrid
     // indirect descendants if it's left as false.
     descendants: true,
   })
-  override _chips: QueryList<MatChipRow>;
+  // We need an initializer here to avoid a TS error. The value will be set in `ngAfterViewInit`.
+  override _chips: QueryList<MatChipRow> = undefined!;
 
-  constructor(
-    elementRef: ElementRef,
-    changeDetectorRef: ChangeDetectorRef,
-    @Optional() dir: Directionality,
-    @Optional() parentForm: NgForm,
-    @Optional() parentFormGroup: FormGroupDirective,
-    defaultErrorStateMatcher: ErrorStateMatcher,
-    @Optional() @Self() ngControl: NgControl,
-  ) {
-    super(
-      elementRef,
-      changeDetectorRef,
-      dir,
-      defaultErrorStateMatcher,
-      parentForm,
-      parentFormGroup,
-      ngControl,
-    );
+  /**
+   * Emits whenever the component state changes and should cause the parent
+   * form-field to update. Implemented as part of `MatFormFieldControl`.
+   * @docs-private
+   */
+  readonly stateChanges = new Subject<void>();
+
+  /** Whether the chip grid is in an error state. */
+  get errorState() {
+    return this._errorStateTracker.errorState;
+  }
+  set errorState(value: boolean) {
+    this._errorStateTracker.errorState = value;
+  }
+
+  constructor(...args: unknown[]);
+
+  constructor() {
+    super();
+
+    const parentForm = inject(NgForm, {optional: true});
+    const parentFormGroup = inject(FormGroupDirective, {optional: true});
+    const defaultErrorStateMatcher = inject(ErrorStateMatcher);
+
     if (this.ngControl) {
       this.ngControl.valueAccessor = this;
     }
+
+    this._errorStateTracker = new _ErrorStateTracker(
+      defaultErrorStateMatcher,
+      this.ngControl,
+      parentFormGroup,
+      parentForm,
+      this.stateChanges,
+    );
   }
 
   ngAfterContentInit() {
@@ -348,8 +336,14 @@ export class MatChipGrid
       // Delay until the next tick, because this can cause a "changed after checked"
       // error if the input does something on focus (e.g. opens an autocomplete).
       Promise.resolve().then(() => this._chipInput.focus());
-    } else if (this._chips.length) {
-      this._keyManager.setFirstItemActive();
+    } else {
+      const activeItem = this._keyManager.activeItem;
+
+      if (activeItem) {
+        activeItem.focus();
+      } else {
+        this._keyManager.setFirstItemActive();
+      }
     }
 
     this.stateChanges.next();
@@ -400,6 +394,11 @@ export class MatChipGrid
     this.stateChanges.next();
   }
 
+  /** Refreshes the error state of the chip grid. */
+  updateErrorState() {
+    this._errorStateTracker.updateErrorState();
+  }
+
   /** When blurred, mark the field as touched when focus moved outside the chip grid. */
   _blur() {
     if (!this.disabled) {
@@ -429,7 +428,10 @@ export class MatChipGrid
 
   /** Handles custom keyboard events. */
   override _handleKeydown(event: KeyboardEvent) {
-    if (event.keyCode === TAB) {
+    const keyCode = event.keyCode;
+    const activeItem = this._keyManager.activeItem;
+
+    if (keyCode === TAB) {
       if (
         this._chipInput.focused &&
         hasModifierKey(event, 'shiftKey') &&
@@ -438,8 +440,8 @@ export class MatChipGrid
       ) {
         event.preventDefault();
 
-        if (this._keyManager.activeItem) {
-          this._keyManager.setActiveItem(this._keyManager.activeItem);
+        if (activeItem) {
+          this._keyManager.setActiveItem(activeItem);
         } else {
           this._focusLastChip();
         }
@@ -450,7 +452,25 @@ export class MatChipGrid
         super._allowFocusEscape();
       }
     } else if (!this._chipInput.focused) {
-      super._handleKeydown(event);
+      // The up and down arrows are supposed to navigate between the individual rows in the grid.
+      // We do this by filtering the actions down to the ones that have the same `_isPrimary`
+      // flag as the active action and moving focus between them ourseles instead of delegating
+      // to the key manager. For more information, see #29359 and:
+      // https://www.w3.org/WAI/ARIA/apg/patterns/grid/examples/layout-grids/#ex2_label
+      if ((keyCode === UP_ARROW || keyCode === DOWN_ARROW) && activeItem) {
+        const eligibleActions = this._chipActions.filter(
+          action => action._isPrimary === activeItem._isPrimary && !this._skipPredicate(action),
+        );
+        const currentIndex = eligibleActions.indexOf(activeItem);
+        const delta = event.keyCode === UP_ARROW ? -1 : 1;
+
+        event.preventDefault();
+        if (currentIndex > -1 && this._isValidIndex(currentIndex + delta)) {
+          this._keyManager.setActiveItem(eligibleActions[currentIndex + delta]);
+        }
+      } else {
+        super._handleKeydown(event);
+      }
     }
 
     this.stateChanges.next();

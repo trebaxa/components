@@ -11,17 +11,16 @@ mat.$theme-ignore-duplication-warnings: true;
 // test will be reported as failing.
 
 // Theme creation functions.
-$theme: mat.define-light-theme((
+$theme: mat.m2-define-light-theme((
     color: (
-        primary: mat.define-palette(mat.$red-palette),
-        accent: mat.define-palette(mat.$blue-palette),
+        primary: mat.m2-define-palette(mat.$m2-red-palette),
+        accent: mat.m2-define-palette(mat.$m2-blue-palette),
     ),
-    typography: mat.define-typography-config(),
+    typography: mat.m2-define-typography-config(),
     density: -2,
 ));
-$dark-theme: mat.define-dark-theme($theme);
-$legacy-typography: mat.define-legacy-typography-config();
-$rem-typography: mat.define-rem-typography-config();
+$dark-theme: mat.m2-define-dark-theme($theme);
+$rem-typography: mat.m2-define-rem-typography-config();
 
 // All-* mixins.
 @include mat.all-component-themes($theme);
@@ -29,18 +28,9 @@ $rem-typography: mat.define-rem-typography-config();
 @include mat.all-component-typographies($theme);
 @include mat.all-component-densities($theme);
 
-// Legacy all-* mixins.
-@include mat.all-legacy-component-themes($theme);
-@include mat.all-legacy-component-colors($theme);
-@include mat.all-legacy-component-typographies($theme);
-
 // Core mixins.
-@include mat.core();
 @include mat.strong-focus-indicators();
 @include mat.strong-focus-indicators-theme($theme);
-
-// Legacy core mixins.
-@include mat.legacy-core();
 
 // Component theme mixins.
 @include mat.core-theme($theme);
@@ -234,96 +224,7 @@ $rem-typography: mat.define-rem-typography-config();
 @include mat.tree-typography($theme);
 @include mat.tree-density($theme);
 
-// Legacy component theme mixins.
-@include mat.legacy-core-theme($theme);
-@include mat.legacy-core-color($theme);
-@include mat.legacy-option-theme($theme);
-@include mat.legacy-option-color($theme);
-@include mat.legacy-option-typography($theme);
-@include mat.legacy-optgroup-theme($theme);
-@include mat.legacy-optgroup-color($theme);
-@include mat.legacy-optgroup-typography($theme);
-
-@include mat.legacy-autocomplete-theme($theme);
-@include mat.legacy-autocomplete-color($theme);
-@include mat.legacy-autocomplete-typography($theme);
-
-@include mat.legacy-button-theme($theme);
-@include mat.legacy-button-color($theme);
-@include mat.legacy-button-typography($theme);
-
-@include mat.legacy-card-theme($theme);
-@include mat.legacy-card-color($theme);
-@include mat.legacy-card-typography($theme);
-
-@include mat.legacy-checkbox-theme($theme);
-@include mat.legacy-checkbox-color($theme);
-@include mat.legacy-checkbox-typography($theme);
-
-@include mat.legacy-chips-theme($theme);
-@include mat.legacy-chips-color($theme);
-@include mat.legacy-chips-typography($theme);
-
-@include mat.legacy-dialog-theme($theme);
-@include mat.legacy-dialog-color($theme);
-@include mat.legacy-dialog-typography($theme);
-
-@include mat.legacy-form-field-theme($theme);
-@include mat.legacy-form-field-color($theme);
-@include mat.legacy-form-field-typography($theme);
-
-@include mat.legacy-input-theme($theme);
-@include mat.legacy-input-color($theme);
-@include mat.legacy-input-typography($theme);
-
-@include mat.legacy-list-theme($theme);
-@include mat.legacy-list-color($theme);
-@include mat.legacy-list-typography($theme);
-
-@include mat.legacy-menu-theme($theme);
-@include mat.legacy-menu-color($theme);
-@include mat.legacy-menu-typography($theme);
-
-@include mat.legacy-paginator-theme($theme);
-@include mat.legacy-paginator-color($theme);
-@include mat.legacy-paginator-typography($theme);
-
-@include mat.legacy-progress-bar-theme($theme);
-@include mat.legacy-progress-bar-color($theme);
-@include mat.legacy-progress-bar-typography($theme);
-
-@include mat.legacy-progress-spinner-theme($theme);
-@include mat.legacy-progress-spinner-color($theme);
-@include mat.legacy-progress-spinner-typography($theme);
-
-@include mat.legacy-radio-theme($theme);
-@include mat.legacy-radio-color($theme);
-@include mat.legacy-radio-typography($theme);
-
-@include mat.legacy-select-theme($theme);
-@include mat.legacy-select-color($theme);
-@include mat.legacy-select-typography($theme);
-
-@include mat.legacy-slide-toggle-theme($theme);
-@include mat.legacy-slide-toggle-color($theme);
-@include mat.legacy-slide-toggle-typography($theme);
-
-@include mat.legacy-slider-theme($theme);
-@include mat.legacy-slider-color($theme);
-@include mat.legacy-slider-typography($theme);
-
-@include mat.legacy-snack-bar-theme($theme);
-@include mat.legacy-snack-bar-color($theme);
-@include mat.legacy-snack-bar-typography($theme);
-
-@include mat.legacy-table-theme($theme);
-@include mat.legacy-table-color($theme);
-@include mat.legacy-table-typography($theme);
-
-@include mat.legacy-tabs-theme($theme);
-@include mat.legacy-tabs-color($theme);
-@include mat.legacy-tabs-typography($theme);
-
-@include mat.legacy-tooltip-theme($theme);
-@include mat.legacy-tooltip-color($theme);
-@include mat.legacy-tooltip-typography($theme);
+@include mat.timepicker-theme($theme);
+@include mat.timepicker-color($theme);
+@include mat.timepicker-typography($theme);
+@include mat.timepicker-density($theme);

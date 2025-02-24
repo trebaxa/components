@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {BooleanInput, coerceBooleanProperty, coerceNumberProperty} from '@angular/cdk/coercion';
@@ -14,21 +14,22 @@ import {
   Directive,
   ElementRef,
   inject,
-  Inject,
   Input,
   NgZone,
   OnDestroy,
-  Optional,
   QueryList,
+  ANIMATION_MODULE_TYPE,
+  Injector,
 } from '@angular/core';
 import {
+  _StructuralStylesLoader,
   MAT_RIPPLE_GLOBAL_OPTIONS,
   RippleConfig,
   RippleGlobalOptions,
   RippleRenderer,
   RippleTarget,
 } from '@angular/material/core';
-import {ANIMATION_MODULE_TYPE} from '@angular/platform-browser/animations';
+import {_CdkPrivateStyleLoader} from '@angular/cdk/private';
 import {Subscription, merge} from 'rxjs';
 import {
   MatListItemLine,
@@ -77,10 +78,16 @@ export abstract class MatListBase {
   host: {
     '[class.mdc-list-item--disabled]': 'disabled',
     '[attr.aria-disabled]': 'disabled',
+    '[attr.disabled]': '(_isButtonElement && disabled) || null',
   },
 })
 /** @docs-private */
 export abstract class MatListItemBase implements AfterViewInit, OnDestroy, RippleTarget {
+  _elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
+  protected _ngZone = inject(NgZone);
+  private _listBase = inject(MatListBase, {optional: true});
+  private _platform = inject(Platform);
+
   /** Query list matching list-item line elements. */
   abstract _lines: QueryList<MatListItemLine> | undefined;
 
@@ -97,6 +104,9 @@ export abstract class MatListItemBase implements AfterViewInit, OnDestroy, Rippl
 
   /** Host element for the list item. */
   _hostElement: HTMLElement;
+
+  /** indicate whether the host element is a button or not */
+  _isButtonElement: boolean;
 
   /** Whether animations are disabled. */
   _noopAnimations: boolean;
@@ -121,6 +131,7 @@ export abstract class MatListItemBase implements AfterViewInit, OnDestroy, Rippl
   }
   _explicitLines: number | null = null;
 
+  /** Whether ripples for list items are disabled. */
   @Input()
   get disableRipple(): boolean {
     return (
@@ -130,7 +141,7 @@ export abstract class MatListItemBase implements AfterViewInit, OnDestroy, Rippl
       !!this._listBase?.disableRipple
     );
   }
-  set disableRipple(value: boolean) {
+  set disableRipple(value: BooleanInput) {
     this._disableRipple = coerceBooleanProperty(value);
   }
   private _disableRipple: boolean = false;
@@ -165,31 +176,28 @@ export abstract class MatListItemBase implements AfterViewInit, OnDestroy, Rippl
     return this.disableRipple || !!this.rippleConfig.disabled;
   }
 
-  constructor(
-    public _elementRef: ElementRef<HTMLElement>,
-    protected _ngZone: NgZone,
-    @Optional() private _listBase: MatListBase | null,
-    private _platform: Platform,
-    @Optional()
-    @Inject(MAT_RIPPLE_GLOBAL_OPTIONS)
-    globalRippleOptions?: RippleGlobalOptions,
-    @Optional() @Inject(ANIMATION_MODULE_TYPE) animationMode?: string,
-  ) {
+  constructor(...args: unknown[]);
+
+  constructor() {
+    inject(_CdkPrivateStyleLoader).load(_StructuralStylesLoader);
+    const globalRippleOptions = inject<RippleGlobalOptions>(MAT_RIPPLE_GLOBAL_OPTIONS, {
+      optional: true,
+    });
+    const animationMode = inject(ANIMATION_MODULE_TYPE, {optional: true});
+
     this.rippleConfig = globalRippleOptions || {};
     this._hostElement = this._elementRef.nativeElement;
+    this._isButtonElement = this._hostElement.nodeName.toLowerCase() === 'button';
     this._noopAnimations = animationMode === 'NoopAnimations';
 
-    if (_listBase && !_listBase._isNonInteractive) {
+    if (this._listBase && !this._listBase._isNonInteractive) {
       this._initInteractiveListItem();
     }
 
     // If no type attribute is specified for a host `<button>` element, set it to `button`. If a
     // type attribute is already specified, we do nothing. We do this for backwards compatibility.
     // TODO: Determine if we intend to continue doing this for the MDC-based list.
-    if (
-      this._hostElement.nodeName.toLowerCase() === 'button' &&
-      !this._hostElement.hasAttribute('type')
-    ) {
+    if (this._isButtonElement && !this._hostElement.hasAttribute('type')) {
       this._hostElement.setAttribute('type', 'button');
     }
   }
@@ -218,6 +226,7 @@ export abstract class MatListItemBase implements AfterViewInit, OnDestroy, Rippl
       this._ngZone,
       this._hostElement,
       this._platform,
+      inject(Injector),
     );
     this._rippleRenderer.setupTriggerEvents(this._hostElement);
   }
@@ -323,13 +332,13 @@ export abstract class MatListItemBase implements AfterViewInit, OnDestroy, Rippl
  */
 function sanityCheckListItemContent(item: MatListItemBase) {
   const numTitles = item._titles!.length;
-  const numLines = item._titles!.length;
+  const numLines = item._lines!.length;
 
   if (numTitles > 1) {
-    throw Error('A list item cannot have multiple titles.');
+    console.warn('A list item cannot have multiple titles.');
   }
   if (numTitles === 0 && numLines > 0) {
-    throw Error('A list item line can only be used if there is a list item title.');
+    console.warn('A list item line can only be used if there is a list item title.');
   }
   if (
     numTitles === 0 &&
@@ -337,9 +346,9 @@ function sanityCheckListItemContent(item: MatListItemBase) {
     item._explicitLines !== null &&
     item._explicitLines > 1
   ) {
-    throw Error('A list item cannot have wrapping content without a title.');
+    console.warn('A list item cannot have wrapping content without a title.');
   }
   if (numLines > 2 || (numLines === 2 && item._hasUnscopedTextContent)) {
-    throw Error('A list item can have at maximum three lines.');
+    console.warn('A list item can have at maximum three lines.');
   }
 }

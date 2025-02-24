@@ -1,16 +1,26 @@
-import {Component} from '@angular/core';
-import {MatDialog, MatDialogRef} from '@angular/material/dialog';
+import {ChangeDetectionStrategy, Component, inject} from '@angular/core';
+import {MatButtonModule} from '@angular/material/button';
+import {
+  MatDialog,
+  MatDialogActions,
+  MatDialogClose,
+  MatDialogContent,
+  MatDialogRef,
+  MatDialogTitle,
+} from '@angular/material/dialog';
 
 /**
  * @title Dialog Animations
  */
 @Component({
   selector: 'dialog-animations-example',
-  styleUrls: ['dialog-animations-example.css'],
+  styleUrl: 'dialog-animations-example.css',
   templateUrl: 'dialog-animations-example.html',
+  imports: [MatButtonModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DialogAnimationsExample {
-  constructor(public dialog: MatDialog) {}
+  readonly dialog = inject(MatDialog);
 
   openDialog(enterAnimationDuration: string, exitAnimationDuration: string): void {
     this.dialog.open(DialogAnimationsExampleDialog, {
@@ -24,7 +34,9 @@ export class DialogAnimationsExample {
 @Component({
   selector: 'dialog-animations-example-dialog',
   templateUrl: 'dialog-animations-example-dialog.html',
+  imports: [MatButtonModule, MatDialogActions, MatDialogClose, MatDialogTitle, MatDialogContent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DialogAnimationsExampleDialog {
-  constructor(public dialogRef: MatDialogRef<DialogAnimationsExampleDialog>) {}
+  readonly dialogRef = inject(MatDialogRef<DialogAnimationsExampleDialog>);
 }

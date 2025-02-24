@@ -3,13 +3,12 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {Injectable, OnDestroy, Self, NgZone} from '@angular/core';
+import {Injectable, OnDestroy, afterNextRender, inject, Injector} from '@angular/core';
 import {ControlContainer} from '@angular/forms';
 import {Observable, Subject} from 'rxjs';
-import {take} from 'rxjs/operators';
 
 import {EditEventDispatcher} from './edit-event-dispatcher';
 
@@ -19,6 +18,10 @@ import {EditEventDispatcher} from './edit-event-dispatcher';
  */
 @Injectable()
 export class EditRef<FormValue> implements OnDestroy {
+  private readonly _form = inject(ControlContainer, {self: true});
+  private readonly _editEventDispatcher =
+    inject<EditEventDispatcher<EditRef<FormValue>>>(EditEventDispatcher);
+
   /** Emits the final value of this edit instance before closing. */
   private readonly _finalValueSubject = new Subject<FormValue>();
   readonly finalValue: Observable<FormValue> = this._finalValueSubject;
@@ -30,11 +33,9 @@ export class EditRef<FormValue> implements OnDestroy {
   /** The value to set the form back to on revert. */
   private _revertFormValue: FormValue;
 
-  constructor(
-    @Self() private readonly _form: ControlContainer,
-    private readonly _editEventDispatcher: EditEventDispatcher<EditRef<FormValue>>,
-    private readonly _ngZone: NgZone,
-  ) {
+  private _injector = inject(Injector);
+
+  constructor() {
     this._editEventDispatcher.setActiveEditRef(this);
   }
 
@@ -44,14 +45,17 @@ export class EditRef<FormValue> implements OnDestroy {
    * applicable.
    */
   init(previousFormValue: FormValue | undefined): void {
-    // Wait for the zone to stabilize before caching the initial value.
+    // Wait for the next render before caching the initial value.
     // This ensures that all form controls have been initialized.
-    this._ngZone.onStable.pipe(take(1)).subscribe(() => {
-      this.updateRevertValue();
-      if (previousFormValue) {
-        this.reset(previousFormValue);
-      }
-    });
+    afterNextRender(
+      () => {
+        this.updateRevertValue();
+        if (previousFormValue) {
+          this.reset(previousFormValue);
+        }
+      },
+      {injector: this._injector},
+    );
   }
 
   ngOnDestroy(): void {

@@ -3,26 +3,24 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
-  BooleanInput,
-  coerceBooleanProperty,
-  coerceNumberProperty,
-  NumberInput,
-} from '@angular/cdk/coercion';
-import {
+  booleanAttribute,
   ChangeDetectorRef,
   Directive,
   ElementRef,
   EventEmitter,
   forwardRef,
-  Inject,
+  inject,
   Input,
   NgZone,
+  numberAttribute,
   OnDestroy,
   Output,
+  Renderer2,
+  signal,
 } from '@angular/core';
 import {ControlValueAccessor, FormControl, NG_VALUE_ACCESSOR} from '@angular/forms';
 import {Subject} from 'rxjs';
@@ -36,6 +34,7 @@ import {
   MAT_SLIDER_THUMB,
   MAT_SLIDER,
 } from './slider-interface';
+import {Platform} from '@angular/cdk/platform';
 
 /**
  * Provider that allows the slider thumb to register as a ControlValueAccessor.
@@ -71,7 +70,7 @@ export const MAT_SLIDER_RANGE_THUMB_VALUE_ACCESSOR: any = {
   host: {
     'class': 'mdc-slider__input',
     'type': 'range',
-    '[attr.aria-valuetext]': '_valuetext',
+    '[attr.aria-valuetext]': '_valuetext()',
     '(change)': '_onChange()',
     '(input)': '_onInput()',
     // TODO(wagnermaciel): Consider using a global event listener instead.
@@ -85,24 +84,42 @@ export const MAT_SLIDER_RANGE_THUMB_VALUE_ACCESSOR: any = {
   ],
 })
 export class MatSliderThumb implements _MatSliderThumb, OnDestroy, ControlValueAccessor {
-  @Input()
+  readonly _ngZone = inject(NgZone);
+  readonly _elementRef = inject<ElementRef<HTMLInputElement>>(ElementRef);
+  readonly _cdr = inject(ChangeDetectorRef);
+  protected _slider = inject<_MatSlider>(MAT_SLIDER);
+  private _platform = inject(Platform);
+  private _listenerCleanups: (() => void)[];
+
+  @Input({transform: numberAttribute})
   get value(): number {
-    return coerceNumberProperty(this._hostElement.value);
+    return numberAttribute(this._hostElement.value, 0);
   }
-  set value(v: NumberInput) {
-    const val = coerceNumberProperty(v).toString();
+  set value(value: number) {
+    value = isNaN(value) ? 0 : value;
+    const stringValue = value + '';
     if (!this._hasSetInitialValue) {
-      this._initialValue = val;
+      this._initialValue = stringValue;
       return;
     }
     if (this._isActive) {
       return;
     }
-    this._hostElement.value = val;
+    this._setValue(stringValue);
+  }
+
+  /**
+   * Handles programmatic value setting. This has been split out to
+   * allow the range thumb to override it and add additional necessary logic.
+   */
+  protected _setValue(value: string) {
+    this._hostElement.value = value;
     this._updateThumbUIByValue();
     this._slider._onValueChange(this);
     this._cdr.detectChanges();
+    this._slider._cdr.markForCheck();
   }
+
   /** Event emitted when the `value` is changed. */
   @Output() readonly valueChange: EventEmitter<number> = new EventEmitter<number>();
 
@@ -120,7 +137,7 @@ export class MatSliderThumb implements _MatSliderThumb, OnDestroy, ControlValueA
    */
   get translateX(): number {
     if (this._slider.min >= this._slider.max) {
-      this._translateX = 0;
+      this._translateX = this._tickMarkOffset;
       return this._translateX;
     }
     if (this._translateX === undefined) {
@@ -141,36 +158,36 @@ export class MatSliderThumb implements _MatSliderThumb, OnDestroy, ControlValueA
 
   /** @docs-private */
   get min(): number {
-    return coerceNumberProperty(this._hostElement.min);
+    return numberAttribute(this._hostElement.min, 0);
   }
-  set min(v: NumberInput) {
-    this._hostElement.min = coerceNumberProperty(v).toString();
+  set min(v: number) {
+    this._hostElement.min = v + '';
     this._cdr.detectChanges();
   }
 
   /** @docs-private */
   get max(): number {
-    return coerceNumberProperty(this._hostElement.max);
+    return numberAttribute(this._hostElement.max, 0);
   }
-  set max(v: NumberInput) {
-    this._hostElement.max = coerceNumberProperty(v).toString();
+  set max(v: number) {
+    this._hostElement.max = v + '';
     this._cdr.detectChanges();
   }
 
   get step(): number {
-    return coerceNumberProperty(this._hostElement.step);
+    return numberAttribute(this._hostElement.step, 0);
   }
-  set step(v: NumberInput) {
-    this._hostElement.step = coerceNumberProperty(v).toString();
+  set step(v: number) {
+    this._hostElement.step = v + '';
     this._cdr.detectChanges();
   }
 
   /** @docs-private */
   get disabled(): boolean {
-    return coerceBooleanProperty(this._hostElement.disabled);
+    return booleanAttribute(this._hostElement.disabled);
   }
-  set disabled(v: BooleanInput) {
-    this._hostElement.disabled = coerceBooleanProperty(v);
+  set disabled(v: boolean) {
+    this._hostElement.disabled = v;
     this._cdr.detectChanges();
 
     if (this._slider.disabled !== this.disabled) {
@@ -198,13 +215,16 @@ export class MatSliderThumb implements _MatSliderThumb, OnDestroy, ControlValueA
   }
 
   /** The host native HTML input element. */
-  _hostElement: HTMLInputElement;
+  _hostElement = this._elementRef.nativeElement;
 
   /** The aria-valuetext string representation of the input's value. */
-  _valuetext: string;
+  _valuetext = signal('');
 
   /** The radius of a native html slider's knob. */
   _knobRadius: number = 8;
+
+  /** The distance in px from the start of the slider track to the first tick mark. */
+  _tickMarkOffset = 3;
 
   /** Whether user's cursor is currently in a mouse down state on the input. */
   _isActive: boolean = false;
@@ -243,29 +263,37 @@ export class MatSliderThumb implements _MatSliderThumb, OnDestroy, ControlValueA
   _skipUIUpdate: boolean = false;
 
   /** Callback called when the slider input value changes. */
-  private _onChangeFn: (value: any) => void = () => {};
+  protected _onChangeFn: ((value: any) => void) | undefined;
 
   /** Callback called when the slider input has been touched. */
   private _onTouchedFn: () => void = () => {};
 
-  constructor(
-    readonly _ngZone: NgZone,
-    readonly _elementRef: ElementRef<HTMLInputElement>,
-    readonly _cdr: ChangeDetectorRef,
-    @Inject(MAT_SLIDER) protected _slider: _MatSlider,
-  ) {
-    this._hostElement = _elementRef.nativeElement;
+  /**
+   * Whether the NgModel has been initialized.
+   *
+   * This flag is used to ignore ghost null calls to
+   * writeValue which can break slider initialization.
+   *
+   * See https://github.com/angular/angular/issues/14988.
+   */
+  protected _isControlInitialized = false;
+
+  constructor(...args: unknown[]);
+
+  constructor() {
+    const renderer = inject(Renderer2);
+
     this._ngZone.runOutsideAngular(() => {
-      this._hostElement.addEventListener('pointerdown', this._onPointerDown.bind(this));
-      this._hostElement.addEventListener('pointermove', this._onPointerMove.bind(this));
-      this._hostElement.addEventListener('pointerup', this._onPointerUp.bind(this));
+      this._listenerCleanups = [
+        renderer.listen(this._hostElement, 'pointerdown', this._onPointerDown.bind(this)),
+        renderer.listen(this._hostElement, 'pointermove', this._onPointerMove.bind(this)),
+        renderer.listen(this._hostElement, 'pointerup', this._onPointerUp.bind(this)),
+      ];
     });
   }
 
   ngOnDestroy(): void {
-    this._hostElement.removeEventListener('pointerdown', this._onPointerDown);
-    this._hostElement.removeEventListener('pointermove', this._onPointerMove);
-    this._hostElement.removeEventListener('pointerup', this._onPointerUp);
+    this._listenerCleanups.forEach(cleanup => cleanup());
     this._destroyed.next();
     this._destroyed.complete();
     this.dragStart.complete();
@@ -315,10 +343,13 @@ export class MatSliderThumb implements _MatSliderThumb, OnDestroy, ControlValueA
   }
 
   _onFocus(): void {
+    this._slider._setTransition(false);
+    this._slider._updateTrackUI(this);
     this._setIsFocused(true);
   }
 
   _onChange(): void {
+    this.valueChange.emit(this.value);
     // only used to handle the edge case where user
     // mousedown on the slider then uses arrow keys.
     if (this._isActive) {
@@ -327,8 +358,7 @@ export class MatSliderThumb implements _MatSliderThumb, OnDestroy, ControlValueA
   }
 
   _onInput(): void {
-    this.valueChange.emit(this.value);
-    this._onChangeFn(this.value);
+    this._onChangeFn?.(this.value);
     // handles arrowing and updating the value when
     // a step is defined.
     if (this._slider.step || !this._isActive) {
@@ -349,6 +379,20 @@ export class MatSliderThumb implements _MatSliderThumb, OnDestroy, ControlValueA
 
   _onPointerDown(event: PointerEvent): void {
     if (this.disabled || event.button !== 0) {
+      return;
+    }
+
+    // On IOS, dragging only works if the pointer down happens on the
+    // slider thumb and the slider does not receive focus from pointer events.
+    if (this._platform.IOS) {
+      const isCursorOnSliderThumb = this._slider._isCursorOnSliderThumb(
+        event,
+        this._slider._getThumb(this.thumbPosition)._hostElement.getBoundingClientRect(),
+      );
+
+      this._isActive = isCursorOnSliderThumb;
+      this._updateWidthActive();
+      this._slider._updateDimensions();
       return;
     }
 
@@ -422,7 +466,7 @@ export class MatSliderThumb implements _MatSliderThumb, OnDestroy, ControlValueA
 
     this.value = value;
     this.valueChange.emit(this.value);
-    this._onChangeFn(this.value);
+    this._onChangeFn?.(this.value);
     this._slider._onValueChange(this);
     this._slider.step > 0
       ? this._updateThumbUIByValue()
@@ -440,20 +484,36 @@ export class MatSliderThumb implements _MatSliderThumb, OnDestroy, ControlValueA
   _onPointerUp(): void {
     if (this._isActive) {
       this._isActive = false;
+      if (this._platform.SAFARI) {
+        this._setIsFocused(false);
+      }
       this.dragEnd.emit({source: this, parent: this._slider, value: this.value});
-      setTimeout(() => this._updateWidthInactive());
+
+      // This setTimeout is to prevent the pointerup from triggering a value
+      // change on the input based on the inactive width. It's not clear why
+      // but for some reason on IOS this race condition is even more common so
+      // the timeout needs to be increased.
+      setTimeout(() => this._updateWidthInactive(), this._platform.IOS ? 10 : 0);
     }
   }
 
   _clamp(v: number): number {
-    return Math.max(Math.min(v, this._slider._cachedWidth), 0);
+    const min = this._tickMarkOffset;
+    const max = this._slider._cachedWidth - this._tickMarkOffset;
+    return Math.max(Math.min(v, max), min);
   }
 
   _calcTranslateXByValue(): number {
     if (this._slider._isRtl) {
-      return (1 - this.percentage) * this._slider._cachedWidth;
+      return (
+        (1 - this.percentage) * (this._slider._cachedWidth - this._tickMarkOffset * 2) +
+        this._tickMarkOffset
+      );
     }
-    return this.percentage * this._slider._cachedWidth;
+    return (
+      this.percentage * (this._slider._cachedWidth - this._tickMarkOffset * 2) +
+      this._tickMarkOffset
+    );
   }
 
   _calcTranslateXByPointerEvent(event: PointerEvent): number {
@@ -464,19 +524,18 @@ export class MatSliderThumb implements _MatSliderThumb, OnDestroy, ControlValueA
    * Used to set the slider width to the correct
    * dimensions while the user is dragging.
    */
-  _updateWidthActive(): void {
-    this._hostElement.style.padding = `0 ${this._slider._inputPadding}px`;
-    this._hostElement.style.width = `calc(100% + ${this._slider._inputPadding}px)`;
-  }
+  _updateWidthActive(): void {}
 
   /**
    * Sets the slider input to disproportionate dimensions to allow for touch
    * events to be captured on touch devices.
    */
   _updateWidthInactive(): void {
-    this._hostElement.style.padding = '0px';
-    this._hostElement.style.width = 'calc(100% + 48px)';
-    this._hostElement.style.left = '-24px';
+    this._hostElement.style.padding = `0 ${this._slider._inputPadding}px`;
+    this._hostElement.style.width = `calc(100% + ${
+      this._slider._inputPadding - this._tickMarkOffset * 2
+    }px)`;
+    this._hostElement.style.left = `-${this._slider._rippleRadius - this._tickMarkOffset}px`;
   }
 
   _updateThumbUIByValue(options?: {withAnimation: boolean}): void {
@@ -500,7 +559,9 @@ export class MatSliderThumb implements _MatSliderThumb, OnDestroy, ControlValueA
    * @docs-private
    */
   writeValue(value: any): void {
-    this.value = value;
+    if (this._isControlInitialized || value !== null) {
+      this.value = value;
+    }
   }
 
   /**
@@ -510,6 +571,7 @@ export class MatSliderThumb implements _MatSliderThumb, OnDestroy, ControlValueA
    */
   registerOnChange(fn: any): void {
     this._onChangeFn = fn;
+    this._isControlInitialized = true;
   }
 
   /**
@@ -548,6 +610,8 @@ export class MatSliderThumb implements _MatSliderThumb, OnDestroy, ControlValueA
   ],
 })
 export class MatSliderRangeThumb extends MatSliderThumb implements _MatSliderRangeThumb {
+  override readonly _cdr = inject(ChangeDetectorRef);
+
   /** @docs-private */
   getSibling(): _MatSliderRangeThumb | undefined {
     if (!this._sibling) {
@@ -568,7 +632,7 @@ export class MatSliderRangeThumb extends MatSliderThumb implements _MatSliderRan
     if (!this._isLeftThumb && sibling) {
       return sibling.translateX;
     }
-    return 0;
+    return this._tickMarkOffset;
   }
 
   /**
@@ -580,7 +644,7 @@ export class MatSliderRangeThumb extends MatSliderThumb implements _MatSliderRan
     if (this._isLeftThumb && sibling) {
       return sibling.translateX;
     }
-    return this._slider._cachedWidth;
+    return this._slider._cachedWidth - this._tickMarkOffset;
   }
 
   _setIsLeftThumb(): void {
@@ -594,13 +658,11 @@ export class MatSliderRangeThumb extends MatSliderThumb implements _MatSliderRan
   /** Whether this slider corresponds to the input with greater value. */
   _isEndThumb: boolean;
 
-  constructor(
-    _ngZone: NgZone,
-    @Inject(MAT_SLIDER) _slider: _MatSlider,
-    _elementRef: ElementRef<HTMLInputElement>,
-    override readonly _cdr: ChangeDetectorRef,
-  ) {
-    super(_ngZone, _elementRef, _cdr, _slider);
+  constructor(...args: unknown[]);
+
+  constructor() {
+    super();
+
     this._isEndThumb = this._hostElement.hasAttribute('matSliderEndThumb');
     this._setIsLeftThumb();
     this.thumbPosition = this._isEndThumb ? _MatThumb.END : _MatThumb.START;
@@ -624,7 +686,7 @@ export class MatSliderRangeThumb extends MatSliderThumb implements _MatSliderRan
   }
 
   override _onPointerDown(event: PointerEvent): void {
-    if (this.disabled) {
+    if (this.disabled || event.button !== 0) {
       return;
     }
     if (this._sibling) {
@@ -676,7 +738,8 @@ export class MatSliderRangeThumb extends MatSliderThumb implements _MatSliderRan
 
   override _updateWidthActive(): void {
     const minWidth = this._slider._rippleRadius * 2 - this._slider._inputPadding * 2;
-    const maxWidth = this._slider._cachedWidth + this._slider._inputPadding - minWidth;
+    const maxWidth =
+      this._slider._cachedWidth + this._slider._inputPadding - minWidth - this._tickMarkOffset * 2;
     const percentage =
       this._slider.min < this._slider.max
         ? (this.max - this.min) / (this._slider.max - this._slider.min)
@@ -691,7 +754,7 @@ export class MatSliderRangeThumb extends MatSliderThumb implements _MatSliderRan
     if (!sibling) {
       return;
     }
-    const maxWidth = this._slider._cachedWidth;
+    const maxWidth = this._slider._cachedWidth - this._tickMarkOffset * 2;
     const midValue = this._isEndThumb
       ? this.value - (this.value - sibling.value) / 2
       : this.value + (sibling.value - this.value) / 2;
@@ -702,16 +765,28 @@ export class MatSliderRangeThumb extends MatSliderThumb implements _MatSliderRan
 
     const percentage = this._slider.min < this._slider.max ? _percentage : 1;
 
-    const width = maxWidth * percentage + 24;
+    // Extend the native input width by the radius of the ripple
+    let ripplePadding = this._slider._rippleRadius;
+
+    // If one of the inputs is maximally sized (the value of both thumbs is
+    // equal to the min or max), make that input take up all of the width and
+    // make the other unselectable.
+    if (percentage === 1) {
+      ripplePadding = 48;
+    } else if (percentage === 0) {
+      ripplePadding = 0;
+    }
+
+    const width = maxWidth * percentage + ripplePadding;
     this._hostElement.style.width = `${width}px`;
     this._hostElement.style.padding = '0px';
 
     if (this._isLeftThumb) {
-      this._hostElement.style.left = '-24px';
+      this._hostElement.style.left = `-${this._slider._rippleRadius - this._tickMarkOffset}px`;
       this._hostElement.style.right = 'auto';
     } else {
       this._hostElement.style.left = 'auto';
-      this._hostElement.style.right = '-24px';
+      this._hostElement.style.right = `-${this._slider._rippleRadius - this._tickMarkOffset}px`;
     }
   }
 
@@ -738,7 +813,15 @@ export class MatSliderRangeThumb extends MatSliderThumb implements _MatSliderRan
    * @docs-private
    */
   override writeValue(value: any): void {
-    this.value = value;
+    if (this._isControlInitialized || value !== null) {
+      this.value = value;
+      this._updateWidthInactive();
+      this._updateSibling();
+    }
+  }
+
+  override _setValue(value: string) {
+    super._setValue(value);
     this._updateWidthInactive();
     this._updateSibling();
   }

@@ -1,5 +1,11 @@
 import {Component} from '@angular/core';
-import {CdkDragDrop, moveItemInArray} from '@angular/cdk/drag-drop';
+import {
+  CdkDragDrop,
+  CdkDropList,
+  CdkDragPreview,
+  CdkDrag,
+  moveItemInArray,
+} from '@angular/cdk/drag-drop';
 
 /**
  * @title Drag&Drop custom preview
@@ -7,7 +13,8 @@ import {CdkDragDrop, moveItemInArray} from '@angular/cdk/drag-drop';
 @Component({
   selector: 'cdk-drag-drop-custom-preview-example',
   templateUrl: 'cdk-drag-drop-custom-preview-example.html',
-  styleUrls: ['cdk-drag-drop-custom-preview-example.css'],
+  styleUrl: 'cdk-drag-drop-custom-preview-example.css',
+  imports: [CdkDropList, CdkDrag, CdkDragPreview],
 })
 export class CdkDragDropCustomPreviewExample {
   // tslint:disable:max-line-length
@@ -32,7 +39,8 @@ export class CdkDragDropCustomPreviewExample {
     },
     {
       title: 'Episode V - The Empire Strikes Back',
-      poster: 'https://upload.wikimedia.org/wikipedia/en/3/3c/SW_-_Empire_Strikes_Back.jpg',
+      poster:
+        'https://upload.wikimedia.org/wikipedia/en/3/3f/The_Empire_Strikes_Back_%281980_film%29.jpg',
     },
     {
       title: 'Episode VI - Return of the Jedi',

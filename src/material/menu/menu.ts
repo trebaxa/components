@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -12,13 +12,10 @@ import {
   Component,
   ContentChild,
   ContentChildren,
-  Directive,
   ElementRef,
   EventEmitter,
-  Inject,
   InjectionToken,
   Input,
-  NgZone,
   OnDestroy,
   Output,
   TemplateRef,
@@ -27,11 +24,15 @@ import {
   ViewEncapsulation,
   OnInit,
   ChangeDetectorRef,
+  booleanAttribute,
+  afterNextRender,
+  AfterRenderRef,
+  inject,
+  Injector,
+  ANIMATION_MODULE_TYPE,
 } from '@angular/core';
-import {AnimationEvent} from '@angular/animations';
-import {FocusKeyManager, FocusOrigin} from '@angular/cdk/a11y';
+import {_IdGenerator, FocusKeyManager, FocusOrigin} from '@angular/cdk/a11y';
 import {Direction} from '@angular/cdk/bidi';
-import {BooleanInput, coerceBooleanProperty} from '@angular/cdk/coercion';
 import {
   ESCAPE,
   LEFT_ARROW,
@@ -40,16 +41,13 @@ import {
   UP_ARROW,
   hasModifierKey,
 } from '@angular/cdk/keycodes';
-import {merge, Observable, Subject, Subscription} from 'rxjs';
-import {startWith, switchMap, take} from 'rxjs/operators';
+import {merge, Observable, Subject} from 'rxjs';
+import {startWith, switchMap} from 'rxjs/operators';
 import {MatMenuItem} from './menu-item';
 import {MatMenuPanel, MAT_MENU_PANEL} from './menu-panel';
 import {MenuPositionX, MenuPositionY} from './menu-positions';
 import {throwMatMenuInvalidPositionX, throwMatMenuInvalidPositionY} from './menu-errors';
 import {MatMenuContent, MAT_MENU_CONTENT} from './menu-content';
-import {matMenuAnimations} from './menu-animations';
-
-let menuPanelUid = 0;
 
 /** Reason why the menu was closed. */
 export type MenuCloseReason = void | 'click' | 'keydown' | 'tab';
@@ -94,18 +92,39 @@ export function MAT_MENU_DEFAULT_OPTIONS_FACTORY(): MatMenuDefaultOptions {
   };
 }
 
-/** Base class with all of the `MatMenu` functionality. */
-@Directive()
-export class _MatMenuBase
-  implements AfterContentInit, MatMenuPanel<MatMenuItem>, OnInit, OnDestroy
-{
+/** Name of the enter animation `@keyframes`. */
+const ENTER_ANIMATION = '_mat-menu-enter';
+
+/** Name of the exit animation `@keyframes`. */
+const EXIT_ANIMATION = '_mat-menu-exit';
+
+@Component({
+  selector: 'mat-menu',
+  templateUrl: 'menu.html',
+  styleUrl: 'menu.css',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  encapsulation: ViewEncapsulation.None,
+  exportAs: 'matMenu',
+  host: {
+    '[attr.aria-label]': 'null',
+    '[attr.aria-labelledby]': 'null',
+    '[attr.aria-describedby]': 'null',
+  },
+  providers: [{provide: MAT_MENU_PANEL, useExisting: MatMenu}],
+})
+export class MatMenu implements AfterContentInit, MatMenuPanel<MatMenuItem>, OnInit, OnDestroy {
+  private _elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
+  private _changeDetectorRef = inject(ChangeDetectorRef);
+  private _injector = inject(Injector);
+
   private _keyManager: FocusKeyManager<MatMenuItem>;
-  private _xPosition: MenuPositionX = this._defaultOptions.xPosition;
-  private _yPosition: MenuPositionY = this._defaultOptions.yPosition;
-  private _firstItemFocusSubscription?: Subscription;
-  private _previousElevation: string;
-  protected _elevationPrefix: string;
-  protected _baseElevation: number;
+  private _xPosition: MenuPositionX;
+  private _yPosition: MenuPositionY;
+  private _firstItemFocusRef?: AfterRenderRef;
+  private _exitFallbackTimeout: ReturnType<typeof setTimeout> | undefined;
+
+  /** Whether animations are currently disabled. */
+  protected _animationsDisabled: boolean;
 
   /** All items inside the menu. Includes items nested inside another menu. */
   @ContentChildren(MatMenuItem, {descendants: true}) _allItems: QueryList<MatMenuItem>;
@@ -113,17 +132,17 @@ export class _MatMenuBase
   /** Only the direct descendant menu items. */
   _directDescendantItems = new QueryList<MatMenuItem>();
 
-  /** Config object to be passed into the menu's ngClass */
+  /** Classes to be applied to the menu panel. */
   _classList: {[key: string]: boolean} = {};
 
   /** Current state of the panel animation. */
   _panelAnimationState: 'void' | 'enter' = 'void';
 
   /** Emits whenever an animation on the menu completes. */
-  readonly _animationDone = new Subject<AnimationEvent>();
+  readonly _animationDone = new Subject<'void' | 'enter'>();
 
   /** Whether the menu is animating. */
-  _isAnimating: boolean;
+  _isAnimating = false;
 
   /** Parent menu of the current menu panel. */
   parentMenu: MatMenuPanel | undefined;
@@ -132,10 +151,10 @@ export class _MatMenuBase
   direction: Direction;
 
   /** Class or list of classes to be added to the overlay panel. */
-  overlayPanelClass: string | string[] = this._defaultOptions.overlayPanelClass || '';
+  overlayPanelClass: string | string[];
 
   /** Class to be added to the backdrop element. */
-  @Input() backdropClass: string = this._defaultOptions.backdropClass;
+  @Input() backdropClass: string;
 
   /** aria-label for the menu panel. */
   @Input('aria-label') ariaLabel: string;
@@ -193,24 +212,11 @@ export class _MatMenuBase
   @ContentChild(MAT_MENU_CONTENT) lazyContent: MatMenuContent;
 
   /** Whether the menu should overlap its trigger. */
-  @Input()
-  get overlapTrigger(): boolean {
-    return this._overlapTrigger;
-  }
-  set overlapTrigger(value: BooleanInput) {
-    this._overlapTrigger = coerceBooleanProperty(value);
-  }
-  private _overlapTrigger: boolean = this._defaultOptions.overlapTrigger;
+  @Input({transform: booleanAttribute}) overlapTrigger: boolean;
 
   /** Whether the menu has a backdrop. */
-  @Input()
-  get hasBackdrop(): boolean | undefined {
-    return this._hasBackdrop;
-  }
-  set hasBackdrop(value: BooleanInput) {
-    this._hasBackdrop = coerceBooleanProperty(value);
-  }
-  private _hasBackdrop: boolean | undefined = this._defaultOptions.hasBackdrop;
+  @Input({transform: (value: any) => (value == null ? null : booleanAttribute(value))})
+  hasBackdrop?: boolean;
 
   /**
    * This method takes classes set on the host mat-menu element and applies them on the
@@ -221,10 +227,11 @@ export class _MatMenuBase
   @Input('class')
   set panelClass(classes: string) {
     const previousPanelClass = this._previousPanelClass;
+    const newClassList = {...this._classList};
 
     if (previousPanelClass && previousPanelClass.length) {
       previousPanelClass.split(' ').forEach((className: string) => {
-        this._classList[className] = false;
+        newClassList[className] = false;
       });
     }
 
@@ -232,11 +239,13 @@ export class _MatMenuBase
 
     if (classes && classes.length) {
       classes.split(' ').forEach((className: string) => {
-        this._classList[className] = true;
+        newClassList[className] = true;
       });
 
       this._elementRef.nativeElement.className = '';
     }
+
+    this._classList = newClassList;
   }
   private _previousPanelClass: string;
 
@@ -265,33 +274,20 @@ export class _MatMenuBase
    */
   @Output() readonly close: EventEmitter<MenuCloseReason> = this.closed;
 
-  readonly panelId = `mat-menu-panel-${menuPanelUid++}`;
+  readonly panelId: string = inject(_IdGenerator).getId('mat-menu-panel-');
 
-  constructor(
-    elementRef: ElementRef<HTMLElement>,
-    ngZone: NgZone,
-    defaultOptions: MatMenuDefaultOptions,
-    changeDetectorRef: ChangeDetectorRef,
-  );
+  constructor(...args: unknown[]);
 
-  /**
-   * @deprecated `_changeDetectorRef` to become a required parameter.
-   * @breaking-change 15.0.0
-   */
-  constructor(
-    elementRef: ElementRef<HTMLElement>,
-    ngZone: NgZone,
-    defaultOptions: MatMenuDefaultOptions,
-    changeDetectorRef?: ChangeDetectorRef,
-  );
-
-  constructor(
-    private _elementRef: ElementRef<HTMLElement>,
-    private _ngZone: NgZone,
-    @Inject(MAT_MENU_DEFAULT_OPTIONS) private _defaultOptions: MatMenuDefaultOptions,
-    // @breaking-change 15.0.0 `_changeDetectorRef` to become a required parameter.
-    private _changeDetectorRef?: ChangeDetectorRef,
-  ) {}
+  constructor() {
+    const defaultOptions = inject<MatMenuDefaultOptions>(MAT_MENU_DEFAULT_OPTIONS);
+    this.overlayPanelClass = defaultOptions.overlayPanelClass || '';
+    this._xPosition = defaultOptions.xPosition;
+    this._yPosition = defaultOptions.yPosition;
+    this.backdropClass = defaultOptions.backdropClass;
+    this.overlapTrigger = defaultOptions.overlapTrigger;
+    this.hasBackdrop = defaultOptions.hasBackdrop;
+    this._animationsDisabled = inject(ANIMATION_MODULE_TYPE, {optional: true}) === 'NoopAnimations';
+  }
 
   ngOnInit() {
     this.setPositionClasses();
@@ -338,7 +334,8 @@ export class _MatMenuBase
     this._keyManager?.destroy();
     this._directDescendantItems.destroy();
     this.closed.complete();
-    this._firstItemFocusSubscription?.unsubscribe();
+    this._firstItemFocusRef?.destroy();
+    clearTimeout(this._exitFallbackTimeout);
   }
 
   /** Stream that emits whenever the hovered menu item changes. */
@@ -397,10 +394,6 @@ export class _MatMenuBase
         manager.onKeydown(event);
         return;
     }
-
-    // Don't allow the event to propagate if we've already handled it, or it may
-    // end up reaching other overlays that were opened earlier (see #22694).
-    event.stopPropagation();
   }
 
   /**
@@ -408,32 +401,27 @@ export class _MatMenuBase
    * @param origin Action from which the focus originated. Used to set the correct styling.
    */
   focusFirstItem(origin: FocusOrigin = 'program'): void {
-    // Wait for `onStable` to ensure iOS VoiceOver screen reader focuses the first item (#24735).
-    this._firstItemFocusSubscription?.unsubscribe();
-    this._firstItemFocusSubscription = this._ngZone.onStable.pipe(take(1)).subscribe(() => {
-      let menuPanel: HTMLElement | null = null;
+    // Wait for `afterNextRender` to ensure iOS VoiceOver screen reader focuses the first item (#24735).
+    this._firstItemFocusRef?.destroy();
+    this._firstItemFocusRef = afterNextRender(
+      () => {
+        const menuPanel = this._resolvePanel();
 
-      if (this._directDescendantItems.length) {
-        // Because the `mat-menuPanel` is at the DOM insertion point, not inside the overlay, we don't
-        // have a nice way of getting a hold of the menuPanel panel. We can't use a `ViewChild` either
-        // because the panel is inside an `ng-template`. We work around it by starting from one of
-        // the items and walking up the DOM.
-        menuPanel = this._directDescendantItems.first!._getHostElement().closest('[role="menu"]');
-      }
+        // If an item in the menuPanel is already focused, avoid overriding the focus.
+        if (!menuPanel || !menuPanel.contains(document.activeElement)) {
+          const manager = this._keyManager;
+          manager.setFocusOrigin(origin).setFirstItemActive();
 
-      // If an item in the menuPanel is already focused, avoid overriding the focus.
-      if (!menuPanel || !menuPanel.contains(document.activeElement)) {
-        const manager = this._keyManager;
-        manager.setFocusOrigin(origin).setFirstItemActive();
-
-        // If there's no active item at this point, it means that all the items are disabled.
-        // Move focus to the menuPanel panel so keyboard events like Escape still work. Also this will
-        // give _some_ feedback to screen readers.
-        if (!manager.activeItem && menuPanel) {
-          menuPanel.focus();
+          // If there's no active item at this point, it means that all the items are disabled.
+          // Move focus to the menuPanel panel so keyboard events like Escape still work. Also this will
+          // give _some_ feedback to screen readers.
+          if (!manager.activeItem && menuPanel) {
+            menuPanel.focus();
+          }
         }
-      }
-    });
+      },
+      {injector: this._injector},
+    );
   }
 
   /**
@@ -445,27 +433,10 @@ export class _MatMenuBase
   }
 
   /**
-   * Sets the menu panel elevation.
-   * @param depth Number of parent menus that come before the menu.
+   * @deprecated No longer used and will be removed.
+   * @breaking-change 21.0.0
    */
-  setElevation(depth: number): void {
-    // The elevation starts at the base and increases by one for each level.
-    // Capped at 24 because that's the maximum elevation defined in the Material design spec.
-    const elevation = Math.min(this._baseElevation + depth, 24);
-    const newElevation = `${this._elevationPrefix}${elevation}`;
-    const customElevation = Object.keys(this._classList).find(className => {
-      return className.startsWith(this._elevationPrefix);
-    });
-
-    if (!customElevation || customElevation === this._previousElevation) {
-      if (this._previousElevation) {
-        this._classList[this._previousElevation] = false;
-      }
-
-      this._classList[newElevation] = true;
-      this._previousElevation = newElevation;
-    }
-  }
+  setElevation(_depth: number): void {}
 
   /**
    * Adds classes to the menu panel based on its position. Can be used by
@@ -475,46 +446,69 @@ export class _MatMenuBase
    * @docs-private
    */
   setPositionClasses(posX: MenuPositionX = this.xPosition, posY: MenuPositionY = this.yPosition) {
-    const classes = this._classList;
-    classes['mat-menu-before'] = posX === 'before';
-    classes['mat-menu-after'] = posX === 'after';
-    classes['mat-menu-above'] = posY === 'above';
-    classes['mat-menu-below'] = posY === 'below';
+    this._classList = {
+      ...this._classList,
+      ['mat-menu-before']: posX === 'before',
+      ['mat-menu-after']: posX === 'after',
+      ['mat-menu-above']: posY === 'above',
+      ['mat-menu-below']: posY === 'below',
+    };
 
-    // @breaking-change 15.0.0 Remove null check for `_changeDetectorRef`.
-    this._changeDetectorRef?.markForCheck();
-  }
-
-  /** Starts the enter animation. */
-  _startAnimation() {
-    // @breaking-change 8.0.0 Combine with _resetAnimation.
-    this._panelAnimationState = 'enter';
-  }
-
-  /** Resets the panel animation to its initial state. */
-  _resetAnimation() {
-    // @breaking-change 8.0.0 Combine with _startAnimation.
-    this._panelAnimationState = 'void';
+    this._changeDetectorRef.markForCheck();
   }
 
   /** Callback that is invoked when the panel animation completes. */
-  _onAnimationDone(event: AnimationEvent) {
-    this._animationDone.next(event);
-    this._isAnimating = false;
+  protected _onAnimationDone(state: string) {
+    const isExit = state === EXIT_ANIMATION;
+
+    if (isExit || state === ENTER_ANIMATION) {
+      if (isExit) {
+        clearTimeout(this._exitFallbackTimeout);
+        this._exitFallbackTimeout = undefined;
+      }
+      this._animationDone.next(isExit ? 'void' : 'enter');
+      this._isAnimating = false;
+    }
   }
 
-  _onAnimationStart(event: AnimationEvent) {
-    this._isAnimating = true;
-
-    // Scroll the content element to the top as soon as the animation starts. This is necessary,
-    // because we move focus to the first item while it's still being animated, which can throw
-    // the browser off when it determines the scroll position. Alternatively we can move focus
-    // when the animation is done, however moving focus asynchronously will interrupt screen
-    // readers which are in the process of reading out the menu already. We take the `element`
-    // from the `event` since we can't use a `ViewChild` to access the pane.
-    if (event.toState === 'enter' && this._keyManager.activeItemIndex === 0) {
-      event.element.scrollTop = 0;
+  protected _onAnimationStart(state: string) {
+    if (state === ENTER_ANIMATION || state === EXIT_ANIMATION) {
+      this._isAnimating = true;
     }
+  }
+
+  _setIsOpen(isOpen: boolean) {
+    this._panelAnimationState = isOpen ? 'enter' : 'void';
+
+    if (isOpen) {
+      if (this._keyManager.activeItemIndex === 0) {
+        // Scroll the content element to the top as soon as the animation starts. This is necessary,
+        // because we move focus to the first item while it's still being animated, which can throw
+        // the browser off when it determines the scroll position. Alternatively we can move focus
+        // when the animation is done, however moving focus asynchronously will interrupt screen
+        // readers which are in the process of reading out the menu already. We take the `element`
+        // from the `event` since we can't use a `ViewChild` to access the pane.
+        const menuPanel = this._resolvePanel();
+
+        if (menuPanel) {
+          menuPanel.scrollTop = 0;
+        }
+      }
+    } else if (!this._animationsDisabled) {
+      // Some apps do `* { animation: none !important; }` in tests which will prevent the
+      // `animationend` event from firing. Since the exit animation is loading-bearing for
+      // removing the content from the DOM, add a fallback timer.
+      this._exitFallbackTimeout = setTimeout(() => this._onAnimationDone(EXIT_ANIMATION), 200);
+    }
+
+    // Animation events won't fire when animations are disabled so we simulate them.
+    if (this._animationsDisabled) {
+      setTimeout(() => {
+        this._onAnimationDone(isOpen ? ENTER_ANIMATION : EXIT_ANIMATION);
+      });
+    }
+
+    this._changeDetectorRef.markForCheck();
   }
 
   /**
@@ -531,43 +525,19 @@ export class _MatMenuBase
         this._directDescendantItems.notifyOnChanges();
       });
   }
-}
 
-@Component({
-  selector: 'mat-menu',
-  templateUrl: 'menu.html',
-  styleUrls: ['menu.css'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  encapsulation: ViewEncapsulation.None,
-  exportAs: 'matMenu',
-  host: {
-    '[attr.aria-label]': 'null',
-    '[attr.aria-labelledby]': 'null',
-    '[attr.aria-describedby]': 'null',
-  },
-  animations: [matMenuAnimations.transformMenu, matMenuAnimations.fadeInItems],
-  providers: [{provide: MAT_MENU_PANEL, useExisting: MatMenu}],
-})
-export class MatMenu extends _MatMenuBase {
-  protected override _elevationPrefix = 'mat-elevation-z';
-  protected override _baseElevation = 8;
+  /** Gets the menu panel DOM node. */
+  private _resolvePanel(): HTMLElement | null {
+    let menuPanel: HTMLElement | null = null;
 
-  /*
-   * @deprecated `changeDetectorRef` parameter will become a required parameter.
-   * @breaking-change 15.0.0
-   */
-  constructor(
-    elementRef: ElementRef<HTMLElement>,
-    ngZone: NgZone,
-    defaultOptions: MatMenuDefaultOptions,
-  );
+    if (this._directDescendantItems.length) {
+      // Because the `mat-menuPanel` is at the DOM insertion point, not inside the overlay, we don't
+      // have a nice way of getting a hold of the menuPanel panel. We can't use a `ViewChild` either
+      // because the panel is inside an `ng-template`. We work around it by starting from one of
+      // the items and walking up the DOM.
+      menuPanel = this._directDescendantItems.first!._getHostElement().closest('[role="menu"]');
+    }
 
-  constructor(
-    _elementRef: ElementRef<HTMLElement>,
-    _ngZone: NgZone,
-    @Inject(MAT_MENU_DEFAULT_OPTIONS) _defaultOptions: MatMenuDefaultOptions,
-    changeDetectorRef?: ChangeDetectorRef,
-  ) {
-    super(_elementRef, _ngZone, _defaultOptions, changeDetectorRef);
+    return menuPanel;
   }
 }

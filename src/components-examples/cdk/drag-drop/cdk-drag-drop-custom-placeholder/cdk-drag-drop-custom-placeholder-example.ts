@@ -1,5 +1,11 @@
 import {Component} from '@angular/core';
-import {CdkDragDrop, moveItemInArray} from '@angular/cdk/drag-drop';
+import {
+  CdkDrag,
+  CdkDragDrop,
+  CdkDragPlaceholder,
+  CdkDropList,
+  moveItemInArray,
+} from '@angular/cdk/drag-drop';
 
 /**
  * @title Drag&Drop custom placeholder
@@ -7,7 +13,8 @@ import {CdkDragDrop, moveItemInArray} from '@angular/cdk/drag-drop';
 @Component({
   selector: 'cdk-drag-drop-custom-placeholder-example',
   templateUrl: 'cdk-drag-drop-custom-placeholder-example.html',
-  styleUrls: ['cdk-drag-drop-custom-placeholder-example.css'],
+  styleUrl: 'cdk-drag-drop-custom-placeholder-example.css',
+  imports: [CdkDropList, CdkDrag, CdkDragPlaceholder],
 })
 export class CdkDragDropCustomPlaceholderExample {
   movies = [

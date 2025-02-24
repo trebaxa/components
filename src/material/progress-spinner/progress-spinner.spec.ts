@@ -1,15 +1,14 @@
 import {waitForAsync, TestBed} from '@angular/core/testing';
-import {CommonModule} from '@angular/common';
 import {By} from '@angular/platform-browser';
-import {Component, ElementRef, ViewChild, ViewEncapsulation} from '@angular/core';
+import {Component, ElementRef, ViewChild, ViewEncapsulation, signal} from '@angular/core';
 import {MatProgressSpinnerModule} from './module';
 import {MatProgressSpinner, MAT_PROGRESS_SPINNER_DEFAULT_OPTIONS} from './progress-spinner';
 
-describe('MDC-based MatProgressSpinner', () => {
+describe('MatProgressSpinner', () => {
   beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
-      imports: [MatProgressSpinnerModule, CommonModule],
-      declarations: [
+      imports: [
+        MatProgressSpinnerModule,
         BasicProgressSpinner,
         IndeterminateProgressSpinner,
         ProgressSpinnerWithValueAndBoundMode,
@@ -22,7 +21,7 @@ describe('MDC-based MatProgressSpinner', () => {
         IndeterminateSpinnerInShadowDomWithNgIf,
         SpinnerWithMode,
       ],
-    }).compileComponents();
+    });
   }));
 
   it('should apply a mode of "determinate" if no mode is provided.', () => {
@@ -52,11 +51,11 @@ describe('MDC-based MatProgressSpinner', () => {
   it('should set the value to 0 when the mode is set to indeterminate', () => {
     let fixture = TestBed.createComponent(ProgressSpinnerWithValueAndBoundMode);
     let progressElement = fixture.debugElement.query(By.css('mat-progress-spinner'))!;
-    fixture.componentInstance.mode = 'determinate';
+    fixture.componentInstance.mode.set('determinate');
     fixture.detectChanges();
 
     expect(progressElement.componentInstance.value).toBe(50);
-    fixture.componentInstance.mode = 'indeterminate';
+    fixture.componentInstance.mode.set('indeterminate');
     fixture.detectChanges();
     expect(progressElement.componentInstance.value).toBe(0);
   });
@@ -65,19 +64,19 @@ describe('MDC-based MatProgressSpinner', () => {
     let fixture = TestBed.createComponent(ProgressSpinnerWithValueAndBoundMode);
     let progressElement = fixture.debugElement.query(By.css('mat-progress-spinner'))!;
 
-    fixture.componentInstance.mode = 'determinate';
+    fixture.componentInstance.mode.set('determinate');
     fixture.detectChanges();
     expect(progressElement.componentInstance.value).toBe(50);
 
-    fixture.componentInstance.mode = 'indeterminate';
+    fixture.componentInstance.mode.set('indeterminate');
     fixture.detectChanges();
     expect(progressElement.componentInstance.value).toBe(0);
 
-    fixture.componentInstance.value = 75;
+    fixture.componentInstance.value.set(75);
     fixture.detectChanges();
     expect(progressElement.componentInstance.value).toBe(0);
 
-    fixture.componentInstance.mode = 'determinate';
+    fixture.componentInstance.mode.set('determinate');
     fixture.detectChanges();
     expect(progressElement.componentInstance.value).toBe(75);
   });
@@ -236,7 +235,7 @@ describe('MDC-based MatProgressSpinner', () => {
 
     expect(progressElement.nativeElement.classList).toContain('mat-primary');
 
-    fixture.componentInstance.color = 'accent';
+    fixture.componentInstance.color.set('accent');
     fixture.detectChanges();
 
     expect(progressElement.nativeElement.classList).toContain('mat-accent');
@@ -251,7 +250,7 @@ describe('MDC-based MatProgressSpinner', () => {
 
     expect(progressElement.nativeElement.classList).toContain('mat-primary');
 
-    fixture.componentInstance.color = 'accent';
+    fixture.componentInstance.color.set('accent');
     fixture.detectChanges();
 
     expect(progressElement.nativeElement.classList).toContain('mat-accent');
@@ -295,18 +294,15 @@ describe('MDC-based MatProgressSpinner', () => {
   });
 
   it('should be able to set a default diameter', () => {
-    TestBed.resetTestingModule()
-      .configureTestingModule({
-        imports: [MatProgressSpinnerModule],
-        declarations: [BasicProgressSpinner],
-        providers: [
-          {
-            provide: MAT_PROGRESS_SPINNER_DEFAULT_OPTIONS,
-            useValue: {diameter: 23},
-          },
-        ],
-      })
-      .compileComponents();
+    TestBed.resetTestingModule().configureTestingModule({
+      imports: [MatProgressSpinnerModule, BasicProgressSpinner],
+      providers: [
+        {
+          provide: MAT_PROGRESS_SPINNER_DEFAULT_OPTIONS,
+          useValue: {diameter: 23},
+        },
+      ],
+    });
 
     const fixture = TestBed.createComponent(BasicProgressSpinner);
     fixture.detectChanges();
@@ -316,18 +312,15 @@ describe('MDC-based MatProgressSpinner', () => {
   });
 
   it('should be able to set a default stroke width', () => {
-    TestBed.resetTestingModule()
-      .configureTestingModule({
-        imports: [MatProgressSpinnerModule],
-        declarations: [BasicProgressSpinner],
-        providers: [
-          {
-            provide: MAT_PROGRESS_SPINNER_DEFAULT_OPTIONS,
-            useValue: {strokeWidth: 7},
-          },
-        ],
-      })
-      .compileComponents();
+    TestBed.resetTestingModule().configureTestingModule({
+      imports: [MatProgressSpinnerModule, BasicProgressSpinner],
+      providers: [
+        {
+          provide: MAT_PROGRESS_SPINNER_DEFAULT_OPTIONS,
+          useValue: {strokeWidth: 7},
+        },
+      ],
+    });
 
     const fixture = TestBed.createComponent(BasicProgressSpinner);
     fixture.detectChanges();
@@ -337,18 +330,15 @@ describe('MDC-based MatProgressSpinner', () => {
   });
 
   it('should be able to set a default color', () => {
-    TestBed.resetTestingModule()
-      .configureTestingModule({
-        imports: [MatProgressSpinnerModule],
-        declarations: [BasicProgressSpinner],
-        providers: [
-          {
-            provide: MAT_PROGRESS_SPINNER_DEFAULT_OPTIONS,
-            useValue: {color: 'warn'},
-          },
-        ],
-      })
-      .compileComponents();
+    TestBed.resetTestingModule().configureTestingModule({
+      imports: [MatProgressSpinnerModule, BasicProgressSpinner],
+      providers: [
+        {
+          provide: MAT_PROGRESS_SPINNER_DEFAULT_OPTIONS,
+          useValue: {color: 'warn'},
+        },
+      ],
+    });
 
     const fixture = TestBed.createComponent(BasicProgressSpinner);
     fixture.detectChanges();
@@ -361,8 +351,8 @@ describe('MDC-based MatProgressSpinner', () => {
   it('should set `aria-valuenow` to the current value in determinate mode', () => {
     const fixture = TestBed.createComponent(ProgressSpinnerWithValueAndBoundMode);
     const progressElement = fixture.debugElement.query(By.css('mat-progress-spinner'))!;
-    fixture.componentInstance.mode = 'determinate';
-    fixture.componentInstance.value = 37;
+    fixture.componentInstance.mode.set('determinate');
+    fixture.componentInstance.value.set(37);
     fixture.detectChanges();
 
     expect(progressElement.nativeElement.getAttribute('aria-valuenow')).toBe('37');
@@ -371,13 +361,13 @@ describe('MDC-based MatProgressSpinner', () => {
   it('should clear `aria-valuenow` in indeterminate mode', () => {
     const fixture = TestBed.createComponent(ProgressSpinnerWithValueAndBoundMode);
     const progressElement = fixture.debugElement.query(By.css('mat-progress-spinner'))!;
-    fixture.componentInstance.mode = 'determinate';
-    fixture.componentInstance.value = 89;
+    fixture.componentInstance.mode.set('determinate');
+    fixture.componentInstance.value.set(89);
     fixture.detectChanges();
 
     expect(progressElement.nativeElement.hasAttribute('aria-valuenow')).toBe(true);
 
-    fixture.componentInstance.mode = 'indeterminate';
+    fixture.componentInstance.mode.set('indeterminate');
     fixture.detectChanges();
 
     expect(progressElement.nativeElement.hasAttribute('aria-valuenow')).toBe(false);
@@ -403,50 +393,66 @@ describe('MDC-based MatProgressSpinner', () => {
   });
 });
 
-@Component({template: '<mat-progress-spinner></mat-progress-spinner>'})
+@Component({
+  template: '<mat-progress-spinner></mat-progress-spinner>',
+  imports: [MatProgressSpinnerModule],
+})
 class BasicProgressSpinner {}
 
-@Component({template: '<mat-progress-spinner [strokeWidth]="strokeWidth"></mat-progress-spinner>'})
+@Component({
+  template: '<mat-progress-spinner [strokeWidth]="strokeWidth"></mat-progress-spinner>',
+  imports: [MatProgressSpinnerModule],
+})
 class ProgressSpinnerCustomStrokeWidth {
   strokeWidth: number;
 }
 
-@Component({template: '<mat-progress-spinner [diameter]="diameter"></mat-progress-spinner>'})
+@Component({
+  template: '<mat-progress-spinner [diameter]="diameter"></mat-progress-spinner>',
+  imports: [MatProgressSpinnerModule],
+})
 class ProgressSpinnerCustomDiameter {
   diameter: number;
 }
 
-@Component({template: '<mat-progress-spinner mode="indeterminate"></mat-progress-spinner>'})
+@Component({
+  template: '<mat-progress-spinner mode="indeterminate"></mat-progress-spinner>',
+  imports: [MatProgressSpinnerModule],
+})
 class IndeterminateProgressSpinner {}
 
 @Component({
-  template: '<mat-progress-spinner [value]="value" [mode]="mode"></mat-progress-spinner>',
+  template: '<mat-progress-spinner [value]="value()" [mode]="mode()"></mat-progress-spinner>',
+  imports: [MatProgressSpinnerModule],
 })
 class ProgressSpinnerWithValueAndBoundMode {
-  mode = 'indeterminate';
-  value = 50;
+  mode = signal('indeterminate');
+  value = signal(50);
 }
 
 @Component({
   template: `
-    <mat-spinner [color]="color"></mat-spinner>`,
+    <mat-spinner [color]="color()"></mat-spinner>`,
+  imports: [MatProgressSpinnerModule],
 })
 class SpinnerWithColor {
-  color: string = 'primary';
+  color = signal('primary');
 }
 
 @Component({
   template: `
-    <mat-progress-spinner value="50" [color]="color"></mat-progress-spinner>`,
+    <mat-progress-spinner value="50" [color]="color()"></mat-progress-spinner>`,
+  imports: [MatProgressSpinnerModule],
 })
 class ProgressSpinnerWithColor {
-  color: string = 'primary';
+  color = signal('primary');
 }
 
 @Component({
   template: `
     <mat-progress-spinner value="25" diameter="37" strokeWidth="11"></mat-progress-spinner>
   `,
+  imports: [MatProgressSpinnerModule],
 })
 class ProgressSpinnerWithStringValues {}
 
@@ -455,6 +461,7 @@ class ProgressSpinnerWithStringValues {}
     <mat-progress-spinner mode="indeterminate" [diameter]="diameter"></mat-progress-spinner>
   `,
   encapsulation: ViewEncapsulation.ShadowDom,
+  imports: [MatProgressSpinnerModule],
 })
 class IndeterminateSpinnerInShadowDom {
   diameter: number;
@@ -462,11 +469,14 @@ class IndeterminateSpinnerInShadowDom {
 
 @Component({
   template: `
-    <div *ngIf="true">
-      <mat-progress-spinner mode="indeterminate" [diameter]="diameter"></mat-progress-spinner>
-    </div>
+    @if (true) {
+      <div>
+        <mat-progress-spinner mode="indeterminate" [diameter]="diameter"></mat-progress-spinner>
+      </div>
+    }
   `,
   encapsulation: ViewEncapsulation.ShadowDom,
+  imports: [MatProgressSpinnerModule],
 })
 class IndeterminateSpinnerInShadowDomWithNgIf {
   @ViewChild(MatProgressSpinner, {read: ElementRef})
@@ -475,5 +485,8 @@ class IndeterminateSpinnerInShadowDomWithNgIf {
   diameter: number;
 }
 
-@Component({template: '<mat-spinner mode="determinate"></mat-spinner>'})
+@Component({
+  template: '<mat-spinner mode="determinate"></mat-spinner>',
+  imports: [MatProgressSpinnerModule],
+})
 class SpinnerWithMode {}

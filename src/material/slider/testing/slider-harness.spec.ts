@@ -3,10 +3,10 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {Component} from '@angular/core';
+import {Component, signal} from '@angular/core';
 import {ComponentFixture, fakeAsync, TestBed} from '@angular/core/testing';
 import {HarnessLoader, parallel} from '@angular/cdk/testing';
 import {TestbedHarnessEnvironment} from '@angular/cdk/testing/testbed';
@@ -15,15 +15,14 @@ import {MatSliderHarness} from './slider-harness';
 import {MatSliderThumbHarness} from './slider-thumb-harness';
 import {ThumbPosition} from './slider-harness-filters';
 
-describe('MDC-based MatSliderHarness', () => {
+describe('MatSliderHarness', () => {
   let fixture: ComponentFixture<SliderHarnessTest>;
   let loader: HarnessLoader;
 
-  beforeEach(async () => {
-    await TestBed.configureTestingModule({
-      imports: [MatSliderModule],
-      declarations: [SliderHarnessTest],
-    }).compileComponents();
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [MatSliderModule, SliderHarnessTest],
+    });
 
     fixture = TestBed.createComponent(SliderHarnessTest);
     fixture.detectChanges();
@@ -43,7 +42,7 @@ describe('MDC-based MatSliderHarness', () => {
   it('should get whether a slider is disabled', async () => {
     const slider = await loader.getHarness(MatSliderHarness);
     expect(await slider.isDisabled()).toBe(false);
-    fixture.componentInstance.singleSliderDisabled = true;
+    fixture.componentInstance.singleSliderDisabled.set(true);
     expect(await slider.isDisabled()).toBe(true);
   });
 
@@ -53,7 +52,7 @@ describe('MDC-based MatSliderHarness', () => {
     expect(enabledSliders.length).toBe(2);
     expect(disabledSliders.length).toBe(0);
 
-    fixture.componentInstance.singleSliderDisabled = true;
+    fixture.componentInstance.singleSliderDisabled.set(true);
 
     enabledSliders = await loader.getAllHarnesses(MatSliderHarness.with({disabled: false}));
     disabledSliders = await loader.getAllHarnesses(MatSliderHarness.with({disabled: true}));
@@ -96,7 +95,7 @@ describe('MDC-based MatSliderHarness', () => {
       await parallel(() => {
         return sliders.map(slider => slider.getStep());
       }),
-    ).toEqual([0, fixture.componentInstance.rangeSliderStep]);
+    ).toEqual([1, fixture.componentInstance.rangeSliderStep]);
   });
 
   it('should get the position of a slider thumb in a range slider', async () => {
@@ -140,7 +139,7 @@ describe('MDC-based MatSliderHarness', () => {
   it('should get the display value of a slider thumb', async () => {
     const slider = await loader.getHarness(MatSliderHarness);
     const thumb = await slider.getEndThumb();
-    fixture.componentInstance.displayFn = value => `#${value}`;
+    fixture.componentInstance.displayFn.set(value => `#${value}`);
     await thumb.setValue(73);
     expect(await thumb.getDisplayValue()).toBe('#73');
   });
@@ -161,7 +160,7 @@ describe('MDC-based MatSliderHarness', () => {
     const thumb = await slider.getEndThumb();
 
     expect(await thumb.isDisabled()).toBe(false);
-    fixture.componentInstance.singleSliderDisabled = true;
+    fixture.componentInstance.singleSliderDisabled.set(true);
     expect(await thumb.isDisabled()).toBe(true);
   });
 
@@ -189,7 +188,7 @@ describe('MDC-based MatSliderHarness', () => {
 
 @Component({
   template: `
-    <mat-slider id="single" [displayWith]="displayFn" [disabled]="singleSliderDisabled">
+    <mat-slider id="single" [displayWith]="displayFn()" [disabled]="singleSliderDisabled()">
       <input
         name="price"
         id="price-input"
@@ -203,15 +202,16 @@ describe('MDC-based MatSliderHarness', () => {
       <input [value]="rangeSliderEndValue" matSliderEndThumb>
     </mat-slider>
   `,
+  imports: [MatSliderModule],
 })
 class SliderHarnessTest {
-  singleSliderDisabled = false;
+  singleSliderDisabled = signal(false);
   rangeSliderMin = 100;
   rangeSliderMax = 500;
   rangeSliderStep = 50;
   rangeSliderStartValue = 200;
   rangeSliderEndValue = 350;
-  displayFn = (value: number) => value + '';
+  displayFn = signal((value: number) => value + '');
   inputListener() {}
   changeListener() {}
 }

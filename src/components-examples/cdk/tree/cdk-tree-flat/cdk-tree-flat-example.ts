@@ -1,6 +1,8 @@
+import {ChangeDetectionStrategy, Component} from '@angular/core';
 import {ArrayDataSource} from '@angular/cdk/collections';
-import {FlatTreeControl} from '@angular/cdk/tree';
-import {Component} from '@angular/core';
+import {FlatTreeControl, CdkTreeModule} from '@angular/cdk/tree';
+import {MatIconModule} from '@angular/material/icon';
+import {MatButtonModule} from '@angular/material/button';
 
 const TREE_DATA: ExampleFlatNode[] = [
   {
@@ -74,7 +76,9 @@ interface ExampleFlatNode {
 @Component({
   selector: 'cdk-tree-flat-example',
   templateUrl: 'cdk-tree-flat-example.html',
-  styleUrls: ['cdk-tree-flat-example.css'],
+  styleUrl: 'cdk-tree-flat-example.css',
+  imports: [CdkTreeModule, MatButtonModule, MatIconModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CdkTreeFlatExample {
   treeControl = new FlatTreeControl<ExampleFlatNode>(

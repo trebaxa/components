@@ -1,8 +1,12 @@
 import {CollectionViewer, SelectionChange, DataSource} from '@angular/cdk/collections';
 import {FlatTreeControl} from '@angular/cdk/tree';
-import {Component, Injectable} from '@angular/core';
+import {ChangeDetectionStrategy, Component, Injectable, inject, signal} from '@angular/core';
 import {BehaviorSubject, merge, Observable} from 'rxjs';
 import {map} from 'rxjs/operators';
+import {MatProgressBarModule} from '@angular/material/progress-bar';
+import {MatIconModule} from '@angular/material/icon';
+import {MatButtonModule} from '@angular/material/button';
+import {MatTreeModule} from '@angular/material/tree';
 
 /** Flat node with expandable and level information */
 export class DynamicFlatNode {
@@ -10,7 +14,7 @@ export class DynamicFlatNode {
     public item: string,
     public level = 1,
     public expandable = false,
-    public isLoading = false,
+    public isLoading = signal(false),
   ) {}
 }
 
@@ -104,7 +108,7 @@ export class DynamicDataSource implements DataSource<DynamicFlatNode> {
       return;
     }
 
-    node.isLoading = true;
+    node.isLoading.set(true);
 
     setTimeout(() => {
       if (expand) {
@@ -124,7 +128,7 @@ export class DynamicDataSource implements DataSource<DynamicFlatNode> {
 
       // notify the change
       this.dataChange.next(this.data);
-      node.isLoading = false;
+      node.isLoading.set(false);
     }, 1000);
   }
 }
@@ -135,10 +139,14 @@ export class DynamicDataSource implements DataSource<DynamicFlatNode> {
 @Component({
   selector: 'tree-dynamic-example',
   templateUrl: 'tree-dynamic-example.html',
-  styleUrls: ['tree-dynamic-example.css'],
+  styleUrl: 'tree-dynamic-example.css',
+  imports: [MatTreeModule, MatButtonModule, MatIconModule, MatProgressBarModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TreeDynamicExample {
-  constructor(database: DynamicDatabase) {
+  constructor() {
+    const database = inject(DynamicDatabase);
+
     this.treeControl = new FlatTreeControl<DynamicFlatNode>(this.getLevel, this.isExpandable);
     this.dataSource = new DynamicDataSource(this.treeControl, database);
 

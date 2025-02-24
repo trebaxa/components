@@ -3,11 +3,10 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
-  CDK_ROW_TEMPLATE,
   CdkFooterRow,
   CdkFooterRowDef,
   CdkHeaderRow,
@@ -15,8 +14,18 @@ import {
   CdkRow,
   CdkRowDef,
   CdkNoDataRow,
+  CdkCellOutlet,
 } from '@angular/cdk/table';
-import {ChangeDetectionStrategy, Component, Directive, ViewEncapsulation} from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  Directive,
+  ViewEncapsulation,
+  booleanAttribute,
+} from '@angular/core';
+
+// We can't reuse `CDK_ROW_TEMPLATE` because it's incompatible with local compilation mode.
+const ROW_TEMPLATE = `<ng-container cdkCellOutlet></ng-container>`;
 
 /**
  * Header row definition for the mat-table.
@@ -25,7 +34,10 @@ import {ChangeDetectionStrategy, Component, Directive, ViewEncapsulation} from '
 @Directive({
   selector: '[matHeaderRowDef]',
   providers: [{provide: CdkHeaderRowDef, useExisting: MatHeaderRowDef}],
-  inputs: ['columns: matHeaderRowDef', 'sticky: matHeaderRowDefSticky'],
+  inputs: [
+    {name: 'columns', alias: 'matHeaderRowDef'},
+    {name: 'sticky', alias: 'matHeaderRowDefSticky', transform: booleanAttribute},
+  ],
 })
 export class MatHeaderRowDef extends CdkHeaderRowDef {}
 
@@ -36,7 +48,10 @@ export class MatHeaderRowDef extends CdkHeaderRowDef {}
 @Directive({
   selector: '[matFooterRowDef]',
   providers: [{provide: CdkFooterRowDef, useExisting: MatFooterRowDef}],
-  inputs: ['columns: matFooterRowDef', 'sticky: matFooterRowDefSticky'],
+  inputs: [
+    {name: 'columns', alias: 'matFooterRowDef'},
+    {name: 'sticky', alias: 'matFooterRowDefSticky', transform: booleanAttribute},
+  ],
 })
 export class MatFooterRowDef extends CdkFooterRowDef {}
 
@@ -48,14 +63,17 @@ export class MatFooterRowDef extends CdkFooterRowDef {}
 @Directive({
   selector: '[matRowDef]',
   providers: [{provide: CdkRowDef, useExisting: MatRowDef}],
-  inputs: ['columns: matRowDefColumns', 'when: matRowDefWhen'],
+  inputs: [
+    {name: 'columns', alias: 'matRowDefColumns'},
+    {name: 'when', alias: 'matRowDefWhen'},
+  ],
 })
 export class MatRowDef<T> extends CdkRowDef<T> {}
 
-/** Footer template container that contains the cell outlet. Adds the right class and role. */
+/** Header template container that contains the cell outlet. Adds the right class and role. */
 @Component({
   selector: 'mat-header-row, tr[mat-header-row]',
-  template: CDK_ROW_TEMPLATE,
+  template: ROW_TEMPLATE,
   host: {
     'class': 'mat-mdc-header-row mdc-data-table__header-row',
     'role': 'row',
@@ -66,13 +84,14 @@ export class MatRowDef<T> extends CdkRowDef<T> {}
   encapsulation: ViewEncapsulation.None,
   exportAs: 'matHeaderRow',
   providers: [{provide: CdkHeaderRow, useExisting: MatHeaderRow}],
+  imports: [CdkCellOutlet],
 })
 export class MatHeaderRow extends CdkHeaderRow {}
 
 /** Footer template container that contains the cell outlet. Adds the right class and role. */
 @Component({
   selector: 'mat-footer-row, tr[mat-footer-row]',
-  template: CDK_ROW_TEMPLATE,
+  template: ROW_TEMPLATE,
   host: {
     'class': 'mat-mdc-footer-row mdc-data-table__row',
     'role': 'row',
@@ -83,13 +102,14 @@ export class MatHeaderRow extends CdkHeaderRow {}
   encapsulation: ViewEncapsulation.None,
   exportAs: 'matFooterRow',
   providers: [{provide: CdkFooterRow, useExisting: MatFooterRow}],
+  imports: [CdkCellOutlet],
 })
 export class MatFooterRow extends CdkFooterRow {}
 
 /** Data row template container that contains the cell outlet. Adds the right class and role. */
 @Component({
   selector: 'mat-row, tr[mat-row]',
-  template: CDK_ROW_TEMPLATE,
+  template: ROW_TEMPLATE,
   host: {
     'class': 'mat-mdc-row mdc-data-table__row',
     'role': 'row',
@@ -100,6 +120,7 @@ export class MatFooterRow extends CdkFooterRow {}
   encapsulation: ViewEncapsulation.None,
   exportAs: 'matRow',
   providers: [{provide: CdkRow, useExisting: MatRow}],
+  imports: [CdkCellOutlet],
 })
 export class MatRow extends CdkRow {}
 

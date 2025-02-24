@@ -1,17 +1,13 @@
 import {Component, DebugElement, QueryList} from '@angular/core';
-import {waitForAsync, ComponentFixture, fakeAsync, TestBed, tick} from '@angular/core/testing';
-import {CommonModule} from '@angular/common';
+import {ComponentFixture, TestBed, fakeAsync, tick, waitForAsync} from '@angular/core/testing';
 import {By} from '@angular/platform-browser';
 import {MatChip, MatChipSet, MatChipsModule} from './index';
 
-describe('MDC-based MatChipSet', () => {
+describe('MatChipSet', () => {
   beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
-      imports: [MatChipsModule, CommonModule],
-      declarations: [BasicChipSet, IndirectDescendantsChipSet],
+      imports: [MatChipsModule, BasicChipSet, IndirectDescendantsChipSet],
     });
-
-    TestBed.compileComponents();
   }));
 
   describe('BasicChipSet', () => {
@@ -40,11 +36,13 @@ describe('MDC-based MatChipSet', () => {
         expect(chips.toArray().every(chip => chip.disabled)).toBe(false);
 
         chipSetInstance.disabled = true;
+        fixture.changeDetectorRef.markForCheck();
         fixture.detectChanges();
 
         expect(chips.toArray().every(chip => chip.disabled)).toBe(true);
 
         chipSetInstance.disabled = false;
+        fixture.changeDetectorRef.markForCheck();
         fixture.detectChanges();
 
         expect(chips.toArray().every(chip => chip.disabled)).toBe(false);
@@ -54,11 +52,13 @@ describe('MDC-based MatChipSet', () => {
         expect(chips.toArray().every(chip => chip.disabled)).toBe(false);
 
         chipSetInstance.disabled = true;
+        fixture.changeDetectorRef.markForCheck();
         fixture.detectChanges();
 
         expect(chips.toArray().every(chip => chip.disabled)).toBe(true);
 
         fixture.componentInstance.chips.push(5, 6);
+        fixture.changeDetectorRef.markForCheck();
         fixture.detectChanges();
         tick();
         fixture.detectChanges();
@@ -72,6 +72,7 @@ describe('MDC-based MatChipSet', () => {
 
       it('should allow a custom role to be specified', () => {
         chipSetInstance.role = 'list';
+        fixture.changeDetectorRef.markForCheck();
         fixture.detectChanges();
         expect(chipSetNativeElement.getAttribute('role')).toBe('list');
       });
@@ -98,16 +99,23 @@ describe('MDC-based MatChipSet', () => {
 
     expect(chips.toArray().every(chip => chip.disabled)).toBe(false);
   });
+
+  it('should be able to access the `empty` getter before the chips are initialized', () => {
+    const fixture = TestBed.createComponent(BasicChipSet);
+    const chipSet = fixture.debugElement.query(By.directive(MatChipSet))!;
+    expect(chipSet.componentInstance.empty).toBe(true);
+  });
 });
 
 @Component({
   template: `
       <mat-chip-set>
-        <mat-chip *ngFor="let i of chips">
-          {{name}} {{i + 1}}
-        </mat-chip>
+        @for (i of chips; track i) {
+          <mat-chip>{{name}} {{i + 1}}</mat-chip>
+        }
       </mat-chip-set>
   `,
+  imports: [MatChipsModule],
 })
 class BasicChipSet {
   name: string = 'Test';
@@ -117,12 +125,13 @@ class BasicChipSet {
 @Component({
   template: `
     <mat-chip-set>
-      <ng-container [ngSwitch]="true">
-        <mat-chip *ngFor="let i of chips">
-          {{name}} {{i + 1}}
-        </mat-chip>
-      </ng-container>
+      @if (true) {
+        @for (i of chips; track i) {
+          <mat-chip>{{name}} {{i + 1}}</mat-chip>
+        }
+      }
     </mat-chip-set>
   `,
+  imports: [MatChipsModule],
 })
 class IndirectDescendantsChipSet extends BasicChipSet {}

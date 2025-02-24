@@ -1,6 +1,6 @@
 import {HarnessLoader} from '@angular/cdk/testing';
 import {TestbedHarnessEnvironment} from '@angular/cdk/testing/testbed';
-import {Component} from '@angular/core';
+import {Component, signal} from '@angular/core';
 import {ComponentFixture, TestBed} from '@angular/core/testing';
 import {MatChipsModule} from '../index';
 import {MatChipRowHarness} from './chip-row-harness';
@@ -9,11 +9,10 @@ describe('MatChipRowHarness', () => {
   let fixture: ComponentFixture<ChipRowHarnessTest>;
   let loader: HarnessLoader;
 
-  beforeEach(async () => {
-    await TestBed.configureTestingModule({
-      imports: [MatChipsModule],
-      declarations: [ChipRowHarnessTest],
-    }).compileComponents();
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [MatChipsModule, ChipRowHarnessTest],
+    });
 
     fixture = TestBed.createComponent(ChipRowHarnessTest);
     fixture.detectChanges();
@@ -29,7 +28,7 @@ describe('MatChipRowHarness', () => {
     const harness = await loader.getHarness(MatChipRowHarness);
     expect(await harness.isEditable()).toBe(false);
 
-    fixture.componentInstance.editable = true;
+    fixture.componentInstance.editable.set(true);
     expect(await harness.isEditable()).toBe(true);
   });
 });
@@ -37,12 +36,13 @@ describe('MatChipRowHarness', () => {
 @Component({
   template: `
     <mat-chip-grid #grid>
-      <mat-basic-chip-row [editable]="editable"> Basic Chip Row </mat-basic-chip-row>
+      <mat-basic-chip-row [editable]="editable()"> Basic Chip Row </mat-basic-chip-row>
       <mat-chip-row [editable]="editable"> Chip Row </mat-chip-row>
       <input [matChipInputFor]="grid" />
     </mat-chip-grid>
   `,
+  imports: [MatChipsModule],
 })
 class ChipRowHarnessTest {
-  editable = false;
+  editable = signal(false);
 }

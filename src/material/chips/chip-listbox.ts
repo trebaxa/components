@@ -3,14 +3,12 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {BooleanInput, coerceBooleanProperty} from '@angular/cdk/coercion';
-import {MatChipAction} from './chip-action';
-import {TAB} from '@angular/cdk/keycodes';
 import {
   AfterContentInit,
+  booleanAttribute,
   ChangeDetectionStrategy,
   Component,
   ContentChildren,
@@ -26,9 +24,11 @@ import {
 import {ControlValueAccessor, NG_VALUE_ACCESSOR} from '@angular/forms';
 import {Observable} from 'rxjs';
 import {startWith, takeUntil} from 'rxjs/operators';
+import {TAB} from '@angular/cdk/keycodes';
 import {MatChip, MatChipEvent} from './chip';
 import {MatChipOption, MatChipSelectionChange} from './chip-option';
 import {MatChipSet} from './chip-set';
+import {MatChipAction} from './chip-action';
 import {MAT_CHIPS_DEFAULT_OPTIONS} from './tokens';
 
 /** Change event object that is emitted when the chip listbox value has changed. */
@@ -59,16 +59,15 @@ export const MAT_CHIP_LISTBOX_CONTROL_VALUE_ACCESSOR: any = {
 @Component({
   selector: 'mat-chip-listbox',
   template: `
-    <span class="mdc-evolution-chip-set__chips" role="presentation">
+    <div class="mdc-evolution-chip-set__chips" role="presentation">
       <ng-content></ng-content>
-    </span>
+    </div>
   `,
-  styleUrls: ['chip-set.css'],
-  inputs: ['tabIndex'],
+  styleUrl: 'chip-set.css',
   host: {
     'class': 'mdc-evolution-chip-set mat-mdc-chip-listbox',
     '[attr.role]': 'role',
-    '[tabIndex]': 'empty ? -1 : tabIndex',
+    '[tabIndex]': '(disabled || empty) ? -1 : tabIndex',
     // TODO: replace this binding with use of AriaDescriber
     '[attr.aria-describedby]': '_ariaDescribedby || null',
     '[attr.aria-required]': 'role ? required : null',
@@ -104,19 +103,16 @@ export class MatChipListbox
   // TODO: MDC uses `grid` here
   protected override _defaultRole = 'listbox';
 
-  /** Value that was assigned before the listbox was initialized. */
-  private _pendingInitialValue: any;
-
   /** Default chip options. */
   private _defaultOptions = inject(MAT_CHIPS_DEFAULT_OPTIONS, {optional: true});
 
   /** Whether the user should be allowed to select multiple chips. */
-  @Input()
+  @Input({transform: booleanAttribute})
   get multiple(): boolean {
     return this._multiple;
   }
-  set multiple(value: BooleanInput) {
-    this._multiple = coerceBooleanProperty(value);
+  set multiple(value: boolean) {
+    this._multiple = value;
     this._syncListboxProperties();
   }
   private _multiple: boolean = false;
@@ -136,12 +132,12 @@ export class MatChipListbox
    * When a chip listbox is not selectable, the selected states for all
    * the chips inside the chip listbox are always ignored.
    */
-  @Input()
+  @Input({transform: booleanAttribute})
   get selectable(): boolean {
     return this._selectable;
   }
-  set selectable(value: BooleanInput) {
-    this._selectable = coerceBooleanProperty(value);
+  set selectable(value: boolean) {
+    this._selectable = value;
     this._syncListboxProperties();
   }
   protected _selectable: boolean = true;
@@ -154,22 +150,16 @@ export class MatChipListbox
   @Input() compareWith: (o1: any, o2: any) => boolean = (o1: any, o2: any) => o1 === o2;
 
   /** Whether this chip listbox is required. */
-  @Input()
-  get required(): boolean {
-    return this._required;
-  }
-  set required(value: BooleanInput) {
-    this._required = coerceBooleanProperty(value);
-  }
-  protected _required: boolean = false;
+  @Input({transform: booleanAttribute})
+  required: boolean = false;
 
   /** Whether checkmark indicator for single-selection options is hidden. */
-  @Input()
+  @Input({transform: booleanAttribute})
   get hideSingleSelectionIndicator(): boolean {
     return this._hideSingleSelectionIndicator;
   }
-  set hideSingleSelectionIndicator(value: BooleanInput) {
-    this._hideSingleSelectionIndicator = coerceBooleanProperty(value);
+  set hideSingleSelectionIndicator(value: boolean) {
+    this._hideSingleSelectionIndicator = value;
     this._syncListboxProperties();
   }
   private _hideSingleSelectionIndicator: boolean =
@@ -191,7 +181,9 @@ export class MatChipListbox
     return this._value;
   }
   set value(value: any) {
-    this.writeValue(value);
+    if (this._chips && this._chips.length) {
+      this._setSelectionByValue(value, false);
+    }
     this._value = value;
   }
   protected _value: any;
@@ -205,17 +197,16 @@ export class MatChipListbox
     // indirect descendants if it's left as false.
     descendants: true,
   })
-  override _chips: QueryList<MatChipOption>;
+  // We need an initializer here to avoid a TS error. The value will be set in `ngAfterViewInit`.
+  override _chips: QueryList<MatChipOption> = undefined!;
 
   ngAfterContentInit() {
-    if (this._pendingInitialValue !== undefined) {
-      Promise.resolve().then(() => {
-        this._setSelectionByValue(this._pendingInitialValue, false);
-        this._pendingInitialValue = undefined;
-      });
-    }
-
     this._chips.changes.pipe(startWith(null), takeUntil(this._destroyed)).subscribe(() => {
+      if (this.value !== undefined) {
+        Promise.resolve().then(() => {
+          this._setSelectionByValue(this.value, false);
+        });
+      }
       // Update listbox selectable/multiple properties on chips
       this._syncListboxProperties();
     });
@@ -261,10 +252,10 @@ export class MatChipListbox
    * @docs-private
    */
   writeValue(value: any): void {
-    if (this._chips) {
-      this._setSelectionByValue(value, false);
-    } else if (value != null) {
-      this._pendingInitialValue = value;
+    if (value != null) {
+      this.value = value;
+    } else {
+      this.value = undefined;
     }
   }
 
@@ -309,7 +300,6 @@ export class MatChipListbox
       // Wait to see if focus moves to an individual chip.
       setTimeout(() => {
         if (!this.focused) {
-          this._propagateChanges();
           this._markAsTouched();
         }
       });

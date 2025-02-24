@@ -1,4 +1,5 @@
 import {Component} from '@angular/core';
+import {MatTableModule} from '@angular/material/table';
 
 export interface PeriodicElement {
   name: string;
@@ -21,12 +22,13 @@ const ELEMENT_DATA: PeriodicElement[] = [
 ];
 
 /**
- * @title Table with columns defined using ngFor instead of statically written in the template.
+ * @title Table with columns defined using a for loop instead of statically written in the template.
  */
 @Component({
   selector: 'table-generated-columns-example',
-  styleUrls: ['table-generated-columns-example.css'],
+  styleUrl: 'table-generated-columns-example.css',
   templateUrl: 'table-generated-columns-example.html',
+  imports: [MatTableModule],
 })
 export class TableGeneratedColumnsExample {
   columns = [

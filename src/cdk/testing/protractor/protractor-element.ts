@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -50,6 +50,7 @@ const keyMap = {
   [TestKey.F11]: Key.F11,
   [TestKey.F12]: Key.F12,
   [TestKey.META]: Key.META,
+  [TestKey.COMMA]: ',',
 };
 
 /** Converts a `ModifierKeys` object to a list of Protractor `Key`s. */
@@ -206,7 +207,11 @@ export class ProtractorElement implements TestElement {
   async setContenteditableValue(value: string): Promise<void> {
     const contenteditableAttr = await this.getAttribute('contenteditable');
 
-    if (contenteditableAttr !== '' && contenteditableAttr !== 'true') {
+    if (
+      contenteditableAttr !== '' &&
+      contenteditableAttr !== 'true' &&
+      contenteditableAttr !== 'plaintext-only'
+    ) {
       throw new Error('setContenteditableValue can only be called on a `contenteditable` element.');
     }
 

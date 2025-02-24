@@ -1,9 +1,9 @@
 import {Component} from '@angular/core';
-import {waitForAsync, ComponentFixture, TestBed} from '@angular/core/testing';
+import {ComponentFixture, TestBed, waitForAsync} from '@angular/core/testing';
 
 import {
-  getTableTextColumnMissingParentTableError,
   getTableTextColumnMissingNameError,
+  getTableTextColumnMissingParentTableError,
 } from './table-errors';
 import {CdkTableModule} from './table-module';
 import {expectTableToMatchContent} from './table.spec';
@@ -16,9 +16,8 @@ describe('CdkTextColumn', () => {
 
   beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
-      imports: [CdkTableModule],
-      declarations: [BasicTextColumnApp, MissingTableApp, TextColumnWithoutNameApp],
-    }).compileComponents();
+      imports: [CdkTableModule, BasicTextColumnApp, MissingTableApp, TextColumnWithoutNameApp],
+    });
   }));
 
   beforeEach(() => {
@@ -51,6 +50,7 @@ describe('CdkTextColumn', () => {
 
   it('should allow for alternate header text', () => {
     component.headerTextB = 'column-b';
+    fixture.changeDetectorRef.markForCheck();
     fixture.detectChanges();
 
     expectTableToMatchContent(tableElement, [
@@ -62,6 +62,7 @@ describe('CdkTextColumn', () => {
 
   it('should allow for custom data accessor', () => {
     component.dataAccessorA = (data: TestData) => data.propertyA + '!';
+    fixture.changeDetectorRef.markForCheck();
     fixture.detectChanges();
 
     expectTableToMatchContent(tableElement, [
@@ -73,6 +74,7 @@ describe('CdkTextColumn', () => {
 
   it('should allow for custom data accessor', () => {
     component.dataAccessorA = (data: TestData) => data.propertyA + '!';
+    fixture.changeDetectorRef.markForCheck();
     fixture.detectChanges();
 
     expectTableToMatchContent(tableElement, [
@@ -87,6 +89,7 @@ describe('CdkTextColumn', () => {
       {propertyA: 'changed-a_1', propertyB: 'b_1', propertyC: 'c_1'},
       {propertyA: 'changed-a_2', propertyB: 'b_2', propertyC: 'c_2'},
     ];
+    fixture.changeDetectorRef.markForCheck();
     fixture.detectChanges();
 
     expectTableToMatchContent(tableElement, [
@@ -102,8 +105,7 @@ describe('CdkTextColumn', () => {
       // The testing module has been initialized in the root describe group for the ripples.
       TestBed.resetTestingModule();
       TestBed.configureTestingModule({
-        imports: [CdkTableModule],
-        declarations: [BasicTextColumnApp],
+        imports: [CdkTableModule, BasicTextColumnApp],
         providers: [{provide: TEXT_COLUMN_OPTIONS, useValue: options}],
       });
 
@@ -165,6 +167,7 @@ interface TestData {
       <cdk-row *cdkRowDef="let row; columns: displayedColumns"></cdk-row>
     </cdk-table>
   `,
+  imports: [CdkTableModule],
 })
 class BasicTextColumnApp {
   displayedColumns = ['propertyA', 'propertyB', 'propertyC'];
@@ -183,6 +186,7 @@ class BasicTextColumnApp {
   template: `
     <cdk-text-column name="column-a"></cdk-text-column>
   `,
+  imports: [CdkTableModule],
 })
 class MissingTableApp {}
 
@@ -195,5 +199,6 @@ class MissingTableApp {}
       <cdk-row *cdkRowDef="let row; columns: displayedColumns"></cdk-row>
     </cdk-table>
   `,
+  imports: [CdkTableModule],
 })
 class TextColumnWithoutNameApp extends BasicTextColumnApp {}

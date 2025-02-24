@@ -11,9 +11,8 @@ describe('GridListHarnessExample', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      imports: [MatGridListModule],
-      declarations: [GridListHarnessExample],
-    }).compileComponents();
+      imports: [MatGridListModule, GridListHarnessExample],
+    });
     fixture = TestBed.createComponent(GridListHarnessExample);
     fixture.detectChanges();
     loader = TestbedHarnessEnvironment.loader(fixture);

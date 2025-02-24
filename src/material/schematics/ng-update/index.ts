@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {Rule, SchematicContext} from '@angular-devkit/schematics';
@@ -12,16 +12,20 @@ import {
   NullableDevkitMigration,
   TargetVersion,
 } from '@angular/cdk/schematics';
-import {LegacyComponentsMigration} from './migrations/legacy-components-v15';
 
 import {materialUpgradeData} from './upgrade-data';
+import {MatCoreMigration} from './migrations/mat-core-removal';
+import {ExplicitSystemVariablePrefixMigration} from './migrations/explicit-system-variable-prefix';
 
-const materialMigrations: NullableDevkitMigration[] = [LegacyComponentsMigration];
+const materialMigrations: NullableDevkitMigration[] = [
+  MatCoreMigration,
+  ExplicitSystemVariablePrefixMigration,
+];
 
-/** Entry point for the migration schematics with target of Angular Material v15 */
-export function updateToV15(): Rule {
+/** Entry point for the migration schematics with target of Angular Material v19 */
+export function updateToV19(): Rule {
   return createMigrationSchematicRule(
-    TargetVersion.V15,
+    TargetVersion.V19,
     materialMigrations,
     materialUpgradeData,
     onMigrationComplete,

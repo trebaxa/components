@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import * as ts from 'typescript';
@@ -24,7 +24,7 @@ import {createFileSystemCompilerHost} from './utils/virtual-host';
  * the context can provide the necessary specifics to the migrations in a type-safe way.
  */
 export class UpdateProject<Context> {
-  private readonly _typeChecker: ts.TypeChecker = this._program.getTypeChecker();
+  private readonly _typeChecker: ts.TypeChecker;
 
   constructor(
     /** Context provided to all migrations. */
@@ -40,7 +40,9 @@ export class UpdateProject<Context> {
     private _analyzedFiles: Set<WorkspacePath> = new Set(),
     /** Logger used for printing messages. */
     private _logger: UpdateLogger = defaultLogger,
-  ) {}
+  ) {
+    this._typeChecker = this._program.getTypeChecker();
+  }
 
   /**
    * Migrates the project to the specified target version.
@@ -192,7 +194,7 @@ export class UpdateProject<Context> {
   }
 
   /**
-   * Creates a program form the specified tsconfig and patches the host
+   * Creates a program from the specified tsconfig and patches the host
    * to read files and directories through the given file system.
    *
    * @throws {TsconfigParseError} If the tsconfig could not be parsed.

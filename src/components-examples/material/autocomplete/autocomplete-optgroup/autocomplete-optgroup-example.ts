@@ -1,7 +1,11 @@
-import {Component, OnInit} from '@angular/core';
-import {FormBuilder} from '@angular/forms';
+import {Component, OnInit, inject} from '@angular/core';
+import {FormBuilder, FormsModule, ReactiveFormsModule} from '@angular/forms';
 import {Observable} from 'rxjs';
 import {startWith, map} from 'rxjs/operators';
+import {AsyncPipe} from '@angular/common';
+import {MatAutocompleteModule} from '@angular/material/autocomplete';
+import {MatInputModule} from '@angular/material/input';
+import {MatFormFieldModule} from '@angular/material/form-field';
 
 export interface StateGroup {
   letter: string;
@@ -20,8 +24,18 @@ export const _filter = (opt: string[], value: string): string[] => {
 @Component({
   selector: 'autocomplete-optgroup-example',
   templateUrl: 'autocomplete-optgroup-example.html',
+  imports: [
+    FormsModule,
+    ReactiveFormsModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatAutocompleteModule,
+    AsyncPipe,
+  ],
 })
 export class AutocompleteOptgroupExample implements OnInit {
+  private _formBuilder = inject(FormBuilder);
+
   stateForm = this._formBuilder.group({
     stateGroup: '',
   });
@@ -124,8 +138,6 @@ export class AutocompleteOptgroupExample implements OnInit {
   ];
 
   stateGroupOptions: Observable<StateGroup[]>;
-
-  constructor(private _formBuilder: FormBuilder) {}
 
   ngOnInit() {
     this.stateGroupOptions = this.stateForm.get('stateGroup')!.valueChanges.pipe(

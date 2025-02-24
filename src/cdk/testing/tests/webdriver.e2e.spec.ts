@@ -26,9 +26,9 @@ if (process.env['WEB_TEST_METADATA'] === undefined) {
   process.exit(1);
 }
 
-const webTestMetadata: WebTestMetadata = require(runfiles.resolve(
-  process.env['WEB_TEST_METADATA'],
-));
+const webTestMetadata: WebTestMetadata = require(
+  runfiles.resolve(process.env['WEB_TEST_METADATA']),
+);
 const port = process.env['TEST_SERVER_PORT'];
 
 // Kagekiri is available globally in the browser. We declare it here so we can use it in the
@@ -39,11 +39,6 @@ declare const kagekiri: {
 
 describe('WebDriverHarnessEnvironment', () => {
   let wd: webdriver.WebDriver;
-
-  async function getUrl(path: string) {
-    await wd.get(`http://localhost:${port}${path}`);
-    await waitForAngularReady(wd);
-  }
 
   async function piercingQueryFn(selector: string, root: () => webdriver.WebElement) {
     return wd.findElements(
@@ -57,17 +52,24 @@ describe('WebDriverHarnessEnvironment', () => {
 
   beforeAll(async () => {
     wd = await new webdriver.Builder()
-      .usingServer(process.env.WEB_TEST_WEBDRIVER_SERVER!)
+      .usingServer(process.env['WEB_TEST_WEBDRIVER_SERVER']!)
       .withCapabilities(webTestMetadata.capabilities)
       .build();
+
+    // Ideally we would refresh the page and wait for Angular to stabilize on each test.
+    // We don't do it, because it causes Webdriver to eventually time out. Instead we go to
+    // the page once and reset the component state before the test (see `beforeEach` below).
+    await wd.get(`http://localhost:${port}/component-harness`);
+    await waitForAngularReady(wd);
+  });
+
+  beforeEach(async () => {
+    await wd.findElement({id: 'reset-state'}).click();
+    await wd.sleep(500);
   });
 
   afterAll(async () => {
     await wd.quit();
-  });
-
-  beforeEach(async () => {
-    await getUrl('/component-harness');
   });
 
   describe('environment specific', () => {
@@ -87,9 +89,8 @@ describe('WebDriverHarnessEnvironment', () => {
       let harness: MainComponentHarness;
 
       beforeEach(async () => {
-        harness = await SeleniumWebDriverHarnessEnvironment.loader(wd).getHarness(
-          MainComponentHarness,
-        );
+        harness =
+          await SeleniumWebDriverHarnessEnvironment.loader(wd).getHarness(MainComponentHarness);
       });
 
       it('can get elements outside of host', async () => {
@@ -113,9 +114,8 @@ describe('WebDriverHarnessEnvironment', () => {
 
     describe('shadow DOM interaction', () => {
       it('should not pierce shadow boundary by default', async () => {
-        const harness = await SeleniumWebDriverHarnessEnvironment.loader(wd).getHarness(
-          MainComponentHarness,
-        );
+        const harness =
+          await SeleniumWebDriverHarnessEnvironment.loader(wd).getHarness(MainComponentHarness);
         expect(await harness.shadows()).toEqual([]);
       });
 

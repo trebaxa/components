@@ -1,10 +1,10 @@
+import {ESCAPE} from '@angular/cdk/keycodes';
+import {ComponentPortal} from '@angular/cdk/portal';
+import {ApplicationRef, Component} from '@angular/core';
 import {TestBed, inject} from '@angular/core/testing';
 import {dispatchKeyboardEvent} from '../../testing/private';
-import {ESCAPE} from '@angular/cdk/keycodes';
-import {ApplicationRef, Component} from '@angular/core';
-import {OverlayModule, Overlay} from '../index';
+import {Overlay, OverlayModule} from '../index';
 import {OverlayKeyboardDispatcher} from './overlay-keyboard-dispatcher';
-import {ComponentPortal} from '@angular/cdk/portal';
 
 describe('OverlayKeyboardDispatcher', () => {
   let appRef: ApplicationRef;
@@ -13,8 +13,7 @@ describe('OverlayKeyboardDispatcher', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      imports: [OverlayModule],
-      declarations: [TestComponent],
+      imports: [OverlayModule, TestComponent],
     });
 
     inject(
@@ -139,15 +138,18 @@ describe('OverlayKeyboardDispatcher', () => {
   it('should dispose of the global keyboard event handler correctly', () => {
     const overlayRef = overlay.create();
     const body = document.body;
-
     spyOn(body, 'addEventListener');
     spyOn(body, 'removeEventListener');
 
     keyboardDispatcher.add(overlayRef);
-    expect(body.addEventListener).toHaveBeenCalledWith('keydown', jasmine.any(Function));
+    expect(body.addEventListener).toHaveBeenCalledWith('keydown', jasmine.any(Function), undefined);
 
     overlayRef.dispose();
-    expect(body.removeEventListener).toHaveBeenCalledWith('keydown', jasmine.any(Function));
+    expect(document.body.removeEventListener).toHaveBeenCalledWith(
+      'keydown',
+      jasmine.any(Function),
+      undefined,
+    );
   });
 
   it('should skip overlays that do not have keydown event subscriptions', () => {
@@ -193,15 +195,11 @@ describe('OverlayKeyboardDispatcher', () => {
     expect(appRef.tick).toHaveBeenCalledTimes(0);
     dispatchKeyboardEvent(document.body, 'keydown', ESCAPE);
     expect(appRef.tick).toHaveBeenCalledTimes(0);
-
-    overlayRef.keydownEvents().subscribe();
-    dispatchKeyboardEvent(document.body, 'keydown', ESCAPE);
-
-    expect(appRef.tick).toHaveBeenCalledTimes(1);
   });
 });
 
 @Component({
   template: 'Hello',
+  imports: [OverlayModule],
 })
 class TestComponent {}

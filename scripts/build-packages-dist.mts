@@ -20,7 +20,7 @@ const releaseTargetTag = 'release-package';
 const projectDir = join(dirname(fileURLToPath(import.meta.url)), '../');
 
 /** Command that runs Bazel. */
-const bazelCmd = process.env.BAZEL || `yarn -s bazel`;
+const bazelCmd = process.env['BAZEL'] || `yarn -s bazel`;
 
 /** Command that queries Bazel for all release package targets. */
 const queryPackagesCmd =
@@ -64,18 +64,8 @@ function buildReleasePackages(distPath: string, isSnapshotBuild: boolean): Built
   // version placeholder is populated in the release output.
   const stampConfigArg = `--config=${isSnapshotBuild ? 'snapshot-build' : 'release'}`;
 
-  // Walk through each release package and clear previous "npm_package" outputs. This is
-  // a workaround for: https://github.com/bazelbuild/rules_nodejs/issues/1219. We need to
-  // do this to ensure that the version placeholders are properly populated.
-  packageNames.forEach(pkgName => {
-    const outputPath = getBazelOutputPath(pkgName);
-    if (sh.test('-d', outputPath)) {
-      sh.chmod('-R', 'u+w', outputPath);
-      sh.rm('-rf', outputPath);
-    }
-  });
-
-  exec(`${bazelCmd} build ${stampConfigArg} ${targets.join(' ')}`);
+  // TODO(josephperrott): Figure out why we can't use workers right now.
+  exec(`${bazelCmd} build --spawn_strategy=local ${stampConfigArg} ${targets.join(' ')}`);
 
   // Delete the distribution directory so that the output is guaranteed to be clean. Re-create
   // the empty directory so that we can copy the release packages into it later.

@@ -9,11 +9,10 @@ describe('MatChipListboxHarness', () => {
   let fixture: ComponentFixture<ChipListboxHarnessTest>;
   let loader: HarnessLoader;
 
-  beforeEach(async () => {
-    await TestBed.configureTestingModule({
-      imports: [MatChipsModule],
-      declarations: [ChipListboxHarnessTest],
-    }).compileComponents();
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [MatChipsModule, ChipListboxHarnessTest],
+    });
 
     fixture = TestBed.createComponent(ChipListboxHarnessTest);
     fixture.detectChanges();
@@ -35,6 +34,7 @@ describe('MatChipListboxHarness', () => {
     expect(await harness.isMultiple()).toBe(false);
 
     fixture.componentInstance.isMultiple = true;
+    fixture.changeDetectorRef.markForCheck();
     expect(await harness.isMultiple()).toBe(true);
   });
 
@@ -45,6 +45,7 @@ describe('MatChipListboxHarness', () => {
     expect(disabledChips.length).toBe(0);
 
     fixture.componentInstance.disabled = true;
+    fixture.changeDetectorRef.markForCheck();
     enabledChips = await loader.getAllHarnesses(MatChipListboxHarness.with({disabled: false}));
     disabledChips = await loader.getAllHarnesses(MatChipListboxHarness.with({disabled: true}));
   });
@@ -54,6 +55,7 @@ describe('MatChipListboxHarness', () => {
     expect(await harness.isDisabled()).toBe(false);
 
     fixture.componentInstance.disabled = true;
+    fixture.changeDetectorRef.markForCheck();
     expect(await harness.isDisabled()).toBe(true);
   });
 
@@ -62,6 +64,7 @@ describe('MatChipListboxHarness', () => {
     expect(await harness.isRequired()).toBe(false);
 
     fixture.componentInstance.required = true;
+    fixture.changeDetectorRef.markForCheck();
     expect(await harness.isRequired()).toBe(true);
   });
 
@@ -73,6 +76,7 @@ describe('MatChipListboxHarness', () => {
 
   it('should get selection in single-selection mode', async () => {
     fixture.componentInstance.options[0].selected = true;
+    fixture.changeDetectorRef.markForCheck();
     fixture.detectChanges();
 
     const harness = await loader.getHarness(MatChipListboxHarness);
@@ -85,6 +89,7 @@ describe('MatChipListboxHarness', () => {
     fixture.componentInstance.isMultiple = true;
     fixture.componentInstance.options[0].selected = true;
     fixture.componentInstance.options[1].selected = true;
+    fixture.changeDetectorRef.markForCheck();
     fixture.detectChanges();
 
     const harness = await loader.getHarness(MatChipListboxHarness);
@@ -96,6 +101,7 @@ describe('MatChipListboxHarness', () => {
 
   it('should be able to select specific options', async () => {
     fixture.componentInstance.isMultiple = true;
+    fixture.changeDetectorRef.markForCheck();
     fixture.detectChanges();
 
     const harness = await loader.getHarness(MatChipListboxHarness);
@@ -112,11 +118,14 @@ describe('MatChipListboxHarness', () => {
 @Component({
   template: `
     <mat-chip-listbox [multiple]="isMultiple" [disabled]="disabled" [required]="required">
-      <mat-chip-option *ngFor="let option of options" [selected]="option.selected">
-        {{option.text}}
-      </mat-chip-option>
+      @for (option of options; track option) {
+        <mat-chip-option [selected]="option.selected">
+          {{option.text}}
+        </mat-chip-option>
+      }
     </mat-chip-listbox>
   `,
+  imports: [MatChipsModule],
 })
 class ChipListboxHarnessTest {
   isMultiple = false;

@@ -1,17 +1,14 @@
-import {Component, Inject} from '@angular/core';
-import {fakeAsync, TestBed, flush} from '@angular/core/testing';
-import {MatTestDialogOpenerModule, MatTestDialogOpener} from '@angular/material/dialog/testing';
+import {Component, inject} from '@angular/core';
+import {TestBed, fakeAsync, flush} from '@angular/core/testing';
 import {MAT_DIALOG_DATA, MatDialogRef, MatDialogState} from '@angular/material/dialog';
+import {MatTestDialogOpener, MatTestDialogOpenerModule} from '@angular/material/dialog/testing';
 import {NoopAnimationsModule} from '@angular/platform-browser/animations';
 
-describe('MDC-based MatTestDialogOpener', () => {
+describe('MatTestDialogOpener', () => {
   beforeEach(fakeAsync(() => {
     TestBed.configureTestingModule({
-      imports: [MatTestDialogOpenerModule, NoopAnimationsModule],
-      declarations: [ExampleComponent],
+      imports: [MatTestDialogOpenerModule, NoopAnimationsModule, ExampleComponent],
     });
-
-    TestBed.compileComponents();
   }));
 
   it('should open a dialog when created', fakeAsync(() => {
@@ -27,13 +24,16 @@ describe('MDC-based MatTestDialogOpener', () => {
     );
   });
 
-  it('should pass data to the component', fakeAsync(() => {
+  it('should pass data to the component', async () => {
     const config = {data: 'test'};
-    TestBed.createComponent(MatTestDialogOpener.withComponent(ExampleComponent, config));
-    flush();
+    const fixture = TestBed.createComponent(
+      MatTestDialogOpener.withComponent(ExampleComponent, config),
+    );
+    fixture.detectChanges();
+    await fixture.whenStable();
     const dialogContainer = document.querySelector('mat-dialog-container');
     expect(dialogContainer!.innerHTML).toContain('Data: test');
-  }));
+  });
 
   it('should get closed result data', fakeAsync(() => {
     const config = {data: 'test'};
@@ -63,10 +63,8 @@ interface ExampleDialogResult {
   `,
 })
 class ExampleComponent {
-  constructor(
-    public dialogRef: MatDialogRef<ExampleComponent, ExampleDialogResult>,
-    @Inject(MAT_DIALOG_DATA) public data: any,
-  ) {}
+  dialogRef = inject<MatDialogRef<ExampleComponent, ExampleDialogResult>>(MatDialogRef);
+  data = inject(MAT_DIALOG_DATA);
 
   close() {
     this.dialogRef.close({reason: 'closed'});

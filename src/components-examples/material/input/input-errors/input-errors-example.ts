@@ -1,5 +1,7 @@
 import {Component} from '@angular/core';
-import {FormControl, Validators} from '@angular/forms';
+import {FormControl, Validators, FormsModule, ReactiveFormsModule} from '@angular/forms';
+import {MatInputModule} from '@angular/material/input';
+import {MatFormFieldModule} from '@angular/material/form-field';
 
 /**
  * @title Input with error messages
@@ -7,7 +9,8 @@ import {FormControl, Validators} from '@angular/forms';
 @Component({
   selector: 'input-errors-example',
   templateUrl: 'input-errors-example.html',
-  styleUrls: ['input-errors-example.css'],
+  styleUrl: 'input-errors-example.css',
+  imports: [FormsModule, MatFormFieldModule, MatInputModule, ReactiveFormsModule],
 })
 export class InputErrorsExample {
   emailFormControl = new FormControl('', [Validators.required, Validators.email]);

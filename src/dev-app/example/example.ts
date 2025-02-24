@@ -3,38 +3,40 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {BooleanInput, coerceBooleanProperty} from '@angular/cdk/coercion';
-import {CommonModule} from '@angular/common';
-import {EXAMPLE_COMPONENTS} from '@angular/components-examples';
-import {loadExample} from '@angular/components-examples/private';
 import {
+  ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
   Injector,
   Input,
   OnInit,
   ViewContainerRef,
+  inject,
 } from '@angular/core';
+import {BooleanInput, coerceBooleanProperty} from '@angular/cdk/coercion';
+import {EXAMPLE_COMPONENTS} from '@angular/components-examples';
+import {loadExample} from '@angular/components-examples/private';
 
 @Component({
   selector: 'material-example',
-  standalone: true,
-  imports: [CommonModule],
   template: `
-    <div class="label" *ngIf="showLabel">
-      <span class="title"> {{title}} </span>
-      <span class="id"> <{{id}}> </span>
-    </div>
+    @if (showLabel) {
+      <div class="label">
+        <span class="title"> {{title}} </span>
+        <span class="id"> <{{id}}> </span>
+      </div>
+    }
 
-    <div *ngIf="!id">
-      Could not find example {{id}}
-    </div>
+    @if (!id) {
+      <div>
+        Could not find example {{id}}
+      </div>
+    }
   `,
-  styles: [
-    `
+  styles: `
     .label {
       display: flex;
       justify-content: space-between;
@@ -54,9 +56,13 @@ import {
       white-space: pre;
     }
   `,
-  ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class Example implements OnInit {
+  private _injector = inject(Injector);
+  private _viewContainerRef = inject(ViewContainerRef);
+  private _changeDetectorRef = inject(ChangeDetectorRef);
+
   /** ID of the material example to display. */
   @Input() id: string;
 
@@ -71,17 +77,11 @@ export class Example implements OnInit {
 
   title: string;
 
-  constructor(
-    private _injector: Injector,
-    private _viewContainerRef: ViewContainerRef,
-    private _changeDetectorRef: ChangeDetectorRef,
-  ) {}
-
   async ngOnInit() {
     this.title = EXAMPLE_COMPONENTS[this.id].title;
 
     const example = await loadExample(this.id, this._injector);
     this._viewContainerRef.createComponent(example.component, {injector: example.injector});
-    this._changeDetectorRef.detectChanges();
+    this._changeDetectorRef.markForCheck();
   }
 }

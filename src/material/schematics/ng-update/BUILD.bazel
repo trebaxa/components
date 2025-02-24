@@ -69,6 +69,7 @@ ts_library(
         "//src/cdk/schematics",
         "//src/cdk/schematics/testing",
         "//src/material/schematics:paths",
+        "@npm//@angular-devkit/core",
         "@npm//@angular-devkit/schematics",
         "@npm//@bazel/runfiles",
         "@npm//@types/jasmine",
@@ -78,7 +79,10 @@ ts_library(
 
 spec_bundle(
     name = "spec_bundle",
-    external = ["*/paths.js"],
+    external = [
+        "*/paths.js",
+        "@angular-devkit/core/node",
+    ],
     platform = "cjs-legacy",
     target = "es2020",
     deps = [":test_lib"],

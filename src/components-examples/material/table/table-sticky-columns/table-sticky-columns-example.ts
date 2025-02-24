@@ -1,12 +1,15 @@
 import {Component} from '@angular/core';
+import {MatIconModule} from '@angular/material/icon';
+import {MatTableModule} from '@angular/material/table';
 
 /**
  * @title Table with sticky columns
  */
 @Component({
   selector: 'table-sticky-columns-example',
-  styleUrls: ['table-sticky-columns-example.css'],
+  styleUrl: 'table-sticky-columns-example.css',
   templateUrl: 'table-sticky-columns-example.html',
+  imports: [MatTableModule, MatIconModule],
 })
 export class TableStickyColumnsExample {
   displayedColumns = [

@@ -1,22 +1,21 @@
-import {inject, TestBed, fakeAsync} from '@angular/core/testing';
-import {Component, NgZone} from '@angular/core';
-import {Subject} from 'rxjs';
 import {ComponentPortal, PortalModule} from '@angular/cdk/portal';
-import {ScrollDispatcher, ViewportRuler} from '@angular/cdk/scrolling';
-import {Overlay, OverlayConfig, OverlayRef, OverlayModule, OverlayContainer} from '../index';
+import {CdkScrollable, ScrollDispatcher, ViewportRuler} from '@angular/cdk/scrolling';
+import {Component, ElementRef} from '@angular/core';
+import {TestBed, fakeAsync, inject} from '@angular/core/testing';
+import {Subject} from 'rxjs';
+import {Overlay, OverlayConfig, OverlayContainer, OverlayModule, OverlayRef} from '../index';
 
 describe('CloseScrollStrategy', () => {
   let overlayRef: OverlayRef;
   let componentPortal: ComponentPortal<MozarellaMsg>;
-  let scrolledSubject = new Subject();
+  let scrolledSubject = new Subject<CdkScrollable | undefined>();
   let scrollPosition: number;
 
   beforeEach(fakeAsync(() => {
     scrollPosition = 0;
 
     TestBed.configureTestingModule({
-      imports: [OverlayModule, PortalModule],
-      declarations: [MozarellaMsg],
+      imports: [OverlayModule, PortalModule, MozarellaMsg],
       providers: [
         {
           provide: ScrollDispatcher,
@@ -32,8 +31,6 @@ describe('CloseScrollStrategy', () => {
         },
       ],
     });
-
-    TestBed.compileComponents();
   }));
 
   beforeEach(inject([Overlay], (overlay: Overlay) => {
@@ -55,6 +52,16 @@ describe('CloseScrollStrategy', () => {
     expect(overlayRef.detach).toHaveBeenCalled();
   });
 
+  it('should not detach if the scrollable is inside the overlay', () => {
+    overlayRef.attach(componentPortal);
+    spyOn(overlayRef, 'detach');
+
+    scrolledSubject.next({
+      getElementRef: () => new ElementRef(overlayRef.overlayElement),
+    } as CdkScrollable);
+    expect(overlayRef.detach).not.toHaveBeenCalled();
+  });
+
   it('should not attempt to detach the overlay after it has been detached', () => {
     overlayRef.attach(componentPortal);
     overlayRef.detach();
@@ -63,17 +70,6 @@ describe('CloseScrollStrategy', () => {
     scrolledSubject.next();
 
     expect(overlayRef.detach).not.toHaveBeenCalled();
-  });
-
-  it('should detach inside the NgZone', () => {
-    const spy = jasmine.createSpy('detachment spy');
-    const subscription = overlayRef.detachments().subscribe(() => spy(NgZone.isInAngularZone()));
-
-    overlayRef.attach(componentPortal);
-    scrolledSubject.next();
-
-    expect(spy).toHaveBeenCalledWith(true);
-    subscription.unsubscribe();
   });
 
   it('should be able to reposition the overlay up to a certain threshold before closing', inject(
@@ -137,5 +133,8 @@ describe('CloseScrollStrategy', () => {
 });
 
 /** Simple component that we can attach to the overlay. */
-@Component({template: '<p>Mozarella</p>'})
+@Component({
+  template: '<p>Mozarella</p>',
+  imports: [OverlayModule, PortalModule],
+})
 class MozarellaMsg {}

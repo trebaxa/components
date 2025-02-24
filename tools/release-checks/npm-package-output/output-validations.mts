@@ -18,7 +18,7 @@ const bazelManifestPath = /(angular_material|external)\//;
  * List of fields which are mandatory in entry-point "package.json" files and refer
  * to files in the release output.
  */
-const packageJsonPathFields = ['module', 'typings', 'fesm2015', 'fesm2020', 'esm2020'];
+const packageJsonPathFields = ['module', 'typings'];
 
 /**
  * Checks the specified JavaScript file and ensures that it does not
@@ -143,16 +143,11 @@ export function checkPrimaryPackageJson(
  */
 export function checkMaterialPackage(packagePath: string): string[] {
   const prebuiltThemesPath = join(packagePath, 'prebuilt-themes');
-  const themingFilePath = join(packagePath, '_theming.scss');
   const newThemingFilePath = join(packagePath, '_index.scss');
   const failures: string[] = [];
 
   if (glob.sync('*.css', {cwd: prebuiltThemesPath}).length === 0) {
     failures.push('No prebuilt themes could be found.');
-  }
-
-  if (!existsSync(themingFilePath)) {
-    failures.push('Legacy theming bundle could not be found.');
   }
 
   if (!existsSync(newThemingFilePath)) {

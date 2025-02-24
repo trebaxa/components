@@ -3,24 +3,11 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
-import {DOCUMENT} from '@angular/common';
-import {
-  Directive,
-  ElementRef,
-  EventEmitter,
-  Inject,
-  InjectionToken,
-  Injector,
-  Input,
-  OnDestroy,
-  Optional,
-  Output,
-  TemplateRef,
-  ViewContainerRef,
-} from '@angular/core';
-import {TemplatePortal} from '@angular/cdk/portal';
+import {Directionality} from '@angular/cdk/bidi';
+import {BooleanInput, coerceArray, coerceBooleanProperty} from '@angular/cdk/coercion';
+import {DOWN_ARROW, ENTER, ESCAPE, TAB} from '@angular/cdk/keycodes';
 import {
   ConnectedPosition,
   FlexibleConnectedPositionStrategy,
@@ -28,10 +15,23 @@ import {
   OverlayConfig,
   OverlayRef,
 } from '@angular/cdk/overlay';
-import {Directionality} from '@angular/cdk/bidi';
-import {BooleanInput, coerceArray, coerceBooleanProperty} from '@angular/cdk/coercion';
 import {_getEventTarget} from '@angular/cdk/platform';
-import {DOWN_ARROW, ENTER, ESCAPE, TAB} from '@angular/cdk/keycodes';
+import {TemplatePortal} from '@angular/cdk/portal';
+import {DOCUMENT} from '@angular/common';
+import {
+  ChangeDetectorRef,
+  Directive,
+  ElementRef,
+  EventEmitter,
+  InjectionToken,
+  Injector,
+  Input,
+  OnDestroy,
+  Output,
+  TemplateRef,
+  ViewContainerRef,
+  inject,
+} from '@angular/core';
 
 export type AriaHasPopupValue = 'false' | 'true' | 'menu' | 'listbox' | 'tree' | 'grid' | 'dialog';
 export type OpenAction = 'focus' | 'click' | 'downKey' | 'toggle';
@@ -60,6 +60,16 @@ export const CDK_COMBOBOX = new InjectionToken<CdkCombobox>('CDK_COMBOBOX');
   providers: [{provide: CDK_COMBOBOX, useExisting: CdkCombobox}],
 })
 export class CdkCombobox<T = unknown> implements OnDestroy {
+  private readonly _elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly _overlay = inject(Overlay);
+  protected readonly _viewContainerRef = inject(ViewContainerRef);
+  private readonly _injector = inject(Injector);
+  private readonly _doc = inject(DOCUMENT);
+  private readonly _directionality = inject(Directionality, {optional: true});
+  private _changeDetectorRef = inject(ChangeDetectorRef);
+  private _overlayRef: OverlayRef;
+  private _panelPortal: TemplatePortal;
+
   @Input('cdkComboboxTriggerFor')
   _panelTemplateRef: TemplateRef<unknown>;
 
@@ -100,20 +110,8 @@ export class CdkCombobox<T = unknown> implements OnDestroy {
     T[]
   >();
 
-  private _overlayRef: OverlayRef;
-  private _panelPortal: TemplatePortal;
-
   contentId: string = '';
   contentType: AriaHasPopupValue;
-
-  constructor(
-    private readonly _elementRef: ElementRef<HTMLElement>,
-    private readonly _overlay: Overlay,
-    protected readonly _viewContainerRef: ViewContainerRef,
-    private readonly _injector: Injector,
-    @Inject(DOCUMENT) private readonly _doc: any,
-    @Optional() private readonly _directionality?: Directionality,
-  ) {}
 
   ngOnDestroy() {
     if (this._overlayRef) {
@@ -192,6 +190,7 @@ export class CdkCombobox<T = unknown> implements OnDestroy {
       this.opened.next();
       this._overlayRef = this._overlayRef || this._overlay.create(this._getOverlayConfig());
       this._overlayRef.attach(this._getPanelContent());
+      this._changeDetectorRef.markForCheck();
       if (!this._isTextTrigger()) {
         // TODO: instead of using a focus function, potentially use cdk/a11y focus trapping
         this._doc.getElementById(this.contentId)?.focus();
@@ -204,6 +203,7 @@ export class CdkCombobox<T = unknown> implements OnDestroy {
     if (this.isOpen() && !this.disabled) {
       this.closed.next();
       this._overlayRef.detach();
+      this._changeDetectorRef.markForCheck();
     }
   }
 
@@ -253,7 +253,7 @@ export class CdkCombobox<T = unknown> implements OnDestroy {
     return new OverlayConfig({
       positionStrategy: this._getOverlayPositionStrategy(),
       scrollStrategy: this._overlay.scrollStrategies.block(),
-      direction: this._directionality,
+      direction: this._directionality || undefined,
     });
   }
 

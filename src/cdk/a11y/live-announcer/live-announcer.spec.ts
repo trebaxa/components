@@ -1,14 +1,14 @@
 import {MutationObserverFactory} from '@angular/cdk/observers';
 import {Overlay} from '@angular/cdk/overlay';
 import {ComponentPortal} from '@angular/cdk/portal';
-import {Component} from '@angular/core';
-import {ComponentFixture, fakeAsync, flush, inject, TestBed, tick} from '@angular/core/testing';
+import {Component, inject} from '@angular/core';
+import {ComponentFixture, TestBed, fakeAsync, flush, tick} from '@angular/core/testing';
 import {By} from '@angular/platform-browser';
 import {A11yModule} from '../index';
 import {LiveAnnouncer} from './live-announcer';
 import {
-  LIVE_ANNOUNCER_ELEMENT_TOKEN,
   LIVE_ANNOUNCER_DEFAULT_OPTIONS,
+  LIVE_ANNOUNCER_ELEMENT_TOKEN,
   LiveAnnouncerDefaultOptions,
 } from './live-announcer-tokens';
 
@@ -21,8 +21,7 @@ describe('LiveAnnouncer', () => {
   describe('with default element', () => {
     beforeEach(() =>
       TestBed.configureTestingModule({
-        imports: [A11yModule],
-        declarations: [TestApp, TestModal],
+        imports: [A11yModule, TestApp, TestModal],
       }),
     );
 
@@ -129,18 +128,14 @@ describe('LiveAnnouncer', () => {
 
       TestBed.resetTestingModule().configureTestingModule({
         imports: [A11yModule],
-        declarations: [TestApp],
       });
 
       const extraElement = document.createElement('div');
       extraElement.classList.add('cdk-live-announcer-element');
       document.body.appendChild(extraElement);
-
-      inject([LiveAnnouncer], (la: LiveAnnouncer) => {
-        announcer = la;
-        ariaLiveElement = getLiveElement();
-        fixture = TestBed.createComponent(TestApp);
-      })();
+      announcer = TestBed.inject(LiveAnnouncer);
+      ariaLiveElement = getLiveElement();
+      fixture = TestBed.createComponent(TestApp);
 
       announcer.announce('Hey Google');
       tick(100);
@@ -226,16 +221,15 @@ describe('LiveAnnouncer', () => {
       customLiveElement = document.createElement('div');
 
       return TestBed.configureTestingModule({
-        imports: [A11yModule],
-        declarations: [TestApp],
+        imports: [A11yModule, TestApp],
         providers: [{provide: LIVE_ANNOUNCER_ELEMENT_TOKEN, useValue: customLiveElement}],
       });
     });
 
-    beforeEach(inject([LiveAnnouncer], (la: LiveAnnouncer) => {
-      announcer = la;
+    beforeEach(() => {
+      announcer = TestBed.inject(LiveAnnouncer);
       ariaLiveElement = getLiveElement();
-    }));
+    });
 
     it('should allow to use a custom live element', fakeAsync(() => {
       announcer.announce('Custom Element');
@@ -250,8 +244,7 @@ describe('LiveAnnouncer', () => {
   describe('with a default options', () => {
     beforeEach(() => {
       return TestBed.configureTestingModule({
-        imports: [A11yModule],
-        declarations: [TestApp],
+        imports: [A11yModule, TestApp],
         providers: [
           {
             provide: LIVE_ANNOUNCER_DEFAULT_OPTIONS,
@@ -264,10 +257,10 @@ describe('LiveAnnouncer', () => {
       });
     });
 
-    beforeEach(inject([LiveAnnouncer], (la: LiveAnnouncer) => {
-      announcer = la;
+    beforeEach(() => {
+      announcer = TestBed.inject(LiveAnnouncer);
       ariaLiveElement = getLiveElement();
-    }));
+    });
 
     it('should pick up the default politeness from the injection token', fakeAsync(() => {
       announcer.announce('Hello');
@@ -295,19 +288,17 @@ describe('CdkAriaLive', () => {
   let announcerSpy: jasmine.Spy;
   let fixture: ComponentFixture<DivWithCdkAriaLive>;
 
-  const invokeMutationCallbacks = () => mutationCallbacks.forEach(cb => cb());
+  const invokeMutationCallbacks = () => mutationCallbacks.forEach(cb => cb([{type: 'fake'}]));
 
   beforeEach(fakeAsync(() => {
     TestBed.configureTestingModule({
-      imports: [A11yModule],
-      declarations: [DivWithCdkAriaLive],
+      imports: [A11yModule, DivWithCdkAriaLive],
       providers: [
         {
           provide: MutationObserverFactory,
           useValue: {
             create: (callback: Function) => {
               mutationCallbacks.push(callback);
-
               return {
                 observe: () => {},
                 disconnect: () => {},
@@ -319,18 +310,17 @@ describe('CdkAriaLive', () => {
     });
   }));
 
-  beforeEach(fakeAsync(
-    inject([LiveAnnouncer], (la: LiveAnnouncer) => {
-      announcer = la;
-      announcerSpy = spyOn(la, 'announce').and.callThrough();
-      fixture = TestBed.createComponent(DivWithCdkAriaLive);
-      fixture.detectChanges();
-      flush();
-    }),
-  ));
+  beforeEach(fakeAsync(() => {
+    announcer = TestBed.inject(LiveAnnouncer);
+    announcerSpy = spyOn(announcer, 'announce').and.callThrough();
+    fixture = TestBed.createComponent(DivWithCdkAriaLive);
+    fixture.detectChanges();
+    flush();
+  }));
 
   it('should default politeness to polite', fakeAsync(() => {
     fixture.componentInstance.content = 'New content';
+    fixture.changeDetectorRef.markForCheck();
     fixture.detectChanges();
     invokeMutationCallbacks();
     flush();
@@ -340,6 +330,7 @@ describe('CdkAriaLive', () => {
 
   it('should dynamically update the politeness', fakeAsync(() => {
     fixture.componentInstance.content = 'New content';
+    fixture.changeDetectorRef.markForCheck();
     fixture.detectChanges();
     invokeMutationCallbacks();
     flush();
@@ -349,6 +340,7 @@ describe('CdkAriaLive', () => {
     announcerSpy.calls.reset();
     fixture.componentInstance.politeness = 'off';
     fixture.componentInstance.content = 'Newer content';
+    fixture.changeDetectorRef.markForCheck();
     fixture.detectChanges();
     invokeMutationCallbacks();
     flush();
@@ -358,6 +350,7 @@ describe('CdkAriaLive', () => {
     announcerSpy.calls.reset();
     fixture.componentInstance.politeness = 'assertive';
     fixture.componentInstance.content = 'Newest content';
+    fixture.changeDetectorRef.markForCheck();
     fixture.detectChanges();
     invokeMutationCallbacks();
     flush();
@@ -367,6 +360,7 @@ describe('CdkAriaLive', () => {
 
   it('should not announce the same text multiple times', fakeAsync(() => {
     fixture.componentInstance.content = 'Content';
+    fixture.changeDetectorRef.markForCheck();
     fixture.detectChanges();
     invokeMutationCallbacks();
     flush();
@@ -383,6 +377,7 @@ describe('CdkAriaLive', () => {
   it('should be able to pass in a duration', fakeAsync(() => {
     fixture.componentInstance.content = 'New content';
     fixture.componentInstance.duration = 1337;
+    fixture.changeDetectorRef.markForCheck();
     fixture.detectChanges();
     invokeMutationCallbacks();
     flush();
@@ -395,16 +390,23 @@ function getLiveElement(): Element {
   return document.body.querySelector('.cdk-live-announcer-element')!;
 }
 
-@Component({template: `<button (click)="announceText('Test')">Announce</button>`})
+@Component({
+  template: `<button (click)="announceText('Test')">Announce</button>`,
+  imports: [A11yModule],
+})
 class TestApp {
-  constructor(public live: LiveAnnouncer) {}
+  live = inject(LiveAnnouncer);
 
   announceText(message: string) {
     this.live.announce(message);
   }
 }
 
-@Component({template: '', host: {'[attr.aria-owns]': 'ariaOwns', 'aria-modal': 'true'}})
+@Component({
+  template: '',
+  host: {'[attr.aria-owns]': 'ariaOwns', 'aria-modal': 'true'},
+  imports: [A11yModule],
+})
 class TestModal {
   ariaOwns: string | null = null;
 }
@@ -414,6 +416,7 @@ class TestModal {
     <div
       [cdkAriaLive]="politeness ? politeness : null"
       [cdkAriaLiveDuration]="duration">{{content}}</div>`,
+  imports: [A11yModule],
 })
 class DivWithCdkAriaLive {
   politeness = 'polite';

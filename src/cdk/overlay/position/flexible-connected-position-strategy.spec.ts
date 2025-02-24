@@ -1,8 +1,16 @@
 import {ComponentPortal, PortalModule} from '@angular/cdk/portal';
 import {CdkScrollable, ScrollingModule, ViewportRuler} from '@angular/cdk/scrolling';
-import {dispatchFakeEvent, MockNgZone} from '../../testing/private';
-import {Component, ElementRef, NgZone} from '@angular/core';
-import {fakeAsync, inject, TestBed, tick} from '@angular/core/testing';
+import {dispatchFakeEvent} from '../../testing/private';
+import {
+  ApplicationRef,
+  Component,
+  ElementRef,
+  Injector,
+  Renderer2,
+  RendererFactory2,
+  runInInjectionContext,
+} from '@angular/core';
+import {fakeAsync, TestBed, tick} from '@angular/core/testing';
 import {Subscription} from 'rxjs';
 import {map} from 'rxjs/operators';
 import {
@@ -22,25 +30,17 @@ const DEFAULT_WIDTH = 60;
 describe('FlexibleConnectedPositionStrategy', () => {
   let overlay: Overlay;
   let overlayContainer: OverlayContainer;
-  let zone: MockNgZone;
   let overlayRef: OverlayRef;
   let viewport: ViewportRuler;
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      imports: [ScrollingModule, OverlayModule, PortalModule],
-      declarations: [TestOverlay],
-      providers: [{provide: NgZone, useFactory: () => (zone = new MockNgZone())}],
+      imports: [ScrollingModule, OverlayModule, PortalModule, TestOverlay],
     });
 
-    inject(
-      [Overlay, OverlayContainer, ViewportRuler],
-      (o: Overlay, oc: OverlayContainer, v: ViewportRuler) => {
-        overlay = o;
-        overlayContainer = oc;
-        viewport = v;
-      },
-    )();
+    overlay = TestBed.inject(Overlay);
+    overlayContainer = TestBed.inject(OverlayContainer);
+    viewport = TestBed.inject(ViewportRuler);
   });
 
   afterEach(() => {
@@ -54,7 +54,7 @@ describe('FlexibleConnectedPositionStrategy', () => {
   function attachOverlay(config: OverlayConfig) {
     overlayRef = overlay.create(config);
     overlayRef.attach(new ComponentPortal(TestOverlay));
-    zone.simulateZoneExit();
+    TestBed.inject(ApplicationRef).tick();
   }
 
   it('should throw when attempting to attach to multiple different overlays', () => {
@@ -1500,7 +1500,6 @@ describe('FlexibleConnectedPositionStrategy', () => {
 
         window.scroll(0, 100);
         overlayRef.updatePosition();
-        zone.simulateZoneExit();
 
         overlayRect = overlayRef.overlayElement.getBoundingClientRect();
         expect(Math.floor(overlayRect.top))
@@ -1548,7 +1547,6 @@ describe('FlexibleConnectedPositionStrategy', () => {
 
         window.scroll(0, scrollBy);
         overlayRef.updatePosition();
-        zone.simulateZoneExit();
 
         let currentOverlayTop = Math.floor(overlayRef.overlayElement.getBoundingClientRect().top);
 
@@ -2001,6 +1999,31 @@ describe('FlexibleConnectedPositionStrategy', () => {
       expect(Math.floor(overlayRect.top)).toBe(viewportMargin);
     });
 
+    it('should calculate the right offset correctly with a viewport margin', async () => {
+      const viewportMargin = 5;
+      const right = 20;
+
+      originElement.style.right = `${right}px`;
+      originElement.style.top = `200px`;
+
+      positionStrategy
+        .withFlexibleDimensions()
+        .withPush(false)
+        .withViewportMargin(viewportMargin)
+        .withPositions([
+          {
+            originX: 'end',
+            originY: 'top',
+            overlayX: 'end',
+            overlayY: 'bottom',
+          },
+        ]);
+
+      attachOverlay({positionStrategy});
+
+      expect(overlayRef.hostElement.style.right).toBe(`${right}px`);
+    });
+
     it('should center flexible overlay with push on a scrolled page', () => {
       const veryLargeElement = document.createElement('div');
 
@@ -2417,20 +2440,20 @@ describe('FlexibleConnectedPositionStrategy', () => {
 
       const originalGetBoundingClientRect = overlayRef.overlayElement.getBoundingClientRect;
 
-      // The browser may return a `ClientRect` with sub-pixel deviations if the screen is zoomed in.
+      // The browser may return a `DOMRect` with sub-pixel deviations if the screen is zoomed in.
       // Since there's no way for us to zoom in the screen programmatically, we simulate the effect
       // by patching `getBoundingClientRect` to return a slightly different value.
       overlayRef.overlayElement.getBoundingClientRect = function () {
-        const clientRect = originalGetBoundingClientRect.apply(this);
+        const domRect = originalGetBoundingClientRect.apply(this);
         const zoomOffset = 0.1;
 
         return {
-          top: clientRect.top,
-          right: clientRect.right + zoomOffset,
-          bottom: clientRect.bottom + zoomOffset,
-          left: clientRect.left,
-          width: clientRect.width + zoomOffset,
-          height: clientRect.height + zoomOffset,
+          top: domRect.top,
+          right: domRect.right + zoomOffset,
+          bottom: domRect.bottom + zoomOffset,
+          left: domRect.left,
+          width: domRect.width + zoomOffset,
+          height: domRect.height + zoomOffset,
         } as any;
       };
 
@@ -2473,9 +2496,23 @@ describe('FlexibleConnectedPositionStrategy', () => {
           },
         ]);
 
-      strategy.withScrollableContainers([
-        new CdkScrollable(new ElementRef<HTMLElement>(scrollable), null!, null!),
-      ]);
+      const injector = Injector.create({
+        parent: TestBed.inject(Injector),
+        providers: [
+          {
+            provide: ElementRef,
+            useValue: new ElementRef<HTMLElement>(scrollable),
+          },
+          {
+            provide: Renderer2,
+            useValue: TestBed.inject(RendererFactory2).createRenderer(null, null),
+          },
+        ],
+      });
+
+      runInInjectionContext(injector, () => {
+        strategy.withScrollableContainers([new CdkScrollable()]);
+      });
 
       positionChangeHandler = jasmine.createSpy('positionChange handler');
       onPositionChangeSubscription = strategy.positionChanges
@@ -2928,5 +2965,6 @@ function createOverflowContainerElement() {
       class="transform-origin"
       style="width: ${DEFAULT_WIDTH}px; height: ${DEFAULT_HEIGHT}px;"></div>
   `,
+  imports: [ScrollingModule, OverlayModule, PortalModule],
 })
 class TestOverlay {}

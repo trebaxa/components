@@ -1,37 +1,42 @@
-@use '@material/tooltip/tooltip';
-@use '@material/tooltip/tooltip-theme';
-@use '@material/tooltip/plain-tooltip-theme';
-@use '../core/mdc-helpers/mdc-helpers';
-
-@include mdc-helpers.disable-mdc-fallback-declarations {
-  // Only include the structural styles, because we handle the animation ourselves.
-  @include tooltip.static-styles($query: structure);
-  @include plain-tooltip-theme.theme-styles((
-    container-shape: tooltip-theme.$border-radius,
-    container-color: #fff,
-    supporting-text-color: #000,
-    supporting-text-font: inherit,
-    supporting-text-size: inherit,
-    supporting-text-tracking: inherit,
-    supporting-text-weight: inherit,
-  ));
-}
+@use '../core/tokens/m2/mdc/plain-tooltip' as tokens-mdc-plain-tooltip;
+@use '../core/tokens/token-utils';
 
 .mat-mdc-tooltip {
   // We don't use MDC's positioning so this has to be relative.
   position: relative;
   transform: scale(0);
+  display: inline-flex;
 
   // Increases the area of the tooltip so the user's pointer can go from the trigger directly to it.
   &::before {
     $offset: -8px;
     content: '';
-    top: $offset;
-    right: $offset;
-    bottom: $offset;
-    left: $offset;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
     z-index: -1;
     position: absolute;
+
+    // Only set the offset on the side closest to the panel so we
+    // don't accidentally cover more content than we need to.
+    .mat-mdc-tooltip-panel-below & {
+      top: $offset;
+    }
+
+    .mat-mdc-tooltip-panel-above & {
+      bottom: $offset;
+    }
+
+    // Note that here we use left/right instead of before/after
+    // so that we don't have to add extra styles for RTL.
+    .mat-mdc-tooltip-panel-right & {
+      left: $offset;
+    }
+
+    .mat-mdc-tooltip-panel-left & {
+      right: $offset;
+    }
   }
 
   &._mat-animation-noopable {
@@ -40,11 +45,68 @@
   }
 }
 
-.mat-mdc-tooltip-panel-non-interactive {
-  pointer-events: none;
+.mat-mdc-tooltip-surface {
+  word-break: normal;
+  overflow-wrap: anywhere;
+  padding: 4px 8px;
+  min-width: 40px;
+  max-width: 200px;
+  min-height: 24px;
+  max-height: 40vh;
+  box-sizing: border-box;
+  overflow: hidden;
+  text-align: center;
+
+  // TODO(crisbeto): these styles aren't necessary, but they were present in
+  // MDC and removing them is likely to cause screenshot differences.
+  will-change: transform, opacity;
+
+  @include token-utils.use-tokens(
+    tokens-mdc-plain-tooltip.$prefix,
+    tokens-mdc-plain-tooltip.get-token-slots()
+  ) {
+    @include token-utils.create-token-slot(background-color, container-color);
+    @include token-utils.create-token-slot(color, supporting-text-color);
+    @include token-utils.create-token-slot(border-radius, container-shape);
+    @include token-utils.create-token-slot(font-family, supporting-text-font);
+    @include token-utils.create-token-slot(font-size, supporting-text-size);
+    @include token-utils.create-token-slot(font-weight, supporting-text-weight);
+    @include token-utils.create-token-slot(line-height, supporting-text-line-height);
+    @include token-utils.create-token-slot(letter-spacing, supporting-text-tracking);
+  }
+
+  // Renders an outline in high contrast mode.
+  &::before {
+    position: absolute;
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    border: 1px solid transparent;
+    border-radius: inherit;
+    content: '';
+    pointer-events: none;
+  }
+
+  .mdc-tooltip--multiline & {
+    text-align: left;
+  }
+
+  [dir='rtl'] .mdc-tooltip--multiline & {
+    text-align: right;
+  }
 }
 
-// TODO(crisbeto): we may be able to use MDC directly for these animations.
+.mat-mdc-tooltip-panel {
+  // The line height inherited from the body can throw off the tooltip gap (see #30132).
+  line-height: normal;
+
+  // We need the additional specificity here, because it can be overridden by `.cdk-overlay-panel`.
+  &.mat-mdc-tooltip-panel-non-interactive {
+    pointer-events: none;
+  }
+}
 
 @keyframes mat-mdc-tooltip-show {
   0% {

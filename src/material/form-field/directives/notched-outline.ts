@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -13,7 +13,9 @@ import {
   ElementRef,
   Input,
   NgZone,
+  ViewChild,
   ViewEncapsulation,
+  inject,
 } from '@angular/core';
 
 /**
@@ -35,13 +37,16 @@ import {
   encapsulation: ViewEncapsulation.None,
 })
 export class MatFormFieldNotchedOutline implements AfterViewInit {
-  /** Width of the label (original scale) */
-  @Input('matFormFieldNotchedOutlineLabelWidth') labelWidth: number = 0;
+  private _elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
+  private _ngZone = inject(NgZone);
 
   /** Whether the notch should be opened. */
   @Input('matFormFieldNotchedOutlineOpen') open: boolean = false;
 
-  constructor(private _elementRef: ElementRef<HTMLElement>, private _ngZone: NgZone) {}
+  @ViewChild('notch') _notch: ElementRef;
+
+  constructor(...args: unknown[]);
+  constructor() {}
 
   ngAfterViewInit(): void {
     const label = this._elementRef.nativeElement.querySelector<HTMLElement>('.mdc-floating-label');
@@ -59,17 +64,15 @@ export class MatFormFieldNotchedOutline implements AfterViewInit {
     }
   }
 
-  _getNotchWidth() {
-    if (this.open) {
+  _setNotchWidth(labelWidth: number) {
+    if (!this.open || !labelWidth) {
+      this._notch.nativeElement.style.width = '';
+    } else {
       const NOTCH_ELEMENT_PADDING = 8;
       const NOTCH_ELEMENT_BORDER = 1;
-      return this.labelWidth > 0
-        ? `calc(${this.labelWidth}px * var(--mat-mdc-form-field-floating-label-scale, 0.75) + ${
-            NOTCH_ELEMENT_PADDING + NOTCH_ELEMENT_BORDER
-          }px)`
-        : '0px';
+      this._notch.nativeElement.style.width = `calc(${labelWidth}px * var(--mat-mdc-form-field-floating-label-scale, 0.75) + ${
+        NOTCH_ELEMENT_PADDING + NOTCH_ELEMENT_BORDER
+      }px)`;
     }
-
-    return null;
   }
 }

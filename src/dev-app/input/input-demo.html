@@ -58,6 +58,19 @@
   </mat-card-content>
 </mat-card>
 
+<mat-card class="demo-card demo-number-input-tooltip">
+  <mat-toolbar color="primary">Number Input + Tooltip</mat-toolbar>
+  <mat-card-content>
+    <form>
+      <mat-form-field>
+        <mat-label>Pump Flow</mat-label>
+        <input matNativeControl value="10" type="number"><!--  -->
+        <span matSuffix matTooltip="Milliliter per Minute">ml/min</span>
+      </mat-form-field>
+    </form>
+  </mat-card-content>
+</mat-card>
+
 <mat-card class="demo-card demo-basic">
   <mat-toolbar color="primary">Error messages</mat-toolbar>
   <mat-card-content>
@@ -73,12 +86,12 @@
       <mat-form-field>
         <mat-label>Email</mat-label>
         <input matInput [formControl]="emailFormControl">
-        <mat-error *ngIf="emailFormControl.hasError('required')">
-          This field is required
-        </mat-error>
-        <mat-error *ngIf="emailFormControl.hasError('pattern')">
-          Please enter a valid email address
-        </mat-error>
+        @if (emailFormControl.hasError('required')) {
+          <mat-error>This field is required</mat-error>
+        }
+        @if (emailFormControl.hasError('pattern')) {
+          <mat-error>Please enter a valid email address</mat-error>
+        }
       </mat-form-field>
     </p>
 
@@ -124,7 +137,9 @@
     <mat-form-field [appearance]="prefixSuffixAppearance" class="demo-text-align-end">
       <mat-label>Amount</mat-label>
       <input matInput>
-      <span matTextPrefix *ngIf="showPrefix">$</span>
+      @if (showPrefix) {
+        <span matTextPrefix>$</span>
+      }
       <span matTextSuffix>.00</span>
     </mat-form-field>
 
@@ -140,7 +155,9 @@
     <mat-form-field [appearance]="prefixSuffixAppearance">
       <mat-label>Amount</mat-label>
       <input matInput>
-      <mat-icon matIconPrefix *ngIf="showPrefix">calendar_today</mat-icon>
+      @if (showPrefix) {
+        <mat-icon matIconPrefix>calendar_today</mat-icon>
+      }
       <mat-icon matIconSuffix>mode_edit</mat-icon>
     </mat-form-field>
 
@@ -148,9 +165,11 @@
     <mat-form-field [appearance]="prefixSuffixAppearance">
       <mat-label>Amount</mat-label>
       <input matInput>
-      <button mat-icon-button matIconPrefix *ngIf="showPrefix">
-        <mat-icon>calendar_today</mat-icon>
-      </button>
+      @if (showPrefix) {
+        <button mat-icon-button matIconPrefix>
+          <mat-icon>calendar_today</mat-icon>
+        </button>
+      }
       <button mat-icon-button matIconSuffix>
         <mat-icon>mode_edit</mat-icon>
       </button>
@@ -162,9 +181,11 @@
       <input matInput>
       <span matTextPrefix>$</span>
       <span matTextSuffix>.00</span>
-      <button mat-icon-button matIconPrefix *ngIf="showPrefix">
-        <mat-icon>calendar_today</mat-icon>
-      </button>
+      @if (showPrefix) {
+        <button mat-icon-button matIconPrefix>
+          <mat-icon>calendar_today</mat-icon>
+        </button>
+      }
       <button mat-icon-button matIconSuffix>
         <mat-icon>mode_edit</mat-icon>
       </button>
@@ -315,10 +336,10 @@
       <mat-form-field>
         <input matInput>
         <mat-label>
-          I <mat-icon>favorite</mat-icon> <b>bold</b> label
+          I <mat-icon>favorite</mat-icon><strong>bold</strong> label
         </mat-label>
         <mat-hint>
-          I also <mat-icon>home</mat-icon> <i>italic</i> hint labels
+          I also <mat-icon>home</mat-icon> <em>italic</em> hint labels
         </mat-hint>
       </mat-form-field>
     </p>
@@ -404,7 +425,7 @@
         <span matIconPrefix>
           <mat-icon [class.primary]="email.focused">email</mat-icon>&nbsp;
         </span>
-        <span matTextSuffix [class.primary]="email.focused">&nbsp;@gmail.com</span>
+        <span matTextSuffix [class.primary]="email.focused">&nbsp;&#64;gmail.com</span>
       </mat-form-field>
     </p>
 
@@ -491,21 +512,23 @@
         <button (click)="addABunch(1000)">Add 1000</button>
       </td>
       </thead>
-      <tr *ngFor="let item of items; let i = index">
-        <td>{{i+1}}</td>
-        <td>
-          <mat-form-field>
-            <mat-label>Value</mat-label>
-            <input matInput
-                   type="number"
-                   [(ngModel)]="items[i].value">
-          </mat-form-field>
-        </td>
-        <td>
-          <input type="number" [(ngModel)]="items[i].value">
-        </td>
-        <td>{{item.value}}</td>
-      </tr>
+      @for (item of items; track item; let i = $index) {
+        <tr>
+          <td>{{i+1}}</td>
+          <td>
+            <mat-form-field>
+              <mat-label>Value</mat-label>
+              <input matInput
+                    type="number"
+                    [(ngModel)]="items[i].value">
+            </mat-form-field>
+          </td>
+          <td>
+            <input type="number" [(ngModel)]="items[i].value">
+          </td>
+          <td>{{item.value}}</td>
+        </tr>
+      }
     </table>
   </mat-card-content>
 </mat-card>
@@ -689,6 +712,53 @@
 </mat-card>
 
 <mat-card class="demo-card demo-basic">
+  <mat-toolbar color="primary">Disabled interactive inputs</mat-toolbar>
+  <mat-card-content>
+    @for (appearance of appearances; track $index) {
+      <div>
+        <mat-form-field [appearance]="appearance">
+          <mat-label>Label</mat-label>
+          <input
+            matNativeControl
+            disabled
+            disabledInteractive
+            value="Value"
+            matTooltip="I can trigger a tooltip!">
+        </mat-form-field>
+
+        <mat-form-field [appearance]="appearance">
+          <mat-label>Label</mat-label>
+          <input
+            matNativeControl
+            disabled
+            disabledInteractive
+            matTooltip="I can trigger a tooltip!">
+        </mat-form-field>
+
+        <mat-form-field [appearance]="appearance">
+          <mat-label>Label</mat-label>
+          <input
+            matNativeControl
+            disabled
+            disabledInteractive
+            placeholder="Placeholder"
+            matTooltip="I can trigger a tooltip!">
+        </mat-form-field>
+
+        <mat-form-field [appearance]="appearance">
+          <input
+            matNativeControl
+            disabled
+            disabledInteractive
+            matTooltip="I can trigger a tooltip!"
+            placeholder="Placeholder">
+        </mat-form-field>
+      </div>
+    }
+  </mat-card-content>
+</mat-card>
+
+<mat-card class="demo-card demo-basic">
   <mat-toolbar color="primary">Textarea form-fields</mat-toolbar>
   <mat-card-content>
     <mat-form-field appearance="fill" class="demo-horizontal-spacing">
@@ -730,7 +800,9 @@
         <input type="text" aria-label="Number" matInput
                [matAutocomplete]="autoComplete1">
         <mat-autocomplete #autoComplete1="matAutocomplete">
-          <mat-option *ngFor="let option of options" [value]="option">{{option}}</mat-option>
+          @for (option of options; track option) {
+            <mat-option [value]="option">{{option}}</mat-option>
+          }
         </mat-autocomplete>
       </mat-form-field>
     </p>
@@ -741,7 +813,9 @@
         <input type="text" aria-label="Number" matInput
                [matAutocomplete]="autoComplete2">
         <mat-autocomplete #autoComplete2="matAutocomplete">
-          <mat-option *ngFor="let option of options" [value]="option">{{option}}</mat-option>
+          @for (option of options; track option) {
+            <mat-option [value]="option">{{option}}</mat-option>
+          }
         </mat-autocomplete>
       </mat-form-field>
     </p>
@@ -776,7 +850,9 @@
           <mat-label>Amount</mat-label>
           <input matInput>
           <span matTextPrefix>$&nbsp;</span>
-          <span matTextPrefix *ngIf="showSecondPrefix">!&nbsp;</span>
+          @if (showSecondPrefix) {
+            <span matTextPrefix>!&nbsp;</span>
+          }
           <span matTextSuffix>.00</span>
         </mat-form-field>
       </mat-tab>
@@ -846,6 +922,57 @@
           <option>First</option>
           <option>Second</option>
         </select>
+      </mat-form-field>
+    </p>
+  </mat-card-content>
+</mat-card>
+
+<mat-card class="demo-card demo-basic">
+  <mat-toolbar color="primary">Without label</mat-toolbar>
+  <mat-card-content>
+    <h4>Label removed</h4>
+    <p>
+    <mat-form-field appearance="outline">
+      @if (hasLabel$ | async){
+        <mat-label>My input</mat-label>
+      }
+      <input matInput type="text" />
+    </mat-form-field>
+    </p>
+    <p>
+    <mat-form-field>
+      @if (hasLabel$ | async){
+        <mat-label>My input</mat-label>
+      }
+      <input matInput type="text" />
+    </mat-form-field>
+    </p>
+    <h4>No defined label</h4>
+    <p>
+    <mat-form-field appearance="outline">
+      <input matInput type="text"/>
+    </mat-form-field>
+    </p>
+    <p>
+      <mat-form-field>
+        <input matInput type="text"/>
+      </mat-form-field>
+    </p>
+  </mat-card-content>
+</mat-card>
+
+
+<mat-card class="demo-card demo-basic">
+  <mat-card-content>
+    <button (click)="showHidden = !showHidden">Show/hide hidden form-field</button>
+    <button (click)="hiddenLabel = hiddenLabel + '!!'">Add !!</button>
+    <button (click)="hiddenAppearance = hiddenAppearance === 'fill' ? 'outline' : 'fill'">
+      Toggle appearance
+    </button>
+    <p [style.display]="showHidden ? 'block' : 'none'">
+      <mat-form-field [appearance]="hiddenAppearance">
+        <mat-label>{{hiddenLabel}}</mat-label>
+        <input matInput value="value">
       </mat-form-field>
     </p>
   </mat-card-content>

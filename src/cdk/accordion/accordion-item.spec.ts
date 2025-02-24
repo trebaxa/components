@@ -7,10 +7,14 @@ import {CdkAccordionModule, CdkAccordionItem} from './public-api';
 describe('CdkAccordionItem', () => {
   beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
-      imports: [BrowserAnimationsModule, CdkAccordionModule],
-      declarations: [SingleItem, ItemGroupWithoutAccordion, ItemGroupWithAccordion],
+      imports: [
+        BrowserAnimationsModule,
+        CdkAccordionModule,
+        SingleItem,
+        ItemGroupWithoutAccordion,
+        ItemGroupWithAccordion,
+      ],
     });
-    TestBed.compileComponents();
   }));
 
   describe('single item', () => {
@@ -234,6 +238,7 @@ describe('CdkAccordionItem', () => {
 
 @Component({
   template: `<cdk-accordion-item #item1></cdk-accordion-item>`,
+  imports: [CdkAccordionModule],
 })
 class SingleItem {}
 
@@ -242,6 +247,7 @@ class SingleItem {}
     <cdk-accordion-item #item1></cdk-accordion-item>
     <cdk-accordion-item #item2></cdk-accordion-item>
   `,
+  imports: [CdkAccordionModule],
 })
 class ItemGroupWithoutAccordion {}
 
@@ -252,5 +258,6 @@ class ItemGroupWithoutAccordion {}
       <cdk-accordion-item #item2></cdk-accordion-item>
     </cdk-accordion>
   `,
+  imports: [CdkAccordionModule],
 })
 class ItemGroupWithAccordion {}

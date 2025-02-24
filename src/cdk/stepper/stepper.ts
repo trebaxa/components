@@ -3,17 +3,11 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {FocusableOption, FocusKeyManager} from '@angular/cdk/a11y';
+import {_IdGenerator, FocusableOption, FocusKeyManager} from '@angular/cdk/a11y';
 import {Direction, Directionality} from '@angular/cdk/bidi';
-import {
-  BooleanInput,
-  coerceBooleanProperty,
-  coerceNumberProperty,
-  NumberInput,
-} from '@angular/cdk/coercion';
 import {ENTER, hasModifierKey, SPACE} from '@angular/cdk/keycodes';
 import {
   AfterViewInit,
@@ -25,29 +19,32 @@ import {
   Directive,
   ElementRef,
   EventEmitter,
-  forwardRef,
-  Inject,
   InjectionToken,
   Input,
   OnChanges,
   OnDestroy,
-  Optional,
   Output,
   QueryList,
   TemplateRef,
   ViewChild,
   ViewEncapsulation,
   AfterContentInit,
+  booleanAttribute,
+  numberAttribute,
+  inject,
 } from '@angular/core';
+import {
+  ControlContainer,
+  type AbstractControl,
+  type NgForm,
+  type FormGroupDirective,
+} from '@angular/forms';
 import {_getFocusedElementPierceShadowDom} from '@angular/cdk/platform';
 import {Observable, of as observableOf, Subject} from 'rxjs';
 import {startWith, takeUntil} from 'rxjs/operators';
 
 import {CdkStepHeader} from './step-header';
 import {CdkStepLabel} from './step-label';
-
-/** Used to generate unique ID for each stepper component. */
-let nextId = 0;
 
 /**
  * Position state of the content of each step in stepper that is used for transitioning
@@ -106,22 +103,36 @@ export interface StepperOptions {
 @Component({
   selector: 'cdk-step',
   exportAs: 'cdkStep',
-  template: '<ng-template><ng-content></ng-content></ng-template>',
+  template: '<ng-template><ng-content/></ng-template>',
   encapsulation: ViewEncapsulation.None,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CdkStep implements OnChanges {
   private _stepperOptions: StepperOptions;
+  _stepper = inject(CdkStepper);
   _displayDefaultIndicatorType: boolean;
 
   /** Template for step label if it exists. */
   @ContentChild(CdkStepLabel) stepLabel: CdkStepLabel;
 
+  /** Forms that have been projected into the step. */
+  @ContentChildren(
+    // Note: we look for `ControlContainer` here, because both `NgForm` and `FormGroupDirective`
+    // provides themselves as such, but we don't want to have a concrete reference to both of
+    // the directives. The type is marked as `Partial` in case we run into a class that provides
+    // itself as `ControlContainer` but doesn't have the same interface as the directives.
+    ControlContainer,
+    {
+      descendants: true,
+    },
+  )
+  protected _childForms: QueryList<Partial<NgForm | FormGroupDirective>> | undefined;
+
   /** Template for step content. */
   @ViewChild(TemplateRef, {static: true}) content: TemplateRef<any>;
 
   /** The top level abstract control of the step. */
-  @Input() stepControl: AbstractControlLike;
+  @Input() stepControl: AbstractControl;
 
   /** Whether user has attempted to move away from the step. */
   interacted = false;
@@ -149,32 +160,18 @@ export class CdkStep implements OnChanges {
   @Input() state: StepState;
 
   /** Whether the user can return to this step once it has been marked as completed. */
-  @Input()
-  get editable(): boolean {
-    return this._editable;
-  }
-  set editable(value: BooleanInput) {
-    this._editable = coerceBooleanProperty(value);
-  }
-  private _editable = true;
+  @Input({transform: booleanAttribute}) editable: boolean = true;
 
   /** Whether the completion of step is optional. */
-  @Input()
-  get optional(): boolean {
-    return this._optional;
-  }
-  set optional(value: BooleanInput) {
-    this._optional = coerceBooleanProperty(value);
-  }
-  private _optional = false;
+  @Input({transform: booleanAttribute}) optional: boolean = false;
 
   /** Whether step is marked as completed. */
-  @Input()
+  @Input({transform: booleanAttribute})
   get completed(): boolean {
     return this._completedOverride == null ? this._getDefaultCompleted() : this._completedOverride;
   }
-  set completed(value: BooleanInput) {
-    this._completedOverride = coerceBooleanProperty(value);
+  set completed(value: boolean) {
+    this._completedOverride = value;
   }
   _completedOverride: boolean | null = null;
 
@@ -183,12 +180,12 @@ export class CdkStep implements OnChanges {
   }
 
   /** Whether step has an error. */
-  @Input()
+  @Input({transform: booleanAttribute})
   get hasError(): boolean {
     return this._customError == null ? this._getDefaultError() : this._customError;
   }
-  set hasError(value: BooleanInput) {
-    this._customError = coerceBooleanProperty(value);
+  set hasError(value: boolean) {
+    this._customError = value;
   }
   private _customError: boolean | null = null;
 
@@ -196,10 +193,10 @@ export class CdkStep implements OnChanges {
     return this.stepControl && this.stepControl.invalid && this.interacted;
   }
 
-  constructor(
-    @Inject(forwardRef(() => CdkStepper)) public _stepper: CdkStepper,
-    @Optional() @Inject(STEPPER_GLOBAL_OPTIONS) stepperOptions?: StepperOptions,
-  ) {
+  constructor(...args: unknown[]);
+
+  constructor() {
+    const stepperOptions = inject<StepperOptions>(STEPPER_GLOBAL_OPTIONS, {optional: true});
     this._stepperOptions = stepperOptions ? stepperOptions : {};
     this._displayDefaultIndicatorType = this._stepperOptions.displayDefaultIndicatorType !== false;
   }
@@ -222,6 +219,10 @@ export class CdkStep implements OnChanges {
     }
 
     if (this.stepControl) {
+      // Reset the forms since the default error state matchers will show errors on submit and we
+      // want the form to be back to its initial state (see #29781). Submitted state is on the
+      // individual directives, rather than the control, so we need to reset them ourselves.
+      this._childForms?.forEach(form => form.resetForm?.());
       this.stepControl.reset();
     }
   }
@@ -252,6 +253,10 @@ export class CdkStep implements OnChanges {
   exportAs: 'cdkStepper',
 })
 export class CdkStepper implements AfterContentInit, AfterViewInit, OnDestroy {
+  private _dir = inject(Directionality, {optional: true});
+  private _changeDetectorRef = inject(ChangeDetectorRef);
+  protected _elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
+
   /** Emits when the component is destroyed. */
   protected readonly _destroyed = new Subject<void>();
 
@@ -271,40 +276,31 @@ export class CdkStepper implements AfterContentInit, AfterViewInit, OnDestroy {
   private _sortedHeaders = new QueryList<CdkStepHeader>();
 
   /** Whether the validity of previous steps should be checked or not. */
-  @Input()
-  get linear(): boolean {
-    return this._linear;
-  }
-  set linear(value: BooleanInput) {
-    this._linear = coerceBooleanProperty(value);
-  }
-  private _linear = false;
+  @Input({transform: booleanAttribute}) linear: boolean = false;
 
   /** The index of the selected step. */
-  @Input()
+  @Input({transform: numberAttribute})
   get selectedIndex(): number {
     return this._selectedIndex;
   }
-  set selectedIndex(index: NumberInput) {
-    const newIndex = coerceNumberProperty(index);
-
+  set selectedIndex(index: number) {
     if (this.steps && this._steps) {
       // Ensure that the index can't be out of bounds.
-      if (!this._isValidIndex(newIndex) && (typeof ngDevMode === 'undefined' || ngDevMode)) {
+      if (!this._isValidIndex(index) && (typeof ngDevMode === 'undefined' || ngDevMode)) {
         throw Error('cdkStepper: Cannot assign out-of-bounds value to `selectedIndex`.');
       }
 
       this.selected?._markAsInteracted();
 
       if (
-        this._selectedIndex !== newIndex &&
-        !this._anyControlsInvalidOrPending(newIndex) &&
-        (newIndex >= this._selectedIndex || this.steps.toArray()[newIndex].editable)
+        this._selectedIndex !== index &&
+        !this._anyControlsInvalidOrPending(index) &&
+        (index >= this._selectedIndex || this.steps.toArray()[index].editable)
       ) {
-        this._updateSelectedItemIndex(newIndex);
+        this._updateSelectedItemIndex(index);
       }
     } else {
-      this._selectedIndex = newIndex;
+      this._selectedIndex = index;
     }
   }
   private _selectedIndex = 0;
@@ -321,8 +317,11 @@ export class CdkStepper implements AfterContentInit, AfterViewInit, OnDestroy {
   /** Event emitted when the selected step has changed. */
   @Output() readonly selectionChange = new EventEmitter<StepperSelectionEvent>();
 
+  /** Output to support two-way binding on `[(selectedIndex)]` */
+  @Output() readonly selectedIndexChange: EventEmitter<number> = new EventEmitter<number>();
+
   /** Used to track unique ID for each stepper component. */
-  _groupId: number;
+  private _groupId = inject(_IdGenerator).getId('cdk-stepper-');
 
   /** Orientation of the stepper. */
   @Input()
@@ -339,13 +338,8 @@ export class CdkStepper implements AfterContentInit, AfterViewInit, OnDestroy {
   }
   private _orientation: StepperOrientation = 'horizontal';
 
-  constructor(
-    @Optional() private _dir: Directionality,
-    private _changeDetectorRef: ChangeDetectorRef,
-    private _elementRef: ElementRef<HTMLElement>,
-  ) {
-    this._groupId = nextId++;
-  }
+  constructor(...args: unknown[]);
+  constructor() {}
 
   ngAfterContentInit() {
     this._steps.changes
@@ -437,12 +431,12 @@ export class CdkStepper implements AfterContentInit, AfterViewInit, OnDestroy {
 
   /** Returns a unique id for each step label element. */
   _getStepLabelId(i: number): string {
-    return `cdk-step-label-${this._groupId}-${i}`;
+    return `${this._groupId}-label-${i}`;
   }
 
   /** Returns unique id for each step content element. */
   _getStepContentId(i: number): string {
-    return `cdk-step-content-${this._groupId}-${i}`;
+    return `${this._groupId}-content-${i}`;
   }
 
   /** Marks the component to be change detected. */
@@ -526,6 +520,7 @@ export class CdkStepper implements AfterContentInit, AfterViewInit, OnDestroy {
       : this._keyManager.updateActiveItem(newIndex);
 
     this._selectedIndex = newIndex;
+    this.selectedIndexChange.emit(this._selectedIndex);
     this._stateChanged();
   }
 
@@ -547,7 +542,7 @@ export class CdkStepper implements AfterContentInit, AfterViewInit, OnDestroy {
   }
 
   private _anyControlsInvalidOrPending(index: number): boolean {
-    if (this._linear && index >= 0) {
+    if (this.linear && index >= 0) {
       return this.steps
         .toArray()
         .slice(0, index)
@@ -578,55 +573,4 @@ export class CdkStepper implements AfterContentInit, AfterViewInit, OnDestroy {
   private _isValidIndex(index: number): boolean {
     return index > -1 && (!this.steps || index < this.steps.length);
   }
-}
-
-/**
- * Simplified representation of an "AbstractControl" from @angular/forms.
- * Used to avoid having to bring in @angular/forms for a single optional interface.
- * @docs-private
- */
-interface AbstractControlLike {
-  asyncValidator: ((control: any) => any) | null;
-  dirty: boolean;
-  disabled: boolean;
-  enabled: boolean;
-  errors: {[key: string]: any} | null;
-  invalid: boolean;
-  parent: any;
-  pending: boolean;
-  pristine: boolean;
-  root: AbstractControlLike;
-  status: string;
-  readonly statusChanges: Observable<any>;
-  touched: boolean;
-  untouched: boolean;
-  updateOn: any;
-  valid: boolean;
-  validator: ((control: any) => any) | null;
-  value: any;
-  readonly valueChanges: Observable<any>;
-  clearAsyncValidators(): void;
-  clearValidators(): void;
-  disable(opts?: any): void;
-  enable(opts?: any): void;
-  get(path: (string | number)[] | string): AbstractControlLike | null;
-  getError(errorCode: string, path?: (string | number)[] | string): any;
-  hasError(errorCode: string, path?: (string | number)[] | string): boolean;
-  markAllAsTouched(): void;
-  markAsDirty(opts?: any): void;
-  markAsPending(opts?: any): void;
-  markAsPristine(opts?: any): void;
-  markAsTouched(opts?: any): void;
-  markAsUntouched(opts?: any): void;
-  patchValue(value: any, options?: Object): void;
-  reset(value?: any, options?: Object): void;
-  setAsyncValidators(newValidator: (control: any) => any | ((control: any) => any)[] | null): void;
-  setErrors(errors: {[key: string]: any} | null, opts?: any): void;
-  setParent(parent: any): void;
-  setValidators(newValidator: (control: any) => any | ((control: any) => any)[] | null): void;
-  setValue(value: any, options?: Object): void;
-  updateValueAndValidity(opts?: any): void;
-  patchValue(value: any, options?: any): void;
-  reset(formState?: any, options?: any): void;
-  setValue(value: any, options?: any): void;
 }

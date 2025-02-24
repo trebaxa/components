@@ -3,17 +3,16 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {Component, Directive} from '@angular/core';
-import {MatCheckboxModule, MAT_CHECKBOX_DEFAULT_OPTIONS} from '@angular/material/checkbox';
-import {ANIMATION_MODULE_TYPE} from '@angular/platform-browser/animations';
+import {ANIMATION_MODULE_TYPE, ChangeDetectionStrategy, Component, Directive} from '@angular/core';
 import {FormsModule, ReactiveFormsModule} from '@angular/forms';
+import {MAT_CHECKBOX_DEFAULT_OPTIONS, MatCheckboxModule} from '@angular/material/checkbox';
 import {MatPseudoCheckboxModule, ThemePalette} from '@angular/material/core';
 import {MatInputModule} from '@angular/material/input';
 import {MatSelectModule} from '@angular/material/select';
-import {CommonModule} from '@angular/common';
+import {MatTooltip} from '@angular/material/tooltip';
 
 export interface Task {
   name: string;
@@ -24,36 +23,31 @@ export interface Task {
 @Directive({
   selector: '[clickActionNoop]',
   providers: [{provide: MAT_CHECKBOX_DEFAULT_OPTIONS, useValue: {clickAction: 'noop'}}],
-  standalone: true,
 })
 export class ClickActionNoop {}
 
 @Directive({
   selector: '[clickActionCheck]',
   providers: [{provide: MAT_CHECKBOX_DEFAULT_OPTIONS, useValue: {clickAction: 'check'}}],
-  standalone: true,
 })
 export class ClickActionCheck {}
 
 @Directive({
   selector: '[animationsNoop]',
   providers: [{provide: ANIMATION_MODULE_TYPE, useValue: 'NoopAnimations'}],
-  standalone: true,
 })
 export class AnimationsNoop {}
 
 @Component({
   selector: 'mat-checkbox-demo-nested-checklist',
-  styles: [
-    `
+  styles: `
     li {
       margin-bottom: 4px;
     }
   `,
-  ],
   templateUrl: 'nested-checklist.html',
-  standalone: true,
-  imports: [CommonModule, MatCheckboxModule, FormsModule],
+  imports: [MatCheckboxModule, FormsModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MatCheckboxDemoNestedChecklist {
   tasks: Task[] = [
@@ -102,10 +96,8 @@ export class MatCheckboxDemoNestedChecklist {
 @Component({
   selector: 'checkbox-demo',
   templateUrl: 'checkbox-demo.html',
-  styleUrls: ['checkbox-demo.css'],
-  standalone: true,
+  styleUrl: 'checkbox-demo.css',
   imports: [
-    CommonModule,
     FormsModule,
     MatCheckboxModule,
     MatInputModule,
@@ -116,14 +108,17 @@ export class MatCheckboxDemoNestedChecklist {
     ClickActionNoop,
     ClickActionCheck,
     AnimationsNoop,
+    MatTooltip,
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CheckboxDemo {
-  isIndeterminate: boolean = false;
-  isChecked: boolean = false;
-  isDisabled: boolean = false;
+  isIndeterminate = false;
+  isChecked = false;
+  isDisabled = false;
+  isDisabledInteractive = false;
   labelPosition: 'before' | 'after' = 'after';
-  useAlternativeColor: boolean = false;
+  useAlternativeColor = false;
 
   demoRequired = false;
   demoLabelAfter = false;

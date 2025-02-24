@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -48,7 +48,7 @@ export function getListItemPredicate<H extends MatListItemHarnessBase>(
     );
 }
 
-/** Harness for interacting with a MDC-based list subheader. */
+/** Harness for interacting with a list subheader. */
 export class MatSubheaderHarness extends ComponentHarness {
   static hostSelector = '.mat-mdc-subheader';
 
@@ -67,12 +67,12 @@ export class MatSubheaderHarness extends ComponentHarness {
 }
 
 /** Selectors for the various list item sections that may contain user content. */
-export const enum MatListItemSection {
+export enum MatListItemSection {
   CONTENT = '.mdc-list-item__content',
 }
 
 /** Enum describing the possible variants of a list item. */
-export const enum MatListItemType {
+export enum MatListItemType {
   ONE_LINE_ITEM,
   TWO_LINE_ITEM,
   THREE_LINE_ITEM,

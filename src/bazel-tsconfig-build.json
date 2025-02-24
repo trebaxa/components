@@ -10,6 +10,7 @@
     "noUnusedParameters": false,
     "noUnusedLocals": false,
     "strictNullChecks": true,
+    "noPropertyAccessFromIndexSignature": true,
     "noImplicitReturns": true,
     "strictFunctionTypes": true,
     "noImplicitOverride": true,
@@ -27,10 +28,9 @@
     "moduleResolution": "node",
     "sourceMap": true,
     "inlineSources": true,
-    "target": "es2020",
+    "target": "es2022",
     "lib": ["es2020", "dom"],
-    "skipLibCheck": true,
-    "types": ["tslib"]
+    "skipLibCheck": true
   },
   "angularCompilerOptions": {
     "extendedDiagnostics": {

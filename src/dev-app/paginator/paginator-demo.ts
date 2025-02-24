@@ -3,34 +3,36 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {Component} from '@angular/core';
-import {MatPaginatorModule, PageEvent} from '@angular/material/paginator';
-import {CommonModule} from '@angular/common';
+import {
+  PaginatorConfigurableExample,
+  PaginatorOverviewExample,
+} from '@angular/components-examples/material/paginator';
+import {ChangeDetectionStrategy, Component} from '@angular/core';
 import {FormsModule} from '@angular/forms';
 import {MatCardModule} from '@angular/material/card';
 import {MatFormFieldModule} from '@angular/material/form-field';
 import {MatInputModule} from '@angular/material/input';
+import {MatPaginatorModule, PageEvent} from '@angular/material/paginator';
 import {MatSlideToggleModule} from '@angular/material/slide-toggle';
-import {PaginatorExamplesModule} from '@angular/components-examples/material/paginator';
 
 @Component({
   selector: 'paginator-demo',
   templateUrl: 'paginator-demo.html',
-  styleUrls: ['paginator-demo.css'],
-  standalone: true,
+  styleUrl: 'paginator-demo.css',
   imports: [
-    CommonModule,
     FormsModule,
     MatCardModule,
     MatFormFieldModule,
     MatInputModule,
     MatSlideToggleModule,
     MatPaginatorModule,
-    PaginatorExamplesModule,
+    PaginatorOverviewExample,
+    PaginatorConfigurableExample,
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PaginatorDemo {
   length = 50;

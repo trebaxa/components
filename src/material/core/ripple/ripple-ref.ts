@@ -3,11 +3,11 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 /** Possible states for a ripple element. */
-export const enum RippleState {
+export enum RippleState {
   FADING_IN,
   VISIBLE,
   FADING_OUT,

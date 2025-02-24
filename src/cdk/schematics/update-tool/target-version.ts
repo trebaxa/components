@@ -3,14 +3,14 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 /** Possible versions that can be automatically migrated by `ng update`. */
-// Used in an `Object.keys` call below so it can't be `const enum`.
+
 // tslint:disable-next-line:prefer-const-enum
 export enum TargetVersion {
-  V15 = 'version 15',
+  V19 = 'version 19',
 }
 
 /**

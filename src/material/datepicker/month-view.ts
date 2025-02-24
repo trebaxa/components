@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -26,15 +26,14 @@ import {
   ChangeDetectorRef,
   Component,
   EventEmitter,
-  Inject,
   Input,
-  Optional,
   Output,
   ViewEncapsulation,
   ViewChild,
   OnDestroy,
   SimpleChanges,
   OnChanges,
+  inject,
 } from '@angular/core';
 import {DateAdapter, MAT_DATE_FORMATS, MatDateFormats} from '@angular/material/core';
 import {Directionality} from '@angular/cdk/bidi';
@@ -52,8 +51,11 @@ import {
   MatDateRangeSelectionStrategy,
   MAT_DATE_RANGE_SELECTION_STRATEGY,
 } from './date-range-selection-strategy';
+import {_CdkPrivateStyleLoader, _VisuallyHiddenLoader} from '@angular/cdk/private';
 
 const DAYS_PER_WEEK = 7;
+
+let uniqueIdCounter = 0;
 
 /**
  * An internal component used to display a single month in the datepicker.
@@ -65,8 +67,18 @@ const DAYS_PER_WEEK = 7;
   exportAs: 'matMonthView',
   encapsulation: ViewEncapsulation.None,
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [MatCalendarBody],
 })
 export class MatMonthView<D> implements AfterContentInit, OnChanges, OnDestroy {
+  readonly _changeDetectorRef = inject(ChangeDetectorRef);
+  private _dateFormats = inject<MatDateFormats>(MAT_DATE_FORMATS, {optional: true})!;
+  _dateAdapter = inject<DateAdapter<D>>(DateAdapter, {optional: true})!;
+  private _dir = inject(Directionality, {optional: true});
+  private _rangeStrategy = inject<MatDateRangeSelectionStrategy<D>>(
+    MAT_DATE_RANGE_SELECTION_STRATEGY,
+    {optional: true},
+  );
+
   private _rerenderSubscription = Subscription.EMPTY;
 
   /** Flag used to filter out space/enter keyup events that originated outside of the view. */
@@ -204,17 +216,12 @@ export class MatMonthView<D> implements AfterContentInit, OnChanges, OnDestroy {
   _todayDate: number | null;
 
   /** The names of the weekdays. */
-  _weekdays: {long: string; narrow: string}[];
+  _weekdays: {long: string; narrow: string; id: number}[];
 
-  constructor(
-    readonly _changeDetectorRef: ChangeDetectorRef,
-    @Optional() @Inject(MAT_DATE_FORMATS) private _dateFormats: MatDateFormats,
-    @Optional() public _dateAdapter: DateAdapter<D>,
-    @Optional() private _dir?: Directionality,
-    @Inject(MAT_DATE_RANGE_SELECTION_STRATEGY)
-    @Optional()
-    private _rangeStrategy?: MatDateRangeSelectionStrategy<D>,
-  ) {
+  constructor(...args: unknown[]);
+
+  constructor() {
+    inject(_CdkPrivateStyleLoader).load(_VisuallyHiddenLoader);
     if (typeof ngDevMode === 'undefined' || ngDevMode) {
       if (!this._dateAdapter) {
         throw createMissingDateImplError('DateAdapter');
@@ -273,7 +280,7 @@ export class MatMonthView<D> implements AfterContentInit, OnChanges, OnDestroy {
   }
 
   /**
-   * Takes the index of a calendar body cell wrapped in in an event as argument. For the date that
+   * Takes the index of a calendar body cell wrapped in an event as argument. For the date that
    * corresponds to the given cell, set `activeDate` to that date and fire `activeDateChange` with
    * that date.
    *
@@ -506,7 +513,7 @@ export class MatMonthView<D> implements AfterContentInit, OnChanges, OnDestroy {
 
     // Rotate the labels for days of the week based on the configured first day of the week.
     let weekdays = longWeekdays.map((long, i) => {
-      return {long, narrow: narrowWeekdays[i]};
+      return {long, narrow: narrowWeekdays[i], id: uniqueIdCounter++};
     });
     this._weekdays = weekdays.slice(firstDayOfWeek).concat(weekdays.slice(0, firstDayOfWeek));
   }

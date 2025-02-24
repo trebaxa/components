@@ -19,8 +19,7 @@ describe('RepositionScrollStrategy', () => {
 
   beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
-      imports: [OverlayModule, PortalModule],
-      declarations: [PastaMsg],
+      imports: [OverlayModule, PortalModule, PastaMsg],
       providers: [
         {
           provide: ScrollDispatcher,
@@ -30,8 +29,6 @@ describe('RepositionScrollStrategy', () => {
         },
       ],
     });
-
-    TestBed.compileComponents();
   }));
 
   beforeEach(inject([Overlay], (o: Overlay) => {
@@ -116,5 +113,8 @@ describe('RepositionScrollStrategy', () => {
 });
 
 /** Simple component that we can attach to the overlay. */
-@Component({template: '<p>Pasta</p>'})
+@Component({
+  template: '<p>Pasta</p>',
+  imports: [OverlayModule, PortalModule],
+})
 class PastaMsg {}

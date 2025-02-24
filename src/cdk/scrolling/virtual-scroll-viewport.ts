@@ -3,20 +3,22 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {Directionality} from '@angular/cdk/bidi';
 import {ListRange} from '@angular/cdk/collections';
+import {Platform} from '@angular/cdk/platform';
 import {
+  afterNextRender,
+  booleanAttribute,
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
   ElementRef,
   inject,
   Inject,
+  Injector,
   Input,
-  NgZone,
   OnDestroy,
   OnInit,
   Optional,
@@ -24,22 +26,19 @@ import {
   ViewChild,
   ViewEncapsulation,
 } from '@angular/core';
-import {Platform} from '@angular/cdk/platform';
 import {
   animationFrameScheduler,
   asapScheduler,
   Observable,
-  Subject,
   Observer,
+  Subject,
   Subscription,
 } from 'rxjs';
 import {auditTime, startWith, takeUntil} from 'rxjs/operators';
-import {ScrollDispatcher} from './scroll-dispatcher';
 import {CdkScrollable, ExtendedScrollToOptions} from './scrollable';
-import {VIRTUAL_SCROLL_STRATEGY, VirtualScrollStrategy} from './virtual-scroll-strategy';
 import {ViewportRuler} from './viewport-ruler';
 import {CdkVirtualScrollRepeater} from './virtual-scroll-repeater';
-import {BooleanInput, coerceBooleanProperty} from '@angular/cdk/coercion';
+import {VIRTUAL_SCROLL_STRATEGY, VirtualScrollStrategy} from './virtual-scroll-strategy';
 import {CdkVirtualScrollable, VIRTUAL_SCROLLABLE} from './virtual-scrollable';
 
 /** Checks if the given ranges are equal. */
@@ -59,7 +58,7 @@ const SCROLL_SCHEDULER =
 @Component({
   selector: 'cdk-virtual-scroll-viewport',
   templateUrl: 'virtual-scroll-viewport.html',
-  styleUrls: ['virtual-scroll-viewport.css'],
+  styleUrl: 'virtual-scroll-viewport.css',
   host: {
     'class': 'cdk-virtual-scroll-viewport',
     '[class.cdk-virtual-scroll-orientation-horizontal]': 'orientation === "horizontal"',
@@ -67,7 +66,6 @@ const SCROLL_SCHEDULER =
   },
   encapsulation: ViewEncapsulation.None,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  standalone: true,
   providers: [
     {
       provide: CdkScrollable,
@@ -80,6 +78,13 @@ const SCROLL_SCHEDULER =
   ],
 })
 export class CdkVirtualScrollViewport extends CdkVirtualScrollable implements OnInit, OnDestroy {
+  override elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
+  private _changeDetectorRef = inject(ChangeDetectorRef);
+  private _scrollStrategy = inject<VirtualScrollStrategy>(VIRTUAL_SCROLL_STRATEGY, {
+    optional: true,
+  })!;
+  scrollable = inject<CdkVirtualScrollable>(VIRTUAL_SCROLLABLE, {optional: true})!;
+
   private _platform = inject(Platform);
 
   /** Emits when the viewport is detached from a CdkVirtualForOf. */
@@ -106,14 +111,7 @@ export class CdkVirtualScrollViewport extends CdkVirtualScrollable implements On
    * Whether rendered items should persist in the DOM after scrolling out of view. By default, items
    * will be removed.
    */
-  @Input()
-  get appendOnly(): boolean {
-    return this._appendOnly;
-  }
-  set appendOnly(value: BooleanInput) {
-    this._appendOnly = coerceBooleanProperty(value);
-  }
-  private _appendOnly = false;
+  @Input({transform: booleanAttribute}) appendOnly: boolean = false;
 
   // Note: we don't use the typical EventEmitter here because we need to subscribe to the scroll
   // strategy lazily (i.e. only if the user is actually listening to the events). We do this because
@@ -180,21 +178,17 @@ export class CdkVirtualScrollViewport extends CdkVirtualScrollable implements On
   /** Subscription to changes in the viewport size. */
   private _viewportChanges = Subscription.EMPTY;
 
-  constructor(
-    public override elementRef: ElementRef<HTMLElement>,
-    private _changeDetectorRef: ChangeDetectorRef,
-    ngZone: NgZone,
-    @Optional()
-    @Inject(VIRTUAL_SCROLL_STRATEGY)
-    private _scrollStrategy: VirtualScrollStrategy,
-    @Optional() dir: Directionality,
-    scrollDispatcher: ScrollDispatcher,
-    viewportRuler: ViewportRuler,
-    @Optional() @Inject(VIRTUAL_SCROLLABLE) public scrollable: CdkVirtualScrollable,
-  ) {
-    super(elementRef, scrollDispatcher, ngZone, dir);
+  private _injector = inject(Injector);
 
-    if (!_scrollStrategy && (typeof ngDevMode === 'undefined' || ngDevMode)) {
+  private _isDestroyed = false;
+
+  constructor(...args: unknown[]);
+
+  constructor() {
+    super();
+    const viewportRuler = inject(ViewportRuler);
+
+    if (!this._scrollStrategy && (typeof ngDevMode === 'undefined' || ngDevMode)) {
       throw Error('Error: cdk-virtual-scroll-viewport requires the "itemSize" property to be set.');
     }
 
@@ -236,6 +230,10 @@ export class CdkVirtualScrollViewport extends CdkVirtualScrollable implements On
             // there are multiple scroll events in the same frame we only need to recheck
             // our layout once.
             auditTime(0, SCROLL_SCHEDULER),
+            // Usually `elementScrolled` is completed when the scrollable is destroyed, but
+            // that may not be the case if a `CdkVirtualScrollableElement` is used so we have
+            // to unsubscribe here just in case.
+            takeUntil(this._destroyed),
           )
           .subscribe(() => this._scrollStrategy.onContentScrolled());
 
@@ -252,6 +250,8 @@ export class CdkVirtualScrollViewport extends CdkVirtualScrollable implements On
     this._renderedRangeSubject.complete();
     this._detachedSubject.complete();
     this._viewportChanges.unsubscribe();
+
+    this._isDestroyed = true;
 
     super.ngOnDestroy();
   }
@@ -501,23 +501,34 @@ export class CdkVirtualScrollViewport extends CdkVirtualScrollable implements On
 
   /** Run change detection. */
   private _doChangeDetection() {
-    this._isChangeDetectionPending = false;
-
-    // Apply the content transform. The transform can't be set via an Angular binding because
-    // bypassSecurityTrustStyle is banned in Google. However the value is safe, it's composed of
-    // string literals, a variable that can only be 'X' or 'Y', and user input that is run through
-    // the `Number` function first to coerce it to a numeric value.
-    this._contentWrapper.nativeElement.style.transform = this._renderedContentTransform;
-    // Apply changes to Angular bindings. Note: We must call `markForCheck` to run change detection
-    // from the root, since the repeated items are content projected in. Calling `detectChanges`
-    // instead does not properly check the projected content.
-    this.ngZone.run(() => this._changeDetectorRef.markForCheck());
-
-    const runAfterChangeDetection = this._runAfterChangeDetection;
-    this._runAfterChangeDetection = [];
-    for (const fn of runAfterChangeDetection) {
-      fn();
+    if (this._isDestroyed) {
+      return;
     }
+
+    this.ngZone.run(() => {
+      // Apply changes to Angular bindings. Note: We must call `markForCheck` to run change detection
+      // from the root, since the repeated items are content projected in. Calling `detectChanges`
+      // instead does not properly check the projected content.
+      this._changeDetectorRef.markForCheck();
+
+      // Apply the content transform. The transform can't be set via an Angular binding because
+      // bypassSecurityTrustStyle is banned in Google. However the value is safe, it's composed of
+      // string literals, a variable that can only be 'X' or 'Y', and user input that is run through
+      // the `Number` function first to coerce it to a numeric value.
+      this._contentWrapper.nativeElement.style.transform = this._renderedContentTransform;
+
+      afterNextRender(
+        () => {
+          this._isChangeDetectionPending = false;
+          const runAfterChangeDetection = this._runAfterChangeDetection;
+          this._runAfterChangeDetection = [];
+          for (const fn of runAfterChangeDetection) {
+            fn();
+          }
+        },
+        {injector: this._injector},
+      );
+    });
   }
 
   /** Calculates the `style.width` and `style.height` for the spacer element. */

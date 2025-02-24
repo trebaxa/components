@@ -3,25 +3,52 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {Component} from '@angular/core';
-import {FormsModule} from '@angular/forms';
+import {ChangeDetectionStrategy, ChangeDetectorRef, Component, inject} from '@angular/core';
+import {JsonPipe} from '@angular/common';
+import {FormControl, FormGroup, FormsModule, ReactiveFormsModule} from '@angular/forms';
 import {MatButtonModule} from '@angular/material/button';
-import {MatListModule, MatListOptionTogglePosition} from '@angular/material/list';
 import {MatIconModule} from '@angular/material/icon';
-import {CommonModule} from '@angular/common';
+import {MatListModule, MatListOptionTogglePosition} from '@angular/material/list';
+import {ActivatedRoute} from '@angular/router';
+
+interface Link {
+  name: string;
+  href: string;
+}
+interface Shoes {
+  value: string;
+  name: string;
+}
 
 @Component({
   selector: 'list-demo',
   templateUrl: 'list-demo.html',
-  styleUrls: ['list-demo.css'],
-  standalone: true,
-  imports: [CommonModule, FormsModule, MatButtonModule, MatIconModule, MatListModule],
+  styleUrl: 'list-demo.css',
+  imports: [
+    JsonPipe,
+    FormsModule,
+    MatButtonModule,
+    MatIconModule,
+    MatListModule,
+    ReactiveFormsModule,
+  ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ListDemo {
   items: string[] = ['Pepper', 'Salt', 'Paprika'];
+
+  form: FormGroup;
+  shoes: Shoes[] = [
+    {value: 'boots', name: 'Boots'},
+    {value: 'clogs', name: 'Clogs'},
+    {value: 'loafers', name: 'Loafers'},
+    {value: 'moccasins', name: 'Moccasins'},
+    {value: 'sneakers', name: 'Sneakers'},
+  ];
+  shoesControl = new FormControl();
 
   togglePosition: MatListOptionTogglePosition = 'before';
 
@@ -52,7 +79,7 @@ export class ListDemo {
     },
   ];
 
-  links: {name: string; href: string}[] = [
+  links: Link[] = [
     {name: 'Inbox', href: '/list#inbox'},
     {name: 'Outbox', href: '/list#outbox'},
     {name: 'Spam', href: '/list#spam'},
@@ -70,6 +97,19 @@ export class ListDemo {
   changeEventCount = 0;
   modelChangeEventCount = 0;
 
+  readonly cdr = inject(ChangeDetectorRef);
+  readonly activatedRoute = inject(ActivatedRoute);
+
+  constructor() {
+    this.activatedRoute.url.subscribe(() => {
+      this.cdr.markForCheck();
+    });
+
+    this.form = new FormGroup({
+      shoes: this.shoesControl,
+    });
+  }
+
   onSelectedOptionsChange(values: string[]) {
     this.selectedOptions = values;
     this.modelChangeEventCount++;
@@ -85,7 +125,7 @@ export class ListDemo {
     alert(msg);
   }
 
-  isActivated(href: string) {
-    return window.location.href === new URL(href, window.location.href).toString();
+  isActivated(link: Link) {
+    return `${window.location.pathname}${window.location.hash}` === link.href;
   }
 }

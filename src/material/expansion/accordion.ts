@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -13,8 +13,8 @@ import {
   QueryList,
   AfterContentInit,
   OnDestroy,
+  booleanAttribute,
 } from '@angular/core';
-import {BooleanInput, coerceBooleanProperty} from '@angular/cdk/coercion';
 import {CdkAccordion} from '@angular/cdk/accordion';
 import {FocusKeyManager} from '@angular/cdk/a11y';
 import {startWith} from 'rxjs/operators';
@@ -32,7 +32,6 @@ import {MatExpansionPanelHeader} from './expansion-panel-header';
 @Directive({
   selector: 'mat-accordion',
   exportAs: 'matAccordion',
-  inputs: ['multi'],
   providers: [
     {
       provide: MAT_ACCORDION,
@@ -60,14 +59,8 @@ export class MatAccordion
   _headers: QueryList<MatExpansionPanelHeader>;
 
   /** Whether the expansion indicator should be hidden. */
-  @Input()
-  get hideToggle(): boolean {
-    return this._hideToggle;
-  }
-  set hideToggle(show: BooleanInput) {
-    this._hideToggle = coerceBooleanProperty(show);
-  }
-  private _hideToggle: boolean = false;
+  @Input({transform: booleanAttribute})
+  hideToggle: boolean = false;
 
   /**
    * Display mode used for all expansion panels in the accordion. Currently two display

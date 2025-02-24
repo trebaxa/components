@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -14,14 +14,14 @@ import {
 import {CardHarnessFilters} from './card-harness-filters';
 
 /** Selectors for different sections of the mat-card that can container user content. */
-export const enum MatCardSection {
+export enum MatCardSection {
   HEADER = '.mat-mdc-card-header',
   CONTENT = '.mat-mdc-card-content',
   ACTIONS = '.mat-mdc-card-actions',
   FOOTER = '.mat-mdc-card-footer',
 }
 
-/** Harness for interacting with an MDC-based mat-card in tests. */
+/** Harness for interacting with a mat-card in tests. */
 export class MatCardHarness extends ContentContainerComponentHarness<MatCardSection> {
   /** The selector for the host element of a `MatCard` instance. */
   static hostSelector = '.mat-mdc-card';

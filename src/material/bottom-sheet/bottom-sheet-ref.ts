@@ -3,9 +3,10 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
+import {ComponentRef} from '@angular/core';
 import {DialogRef} from '@angular/cdk/dialog';
 import {ESCAPE, hasModifierKey} from '@angular/cdk/keycodes';
 import {merge, Observable, Subject} from 'rxjs';
@@ -20,6 +21,14 @@ export class MatBottomSheetRef<T = any, R = any> {
   /** Instance of the component making up the content of the bottom sheet. */
   get instance(): T {
     return this._ref.componentInstance!;
+  }
+
+  /**
+   * `ComponentRef` of the component opened into the bottom sheet. Will be
+   * null when the bottom sheet is opened using a `TemplateRef`.
+   */
+  get componentRef(): ComponentRef<T> | null {
+    return this._ref.componentRef;
   }
 
   /**
@@ -38,7 +47,7 @@ export class MatBottomSheetRef<T = any, R = any> {
   private _result: R | undefined;
 
   /** Handle to the timeout that's running as a fallback in case the exit animation doesn't fire. */
-  private _closeFallbackTimeout: number;
+  private _closeFallbackTimeout: ReturnType<typeof setTimeout>;
 
   constructor(
     private _ref: DialogRef<R, T>,
@@ -51,7 +60,7 @@ export class MatBottomSheetRef<T = any, R = any> {
     // Emit when opening animation completes
     containerInstance._animationStateChanged
       .pipe(
-        filter(event => event.phaseName === 'done' && event.toState === 'visible'),
+        filter(event => event.phase === 'done' && event.toState === 'visible'),
         take(1),
       )
       .subscribe(() => {
@@ -62,7 +71,7 @@ export class MatBottomSheetRef<T = any, R = any> {
     // Dispose overlay when closing animation is complete
     containerInstance._animationStateChanged
       .pipe(
-        filter(event => event.phaseName === 'done' && event.toState === 'hidden'),
+        filter(event => event.phase === 'done' && event.toState === 'hidden'),
         take(1),
       )
       .subscribe(() => {
@@ -100,19 +109,16 @@ export class MatBottomSheetRef<T = any, R = any> {
     // Transition the backdrop in parallel to the bottom sheet.
     this.containerInstance._animationStateChanged
       .pipe(
-        filter(event => event.phaseName === 'start'),
+        filter(event => event.phase === 'start'),
         take(1),
       )
-      .subscribe(event => {
+      .subscribe(() => {
         // The logic that disposes of the overlay depends on the exit animation completing, however
         // it isn't guaranteed if the parent view is destroyed while it's running. Add a fallback
         // timeout which will clean everything up if the animation hasn't fired within the specified
         // amount of time plus 100ms. We don't need to run this outside the NgZone, because for the
         // vast majority of cases the timeout will have been cleared before it has fired.
-        this._closeFallbackTimeout = setTimeout(() => {
-          this._ref.close(this._result);
-        }, event.totalTime + 100);
-
+        this._closeFallbackTimeout = setTimeout(() => this._ref.close(this._result), 500);
         this._ref.overlayRef.detachBackdrop();
       });
 

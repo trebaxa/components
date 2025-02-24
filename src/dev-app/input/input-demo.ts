@@ -3,10 +3,11 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {ChangeDetectionStrategy, Component} from '@angular/core';
+import {AsyncPipe} from '@angular/common';
 import {FormControl, Validators, FormsModule, ReactiveFormsModule} from '@angular/forms';
 import {
   FloatLabelType,
@@ -14,8 +15,10 @@ import {
   MatFormFieldModule,
 } from '@angular/material/form-field';
 import {ErrorStateMatcher, ThemePalette} from '@angular/material/core';
-import {CommonModule} from '@angular/common';
-import {FormFieldExamplesModule} from '@angular/components-examples/material/form-field';
+import {
+  FormFieldCustomControlExample,
+  MyTelInput,
+} from '@angular/components-examples/material/form-field';
 import {MatInputModule} from '@angular/material/input';
 import {MatAutocompleteModule} from '@angular/material/autocomplete';
 import {MatButtonModule} from '@angular/material/button';
@@ -25,6 +28,8 @@ import {MatCheckboxModule} from '@angular/material/checkbox';
 import {MatIconModule} from '@angular/material/icon';
 import {MatTabsModule} from '@angular/material/tabs';
 import {MatToolbarModule} from '@angular/material/toolbar';
+import {MatTooltipModule} from '@angular/material/tooltip';
+import {BehaviorSubject} from 'rxjs';
 
 let max = 5;
 
@@ -33,11 +38,10 @@ const EMAIL_REGEX = /^[a-zA-Z0-9.!#$%&’*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA
 @Component({
   selector: 'input-demo',
   templateUrl: 'input-demo.html',
-  styleUrls: ['input-demo.css'],
+  styleUrl: 'input-demo.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  standalone: true,
   imports: [
-    CommonModule,
+    AsyncPipe,
     FormsModule,
     MatAutocompleteModule,
     MatButtonModule,
@@ -49,8 +53,10 @@ const EMAIL_REGEX = /^[a-zA-Z0-9.!#$%&’*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA
     MatInputModule,
     MatTabsModule,
     MatToolbarModule,
-    FormFieldExamplesModule,
+    FormFieldCustomControlExample,
+    MyTelInput,
     ReactiveFormsModule,
+    MatTooltipModule,
   ],
 })
 export class InputDemo {
@@ -68,6 +74,9 @@ export class InputDemo {
   options: string[] = ['One', 'Two', 'Three'];
   showSecondPrefix = false;
   showPrefix = true;
+  showHidden = false;
+  hiddenLabel = 'Label';
+  hiddenAppearance: MatFormFieldAppearance = 'outline';
 
   name: string;
   errorMessageExample1: string;
@@ -90,9 +99,15 @@ export class InputDemo {
   standardAppearance: string;
   fillAppearance: string;
   outlineAppearance: string;
+  appearances: MatFormFieldAppearance[] = ['fill', 'outline'];
+
+  hasLabel$ = new BehaviorSubject(true);
 
   constructor() {
-    setTimeout(() => this.delayedFormControl.setValue('hello'), 100);
+    setTimeout(() => {
+      this.delayedFormControl.setValue('hello');
+      this.hasLabel$.next(false);
+    }, 100);
   }
 
   addABunch(n: number) {

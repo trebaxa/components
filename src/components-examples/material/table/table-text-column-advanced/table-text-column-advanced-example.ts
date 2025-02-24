@@ -1,6 +1,6 @@
 import {Component} from '@angular/core';
 import {DecimalPipe} from '@angular/common';
-import {MatTableDataSource} from '@angular/material/table';
+import {MatTableDataSource, MatTableModule} from '@angular/material/table';
 
 export interface PeriodicElement {
   name: string;
@@ -27,8 +27,9 @@ const ELEMENT_DATA: PeriodicElement[] = [
  */
 @Component({
   selector: 'table-text-column-advanced-example',
-  styleUrls: ['table-text-column-advanced-example.css'],
+  styleUrl: 'table-text-column-advanced-example.css',
   templateUrl: 'table-text-column-advanced-example.html',
+  imports: [MatTableModule],
 })
 export class TableTextColumnAdvancedExample {
   displayedColumns: string[] = ['position', 'name', 'weight', 'symbol'];

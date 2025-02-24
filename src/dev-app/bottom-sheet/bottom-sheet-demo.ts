@@ -3,11 +3,10 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {Component, TemplateRef, ViewChild} from '@angular/core';
-import {CommonModule} from '@angular/common';
+import {ChangeDetectionStrategy, Component, TemplateRef, ViewChild, inject} from '@angular/core';
 import {FormsModule} from '@angular/forms';
 import {
   MatBottomSheet,
@@ -28,11 +27,9 @@ const defaultConfig = new MatBottomSheetConfig();
 
 @Component({
   selector: 'bottom-sheet-demo',
-  styleUrls: ['bottom-sheet-demo.css'],
+  styleUrl: 'bottom-sheet-demo.css',
   templateUrl: 'bottom-sheet-demo.html',
-  standalone: true,
   imports: [
-    CommonModule,
     FormsModule,
     MatBottomSheetModule,
     MatButtonModule,
@@ -44,8 +41,11 @@ const defaultConfig = new MatBottomSheetConfig();
     MatSelectModule,
     MatListModule,
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class BottomSheetDemo {
+  private _bottomSheet = inject(MatBottomSheet);
+
   config: MatBottomSheetConfig = {
     hasBackdrop: defaultConfig.hasBackdrop,
     disableClose: defaultConfig.disableClose,
@@ -55,8 +55,6 @@ export class BottomSheetDemo {
   };
 
   @ViewChild(TemplateRef) template: TemplateRef<any>;
-
-  constructor(private _bottomSheet: MatBottomSheet) {}
 
   openComponent() {
     this._bottomSheet.open(ExampleBottomSheet, this.config);
@@ -70,17 +68,19 @@ export class BottomSheetDemo {
 @Component({
   template: `
     <mat-nav-list>
-      <a href="#" mat-list-item (click)="handleClick($event)" *ngFor="let action of [1, 2, 3]">
-        <span matListItemTitle>Action {{ action }}</span>
-        <span matListItemLine>Description</span>
-      </a>
+      @for (action of [1, 2, 3]; track action) {
+        <a href="#" mat-list-item (click)="handleClick($event)">
+          <span matListItemTitle>Action {{ action }}</span>
+          <span matListItemLine>Description</span>
+        </a>
+      }
     </mat-nav-list>
   `,
-  standalone: true,
-  imports: [CommonModule, MatListModule],
+  imports: [MatListModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ExampleBottomSheet {
-  constructor(private _bottomSheet: MatBottomSheetRef) {}
+  private _bottomSheet = inject(MatBottomSheetRef);
 
   handleClick(event: MouseEvent) {
     event.preventDefault();

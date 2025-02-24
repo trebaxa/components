@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {Directive, Input} from '@angular/core';
@@ -53,7 +53,6 @@ export class MatFooterCellDef extends CdkFooterCellDef {}
  */
 @Directive({
   selector: '[matColumnDef]',
-  inputs: ['sticky'],
   providers: [
     {provide: CdkColumnDef, useExisting: MatColumnDef},
     {provide: 'MAT_SORT_HEADER_COLUMN_DEF', useExisting: MatColumnDef},

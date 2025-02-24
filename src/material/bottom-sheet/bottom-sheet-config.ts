@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {Direction} from '@angular/cdk/bidi';
@@ -44,8 +44,12 @@ export class MatBottomSheetConfig<D = any> {
   /** Aria label to assign to the bottom sheet element. */
   ariaLabel?: string | null = null;
 
-  /** Whether this is a modal bottom sheet. Used to set the `aria-modal` attribute. */
-  ariaModal?: boolean = true;
+  /**
+   * Whether this is a modal dialog. Used to set the `aria-modal` attribute. Off by default,
+   * because it can interfere with other overlay-based components (e.g. `mat-select`) and because
+   * it is redundant since the dialog marks all outside content as `aria-hidden` anyway.
+   */
+  ariaModal?: boolean = false;
 
   /**
    * Whether the bottom sheet should close when the user goes backwards/forwards in history.
@@ -72,4 +76,13 @@ export class MatBottomSheetConfig<D = any> {
 
   /** Scroll strategy to be used for the bottom sheet. */
   scrollStrategy?: ScrollStrategy;
+
+  /** Height for the bottom sheet. */
+  height?: string = '';
+
+  /** Minimum height for the bottom sheet. If a number is provided, assumes pixel units. */
+  minHeight?: number | string;
+
+  /** Maximum height for the bottom sheet. If a number is provided, assumes pixel units. */
+  maxHeight?: number | string;
 }

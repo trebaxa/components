@@ -3,47 +3,50 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
   AfterContentInit,
-  Attribute,
+  booleanAttribute,
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
-  Directive,
   ElementRef,
   EventEmitter,
   forwardRef,
-  Inject,
   Input,
+  numberAttribute,
+  OnChanges,
   OnDestroy,
-  Optional,
   Output,
+  SimpleChanges,
   ViewChild,
   ViewEncapsulation,
+  ANIMATION_MODULE_TYPE,
+  inject,
+  HostAttributeToken,
 } from '@angular/core';
-import {ControlValueAccessor, NG_VALUE_ACCESSOR} from '@angular/forms';
-import {ANIMATION_MODULE_TYPE} from '@angular/platform-browser/animations';
-import {FocusMonitor, FocusOrigin} from '@angular/cdk/a11y';
+import {
+  AbstractControl,
+  ControlValueAccessor,
+  NG_VALIDATORS,
+  NG_VALUE_ACCESSOR,
+  ValidationErrors,
+  Validator,
+} from '@angular/forms';
+import {_IdGenerator, FocusMonitor} from '@angular/cdk/a11y';
 import {
   MAT_SLIDE_TOGGLE_DEFAULT_OPTIONS,
   MatSlideToggleDefaultOptions,
 } from './slide-toggle-config';
-import {
-  CanColor,
-  CanDisable,
-  CanDisableRipple,
-  HasTabIndex,
-  mixinColor,
-  mixinDisabled,
-  mixinDisableRipple,
-  mixinTabIndex,
-} from '@angular/material/core';
-import {BooleanInput, coerceBooleanProperty} from '@angular/cdk/coercion';
+import {_MatInternalFormField, _StructuralStylesLoader, MatRipple} from '@angular/material/core';
+import {_CdkPrivateStyleLoader} from '@angular/cdk/private';
 
-/** @docs-private */
+/**
+ * @deprecated Will stop being exported.
+ * @breaking-change 19.0.0
+ */
 export const MAT_SLIDE_TOGGLE_VALUE_ACCESSOR = {
   provide: NG_VALUE_ACCESSOR,
   useExisting: forwardRef(() => MatSlideToggle),
@@ -60,46 +63,70 @@ export class MatSlideToggleChange {
   ) {}
 }
 
-// Increasing integer for generating unique ids for slide-toggle components.
-let nextUniqueId = 0;
-
-// Boilerplate for applying mixins to MatSlideToggle.
-/** @docs-private */
-const _MatSlideToggleMixinBase = mixinTabIndex(
-  mixinColor(
-    mixinDisableRipple(
-      mixinDisabled(
-        class {
-          constructor(public _elementRef: ElementRef) {}
-        },
-      ),
-    ),
-  ),
-);
-
-@Directive()
-export abstract class _MatSlideToggleBase<T>
-  extends _MatSlideToggleMixinBase
-  implements
-    OnDestroy,
-    AfterContentInit,
-    ControlValueAccessor,
-    CanDisable,
-    CanColor,
-    HasTabIndex,
-    CanDisableRipple
+@Component({
+  selector: 'mat-slide-toggle',
+  templateUrl: 'slide-toggle.html',
+  styleUrl: 'slide-toggle.css',
+  host: {
+    'class': 'mat-mdc-slide-toggle',
+    '[id]': 'id',
+    // Needs to be removed since it causes some a11y issues (see #21266).
+    '[attr.tabindex]': 'null',
+    '[attr.aria-label]': 'null',
+    '[attr.name]': 'null',
+    '[attr.aria-labelledby]': 'null',
+    '[class.mat-mdc-slide-toggle-focused]': '_focused',
+    '[class.mat-mdc-slide-toggle-checked]': 'checked',
+    '[class._mat-animation-noopable]': '_noopAnimations',
+    '[class]': 'color ? "mat-" + color : ""',
+  },
+  exportAs: 'matSlideToggle',
+  encapsulation: ViewEncapsulation.None,
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  providers: [
+    MAT_SLIDE_TOGGLE_VALUE_ACCESSOR,
+    {
+      provide: NG_VALIDATORS,
+      useExisting: MatSlideToggle,
+      multi: true,
+    },
+  ],
+  imports: [MatRipple, _MatInternalFormField],
+})
+export class MatSlideToggle
+  implements OnDestroy, AfterContentInit, OnChanges, ControlValueAccessor, Validator
 {
-  protected _onChange = (_: any) => {};
-  private _onTouched = () => {};
+  private _elementRef = inject(ElementRef);
+  protected _focusMonitor = inject(FocusMonitor);
+  protected _changeDetectorRef = inject(ChangeDetectorRef);
+  defaults = inject<MatSlideToggleDefaultOptions>(MAT_SLIDE_TOGGLE_DEFAULT_OPTIONS);
 
-  protected _uniqueId: string;
-  private _required: boolean = false;
+  private _onChange = (_: any) => {};
+  private _onTouched = () => {};
+  private _validatorOnChange = () => {};
+
+  private _uniqueId: string;
   private _checked: boolean = false;
 
-  protected abstract _createChangeEvent(isChecked: boolean): T;
+  private _createChangeEvent(isChecked: boolean) {
+    return new MatSlideToggleChange(this, isChecked);
+  }
 
-  abstract focus(options?: FocusOptions, origin?: FocusOrigin): void;
+  /** Unique ID for the label element. */
+  _labelId: string;
 
+  /** Returns the unique id for the visual hidden button. */
+  get buttonId(): string {
+    return `${this.id || this._uniqueId}-button`;
+  }
+
+  /** Reference to the MDC switch element. */
+  @ViewChild('switch') _switchElement: ElementRef<HTMLElement>;
+
+  /** Focuses the slide-toggle. */
+  focus(): void {
+    this._switchElement.nativeElement.focus();
+  }
   /** Whether noop animations are enabled. */
   _noopAnimations: boolean;
 
@@ -125,28 +152,47 @@ export abstract class _MatSlideToggleBase<T>
   @Input('aria-describedby') ariaDescribedby: string;
 
   /** Whether the slide-toggle is required. */
-  @Input()
-  get required(): boolean {
-    return this._required;
-  }
+  @Input({transform: booleanAttribute}) required: boolean;
 
-  set required(value: BooleanInput) {
-    this._required = coerceBooleanProperty(value);
-  }
+  // TODO(crisbeto): this should be a ThemePalette, but some internal apps were abusing
+  // the lack of type checking previously and assigning random strings.
+  /**
+   * Theme color of the slide toggle. This API is supported in M2 themes only,
+   * it has no effect in M3 themes. For color customization in M3, see https://material.angular.io/components/slide-toggle/styling.
+   *
+   * For information on applying color variants in M3, see
+   * https://material.angular.io/guide/material-2-theming#optional-add-backwards-compatibility-styles-for-color-variants
+   */
+  @Input() color: string | undefined;
+
+  /** Whether the slide toggle is disabled. */
+  @Input({transform: booleanAttribute}) disabled: boolean = false;
+
+  /** Whether the slide toggle has a ripple. */
+  @Input({transform: booleanAttribute}) disableRipple: boolean = false;
+
+  /** Tabindex of slide toggle. */
+  @Input({transform: (value: unknown) => (value == null ? 0 : numberAttribute(value))})
+  tabIndex: number = 0;
 
   /** Whether the slide-toggle element is checked or not. */
-  @Input()
+  @Input({transform: booleanAttribute})
   get checked(): boolean {
     return this._checked;
   }
-
-  set checked(value: BooleanInput) {
-    this._checked = coerceBooleanProperty(value);
+  set checked(value: boolean) {
+    this._checked = value;
     this._changeDetectorRef.markForCheck();
   }
 
+  /** Whether to hide the icon inside of the slide toggle. */
+  @Input({transform: booleanAttribute}) hideIcon: boolean;
+
+  /** Whether the slide toggle should remain interactive when it is disabled. */
+  @Input({transform: booleanAttribute}) disabledInteractive: boolean;
+
   /** An event will be dispatched each time the slide-toggle changes its value. */
-  @Output() readonly change: EventEmitter<T> = new EventEmitter<T>();
+  @Output() readonly change = new EventEmitter<MatSlideToggleChange>();
 
   /**
    * An event will be dispatched each time the slide-toggle input is toggled.
@@ -160,20 +206,21 @@ export abstract class _MatSlideToggleBase<T>
     return `${this.id || this._uniqueId}-input`;
   }
 
-  constructor(
-    elementRef: ElementRef,
-    protected _focusMonitor: FocusMonitor,
-    protected _changeDetectorRef: ChangeDetectorRef,
-    tabIndex: string,
-    public defaults: MatSlideToggleDefaultOptions,
-    animationMode: string | undefined,
-    idPrefix: string,
-  ) {
-    super(elementRef);
-    this.tabIndex = parseInt(tabIndex) || 0;
-    this.color = this.defaultColor = defaults.color || 'accent';
+  constructor(...args: unknown[]);
+
+  constructor() {
+    inject(_CdkPrivateStyleLoader).load(_StructuralStylesLoader);
+    const tabIndex = inject(new HostAttributeToken('tabindex'), {optional: true});
+    const defaults = this.defaults;
+    const animationMode = inject(ANIMATION_MODULE_TYPE, {optional: true});
+
+    this.tabIndex = tabIndex == null ? 0 : parseInt(tabIndex) || 0;
+    this.color = defaults.color || 'accent';
     this._noopAnimations = animationMode === 'NoopAnimations';
-    this.id = this._uniqueId = `${idPrefix}${++nextUniqueId}`;
+    this.id = this._uniqueId = inject(_IdGenerator).getId('mat-mdc-slide-toggle-');
+    this.hideIcon = defaults.hideIcon ?? false;
+    this.disabledInteractive = defaults.disabledInteractive ?? false;
+    this._labelId = this._uniqueId + '-label';
   }
 
   ngAfterContentInit() {
@@ -196,6 +243,12 @@ export abstract class _MatSlideToggleBase<T>
     });
   }
 
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['required']) {
+      this._validatorOnChange();
+    }
+  }
+
   ngOnDestroy() {
     this._focusMonitor.stopMonitoring(this._elementRef);
   }
@@ -213,6 +266,16 @@ export abstract class _MatSlideToggleBase<T>
   /** Implemented as part of ControlValueAccessor. */
   registerOnTouched(fn: any): void {
     this._onTouched = fn;
+  }
+
+  /** Implemented as a part of Validator. */
+  validate(control: AbstractControl<boolean>): ValidationErrors | null {
+    return this.required && control.value !== true ? {'required': true} : null;
+  }
+
+  /** Implemented as a part of Validator. */
+  registerOnValidatorChange(fn: () => void): void {
+    this._validatorOnChange = fn;
   }
 
   /** Implemented as a part of ControlValueAccessor. */
@@ -234,81 +297,18 @@ export abstract class _MatSlideToggleBase<T>
     this._onChange(this.checked);
     this.change.emit(this._createChangeEvent(this.checked));
   }
-}
-
-@Component({
-  selector: 'mat-slide-toggle',
-  templateUrl: 'slide-toggle.html',
-  styleUrls: ['slide-toggle.css'],
-  inputs: ['disabled', 'disableRipple', 'color', 'tabIndex'],
-  host: {
-    'class': 'mat-mdc-slide-toggle',
-    '[id]': 'id',
-    // Needs to be removed since it causes some a11y issues (see #21266).
-    '[attr.tabindex]': 'null',
-    '[attr.aria-label]': 'null',
-    '[attr.name]': 'null',
-    '[attr.aria-labelledby]': 'null',
-    '[class.mat-mdc-slide-toggle-focused]': '_focused',
-    '[class.mat-mdc-slide-toggle-checked]': 'checked',
-    '[class._mat-animation-noopable]': '_noopAnimations',
-  },
-  exportAs: 'matSlideToggle',
-  encapsulation: ViewEncapsulation.None,
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  providers: [MAT_SLIDE_TOGGLE_VALUE_ACCESSOR],
-})
-export class MatSlideToggle extends _MatSlideToggleBase<MatSlideToggleChange> {
-  /** Unique ID for the label element. */
-  _labelId: string;
-
-  /** Returns the unique id for the visual hidden button. */
-  get buttonId(): string {
-    return `${this.id || this._uniqueId}-button`;
-  }
-
-  /** Reference to the MDC switch element. */
-  @ViewChild('switch') _switchElement: ElementRef<HTMLElement>;
-
-  constructor(
-    elementRef: ElementRef,
-    focusMonitor: FocusMonitor,
-    changeDetectorRef: ChangeDetectorRef,
-    @Attribute('tabindex') tabIndex: string,
-    @Inject(MAT_SLIDE_TOGGLE_DEFAULT_OPTIONS)
-    defaults: MatSlideToggleDefaultOptions,
-    @Optional() @Inject(ANIMATION_MODULE_TYPE) animationMode?: string,
-  ) {
-    super(
-      elementRef,
-      focusMonitor,
-      changeDetectorRef,
-      tabIndex,
-      defaults,
-      animationMode,
-      'mat-mdc-slide-toggle-',
-    );
-    this._labelId = this._uniqueId + '-label';
-  }
 
   /** Method being called whenever the underlying button is clicked. */
   _handleClick() {
-    this.toggleChange.emit();
+    if (!this.disabled) {
+      this.toggleChange.emit();
 
-    if (!this.defaults.disableToggleValue) {
-      this.checked = !this.checked;
-      this._onChange(this.checked);
-      this.change.emit(new MatSlideToggleChange(this, this.checked));
+      if (!this.defaults.disableToggleValue) {
+        this.checked = !this.checked;
+        this._onChange(this.checked);
+        this.change.emit(new MatSlideToggleChange(this, this.checked));
+      }
     }
-  }
-
-  /** Focuses the slide-toggle. */
-  focus(): void {
-    this._switchElement.nativeElement.focus();
-  }
-
-  protected _createChangeEvent(isChecked: boolean) {
-    return new MatSlideToggleChange(this, isChecked);
   }
 
   _getAriaLabelledBy() {

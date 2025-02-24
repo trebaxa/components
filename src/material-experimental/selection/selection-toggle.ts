@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {CdkSelectionToggle} from '@angular/cdk-experimental/selection';
@@ -22,10 +22,10 @@ import {Directive, Input} from '@angular/core';
 @Directive({
   selector: '[matSelectionToggle]',
   exportAs: 'matSelectionToggle',
-  inputs: ['index: matSelectionToggleIndex'],
+  inputs: [{name: 'index', alias: 'matSelectionToggleIndex'}],
   providers: [{provide: CdkSelectionToggle, useExisting: MatSelectionToggle}],
 })
 export class MatSelectionToggle<T> extends CdkSelectionToggle<T> {
   /** The value that is associated with the toggle */
-  @Input('matSelectionToggleValue') override value: T;
+  @Input('matSelectionToggleValue') override value: T = undefined!;
 }

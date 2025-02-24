@@ -1,42 +1,54 @@
-import {Direction} from '@angular/cdk/bidi';
+import {Dir, Direction} from '@angular/cdk/bidi';
 import {END, ENTER, HOME, LEFT_ARROW, RIGHT_ARROW, SPACE} from '@angular/cdk/keycodes';
+import {MutationObserverFactory, ObserversModule} from '@angular/cdk/observers';
+import {SharedResizeObserver} from '@angular/cdk/observers/private';
 import {PortalModule} from '@angular/cdk/portal';
 import {ScrollingModule, ViewportRuler} from '@angular/cdk/scrolling';
 import {
+  createKeyboardEvent,
+  createMouseEvent,
+  dispatchEvent,
   dispatchFakeEvent,
   dispatchKeyboardEvent,
-  createKeyboardEvent,
-  dispatchEvent,
-  createMouseEvent,
-} from '../../cdk/testing/private';
-import {CommonModule} from '@angular/common';
-import {Component, ViewChild} from '@angular/core';
+} from '@angular/cdk/testing/private';
+import {ChangeDetectorRef, Component, ViewChild, inject} from '@angular/core';
 import {
-  waitForAsync,
   ComponentFixture,
+  TestBed,
   discardPeriodicTasks,
   fakeAsync,
-  TestBed,
+  flush,
+  flushMicrotasks,
   tick,
+  waitForAsync,
 } from '@angular/core/testing';
 import {MatRippleModule} from '@angular/material/core';
 import {By} from '@angular/platform-browser';
+import {Subject} from 'rxjs';
 import {MatTabHeader} from './tab-header';
 import {MatTabLabelWrapper} from './tab-label-wrapper';
-import {ObserversModule, MutationObserverFactory} from '@angular/cdk/observers';
 
-describe('MDC-based MatTabHeader', () => {
+describe('MatTabHeader', () => {
   let fixture: ComponentFixture<SimpleTabHeaderApp>;
   let appComponent: SimpleTabHeaderApp;
+  let resizeEvents: Subject<ResizeObserverEntry[]>;
 
   beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
-      imports: [CommonModule, PortalModule, MatRippleModule, ScrollingModule, ObserversModule],
-      declarations: [MatTabHeader, MatTabLabelWrapper, SimpleTabHeaderApp],
+      imports: [
+        PortalModule,
+        MatRippleModule,
+        ScrollingModule,
+        ObserversModule,
+        MatTabHeader,
+        MatTabLabelWrapper,
+        SimpleTabHeaderApp,
+      ],
       providers: [ViewportRuler],
     });
 
-    TestBed.compileComponents();
+    resizeEvents = new Subject();
+    spyOn(TestBed.inject(SharedResizeObserver), 'observe').and.returnValue(resizeEvents);
   }));
 
   describe('focusing', () => {
@@ -208,6 +220,7 @@ describe('MDC-based MatTabHeader', () => {
     it('should focus disabled items when moving focus using END', () => {
       appComponent.tabHeader.focusIndex = 0;
       appComponent.tabs[3].disabled = true;
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
       expect(appComponent.tabHeader.focusIndex).toBe(0);
 
@@ -266,9 +279,11 @@ describe('MDC-based MatTabHeader', () => {
         // Focus on the last tab, expect this to be the maximum scroll distance.
         appComponent.tabHeader.focusIndex = appComponent.tabs.length - 1;
         fixture.detectChanges();
-        expect(appComponent.tabHeader.scrollDistance).toBe(
-          appComponent.tabHeader._getMaxScrollDistance(),
+        const {offsetLeft, offsetWidth} = appComponent.getSelectedLabel(
+          appComponent.tabHeader.focusIndex,
         );
+        const viewLength = appComponent.getViewLength();
+        expect(appComponent.tabHeader.scrollDistance).toBe(offsetLeft + offsetWidth - viewLength);
 
         // Focus on the first tab, expect this to be the maximum scroll distance.
         appComponent.tabHeader.focusIndex = 0;
@@ -323,18 +338,23 @@ describe('MDC-based MatTabHeader', () => {
 
       it('should update the scroll distance if a tab is removed and no tabs are selected', fakeAsync(() => {
         appComponent.selectedIndex = 0;
+        fixture.changeDetectorRef.markForCheck();
         appComponent.addTabsForScrolling();
         fixture.detectChanges();
 
         // Focus the last tab so the header scrolls to the end.
         appComponent.tabHeader.focusIndex = appComponent.tabs.length - 1;
+        fixture.changeDetectorRef.markForCheck();
         fixture.detectChanges();
-        expect(appComponent.tabHeader.scrollDistance).toBe(
-          appComponent.tabHeader._getMaxScrollDistance(),
+        const {offsetLeft, offsetWidth} = appComponent.getSelectedLabel(
+          appComponent.tabHeader.focusIndex,
         );
+        const viewLength = appComponent.getViewLength();
+        expect(appComponent.tabHeader.scrollDistance).toBe(offsetLeft + offsetWidth - viewLength);
 
         // Remove the first two tabs which includes the selected tab.
         appComponent.tabs = appComponent.tabs.slice(2);
+        fixture.changeDetectorRef.markForCheck();
         fixture.detectChanges();
         tick();
 
@@ -359,13 +379,14 @@ describe('MDC-based MatTabHeader', () => {
 
         // Focus on the last tab, expect this to be the maximum scroll distance.
         appComponent.tabHeader.focusIndex = appComponent.tabs.length - 1;
+        fixture.changeDetectorRef.markForCheck();
         fixture.detectChanges();
-        expect(appComponent.tabHeader.scrollDistance).toBe(
-          appComponent.tabHeader._getMaxScrollDistance(),
-        );
+        const {offsetLeft} = appComponent.getSelectedLabel(appComponent.tabHeader.focusIndex);
+        expect(offsetLeft).toBe(0);
 
         // Focus on the first tab, expect this to be the maximum scroll distance.
         appComponent.tabHeader.focusIndex = 0;
+        fixture.changeDetectorRef.markForCheck();
         fixture.detectChanges();
         expect(appComponent.tabHeader.scrollDistance).toBe(0);
       });
@@ -548,6 +569,7 @@ describe('MDC-based MatTabHeader', () => {
           .toBeGreaterThan(previousDistance);
 
         dispatchFakeEvent(nextButton, endEventName);
+        flush();
       }
 
       /**
@@ -586,6 +608,7 @@ describe('MDC-based MatTabHeader', () => {
           .toBeLessThan(currentScroll);
 
         dispatchFakeEvent(nextButton, endEventName);
+        flush();
       }
     });
 
@@ -633,13 +656,14 @@ describe('MDC-based MatTabHeader', () => {
       fixture.detectChanges();
 
       fixture.componentInstance.dir = 'rtl';
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
       tick();
 
       expect(inkBar.alignToElement).toHaveBeenCalled();
     }));
 
-    it('should re-align the ink bar when the window is resized', fakeAsync(() => {
+    it('should re-align the ink bar when the header is resized', fakeAsync(() => {
       fixture = TestBed.createComponent(SimpleTabHeaderApp);
       fixture.detectChanges();
 
@@ -647,24 +671,24 @@ describe('MDC-based MatTabHeader', () => {
 
       spyOn(inkBar, 'alignToElement');
 
-      dispatchFakeEvent(window, 'resize');
-      tick(150);
+      resizeEvents.next([]);
       fixture.detectChanges();
+      tick(32);
 
       expect(inkBar.alignToElement).toHaveBeenCalled();
       discardPeriodicTasks();
     }));
 
-    it('should update arrows when the window is resized', fakeAsync(() => {
+    it('should update arrows when the header is resized', fakeAsync(() => {
       fixture = TestBed.createComponent(SimpleTabHeaderApp);
 
       const header = fixture.componentInstance.tabHeader;
 
       spyOn(header, '_checkPaginationEnabled');
 
-      dispatchFakeEvent(window, 'resize');
-      tick(10);
+      resizeEvents.next([]);
       fixture.detectChanges();
+      flushMicrotasks();
 
       expect(header._checkPaginationEnabled).toHaveBeenCalled();
       discardPeriodicTasks();
@@ -672,15 +696,12 @@ describe('MDC-based MatTabHeader', () => {
 
     it('should update the pagination state if the content of the labels changes', () => {
       const mutationCallbacks: Function[] = [];
-      TestBed.overrideProvider(MutationObserverFactory, {
-        useValue: {
-          // Stub out the MutationObserver since the native one is async.
-          create: function (callback: Function) {
-            mutationCallbacks.push(callback);
-            return {observe: () => {}, disconnect: () => {}};
-          },
+      spyOn(TestBed.inject(MutationObserverFactory), 'create').and.callFake(
+        (callback: Function) => {
+          mutationCallbacks.push(callback);
+          return {observe: () => {}, disconnect: () => {}} as any;
         },
-      });
+      );
 
       fixture = TestBed.createComponent(SimpleTabHeaderApp);
       fixture.detectChanges();
@@ -700,7 +721,7 @@ describe('MDC-based MatTabHeader', () => {
         label.textContent += extraText;
       });
 
-      mutationCallbacks.forEach(callback => callback());
+      mutationCallbacks.forEach(callback => callback([{type: 'fake'}]));
       fixture.detectChanges();
 
       expect(tabHeaderElement.classList).toContain(enabledClass);
@@ -720,22 +741,20 @@ interface Tab {
                (indexFocused)="focusedIndex = $event"
                (selectFocusedIndex)="selectedIndex = $event"
                [disablePagination]="disablePagination">
-      <div matTabLabelWrapper class="label-content" style="min-width: 30px; width: 30px"
-           *ngFor="let tab of tabs; let i = index"
+      @for (tab of tabs; track tab; let i = $index) {
+        <div matTabLabelWrapper class="label-content" style="min-width: 30px; width: 30px"
            [disabled]="!!tab.disabled"
-           (click)="selectedIndex = i">
-         {{tab.label}}
-      </div>
+           (click)="selectedIndex = i">{{tab.label}}</div>
+      }
     </mat-tab-header>
   </div>
   `,
-  styles: [
-    `
+  styles: `
     :host {
       width: 130px;
     }
   `,
-  ],
+  imports: [Dir, MatTabHeader, MatTabLabelWrapper],
 })
 class SimpleTabHeaderApp {
   disableRipple: boolean = false;
@@ -748,6 +767,8 @@ class SimpleTabHeaderApp {
 
   @ViewChild(MatTabHeader, {static: true}) tabHeader: MatTabHeader;
 
+  private readonly _changeDetectorRef = inject(ChangeDetectorRef);
+
   constructor() {
     this.tabs[this.disabledTabIndex].disabled = true;
   }
@@ -756,5 +777,14 @@ class SimpleTabHeaderApp {
     for (let i = 0; i < amount; i++) {
       this.tabs.push({label: 'new'});
     }
+    this._changeDetectorRef.markForCheck();
+  }
+
+  getViewLength() {
+    return this.tabHeader._tabListContainer.nativeElement.offsetWidth;
+  }
+
+  getSelectedLabel(index: number) {
+    return this.tabHeader._items.toArray()[this.tabHeader.focusIndex].elementRef.nativeElement;
   }
 }

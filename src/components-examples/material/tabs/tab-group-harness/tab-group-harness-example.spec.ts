@@ -2,7 +2,6 @@ import {ComponentFixture, TestBed} from '@angular/core/testing';
 import {TestbedHarnessEnvironment} from '@angular/cdk/testing/testbed';
 import {MatTabGroupHarness} from '@angular/material/tabs/testing';
 import {HarnessLoader} from '@angular/cdk/testing';
-import {MatTabsModule} from '@angular/material/tabs';
 import {TabGroupHarnessExample} from './tab-group-harness-example';
 import {NoopAnimationsModule} from '@angular/platform-browser/animations';
 
@@ -12,9 +11,8 @@ describe('TabGroupHarnessExample', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      imports: [MatTabsModule, NoopAnimationsModule],
-      declarations: [TabGroupHarnessExample],
-    }).compileComponents();
+      imports: [NoopAnimationsModule],
+    });
     fixture = TestBed.createComponent(TabGroupHarnessExample);
     fixture.detectChanges();
     loader = TestbedHarnessEnvironment.loader(fixture);

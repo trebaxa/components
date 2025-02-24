@@ -3,11 +3,19 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {Component, Inject, TemplateRef, ViewChild, ViewEncapsulation} from '@angular/core';
-import {DIALOG_DATA, Dialog, DialogConfig, DialogRef, DialogModule} from '@angular/cdk/dialog';
+import {DIALOG_DATA, Dialog, DialogConfig, DialogModule, DialogRef} from '@angular/cdk/dialog';
+import {
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  TemplateRef,
+  ViewChild,
+  ViewEncapsulation,
+  inject,
+} from '@angular/core';
 import {FormsModule} from '@angular/forms';
 
 const defaultDialogConfig = new DialogConfig();
@@ -15,12 +23,14 @@ const defaultDialogConfig = new DialogConfig();
 @Component({
   selector: 'dialog-demo',
   templateUrl: 'dialog-demo.html',
-  styleUrls: ['dialog-demo.css'],
+  styleUrl: 'dialog-demo.css',
   encapsulation: ViewEncapsulation.None,
-  standalone: true,
   imports: [DialogModule, FormsModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DialogDemo {
+  dialog = inject(Dialog);
+
   dialogRef: DialogRef<string> | null;
   result: string;
   actionsAlignment: 'start' | 'center' | 'end';
@@ -43,7 +53,7 @@ export class DialogDemo {
 
   @ViewChild(TemplateRef) template: TemplateRef<any>;
 
-  constructor(public dialog: Dialog) {}
+  readonly cdr = inject(ChangeDetectorRef);
 
   openJazz() {
     this.dialogRef = this.dialog.open<string>(JazzDialog, this.config);
@@ -51,12 +61,19 @@ export class DialogDemo {
     this.dialogRef.closed.subscribe(result => {
       this.result = result!;
       this.dialogRef = null;
+      this.cdr.markForCheck();
     });
   }
 
   openTemplate() {
     this.numTemplateOpens++;
-    this.dialog.open(this.template, this.config);
+    this.dialogRef = this.dialog.open(this.template, this.config);
+
+    this.dialogRef.closed.subscribe(result => {
+      this.result = result!;
+      this.dialogRef = null;
+      this.cdr.markForCheck();
+    });
   }
 }
 
@@ -75,8 +92,7 @@ export class DialogDemo {
       <button (click)="temporarilyHide()">Hide for 2 seconds</button>
     </div>
   `,
-  styles: [
-    `
+  styles: `
     :host {
       background: white;
       padding: 20px;
@@ -92,13 +108,13 @@ export class DialogDemo {
       opacity: 0;
     }
   `,
-  ],
-  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class JazzDialog {
-  private _dimensionToggle = false;
+  dialogRef = inject<DialogRef<string>>(DialogRef);
+  data = inject(DIALOG_DATA);
 
-  constructor(public dialogRef: DialogRef<string>, @Inject(DIALOG_DATA) public data: any) {}
+  private _dimensionToggle = false;
 
   togglePosition(): void {
     this._dimensionToggle = !this._dimensionToggle;

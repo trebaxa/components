@@ -1,5 +1,6 @@
 import {Component} from '@angular/core';
-import {NgForm} from '@angular/forms';
+import {NgForm, FormsModule} from '@angular/forms';
+import {CdkPopoverEditModule} from '@angular/cdk-experimental/popover-edit';
 
 export interface PeriodicElement {
   name: string;
@@ -36,8 +37,9 @@ const ELEMENT_DATA: PeriodicElement[] = [
  */
 @Component({
   selector: 'cdk-popover-edit-tab-out-vanilla-table-example',
-  styleUrls: ['cdk-popover-edit-tab-out-vanilla-table-example.css'],
+  styleUrl: 'cdk-popover-edit-tab-out-vanilla-table-example.css',
   templateUrl: 'cdk-popover-edit-tab-out-vanilla-table-example.html',
+  imports: [CdkPopoverEditModule, FormsModule],
 })
 export class CdkPopoverEditTabOutVanillaTableExample {
   readonly preservedNameValues = new WeakMap<PeriodicElement, any>();

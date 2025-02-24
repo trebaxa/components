@@ -1,6 +1,8 @@
 import {NestedTreeControl} from '@angular/cdk/tree';
-import {Component} from '@angular/core';
-import {MatTreeNestedDataSource} from '@angular/material/tree';
+import {ChangeDetectionStrategy, Component} from '@angular/core';
+import {MatTreeNestedDataSource, MatTreeModule} from '@angular/material/tree';
+import {MatIconModule} from '@angular/material/icon';
+import {MatButtonModule} from '@angular/material/button';
 
 /**
  * Food data with nested structure.
@@ -37,7 +39,9 @@ const TREE_DATA: FoodNode[] = [
 @Component({
   selector: 'tree-nested-overview-example',
   templateUrl: 'tree-nested-overview-example.html',
-  styleUrls: ['tree-nested-overview-example.css'],
+  styleUrl: 'tree-nested-overview-example.css',
+  imports: [MatTreeModule, MatButtonModule, MatIconModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TreeNestedOverviewExample {
   treeControl = new NestedTreeControl<FoodNode>(node => node.children);

@@ -1,9 +1,9 @@
 @use 'sass:math';
 @use '@angular/cdk';
-@use '@material/menu-surface' as mdc-menu-surface;
-@use '@material/list/evolution-mixins' as mdc-list;
 @use '../core/style/vendor-prefixes';
 @use '../core/style/variables';
+@use '../core/tokens/token-utils';
+@use '../core/tokens/m2/mat/select' as tokens-mat-select;
 
 $mat-select-arrow-size: 5px !default;
 $mat-select-arrow-margin: 4px !default;
@@ -13,15 +13,62 @@ $mat-select-placeholder-arrow-space: 2 *
 $leading-width: 12px !default;
 $scale: 0.75 !default;
 
-// We base the select panel styling on top of MDC's menu styles and we
-// implement the trigger ourselves since MDC doesn't provide an equivalent.
+@keyframes _mat-select-enter {
+  from {
+    opacity: 0;
+    transform: scaleY(0.8);
+  }
 
-@include mdc-menu-surface.core-styles($query: structure);
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes _mat-select-exit {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
 
 .mat-mdc-select {
   display: inline-block;
   width: 100%;
   outline: none;
+
+  @include token-utils.use-tokens(
+    tokens-mat-select.$prefix, tokens-mat-select.get-token-slots()) {
+    @include vendor-prefixes.smooth-font();
+    @include token-utils.create-token-slot(color, enabled-trigger-text-color);
+    @include token-utils.create-token-slot(font-family, trigger-text-font);
+    @include token-utils.create-token-slot(line-height, trigger-text-line-height);
+    @include token-utils.create-token-slot(font-size, trigger-text-size);
+    @include token-utils.create-token-slot(font-weight, trigger-text-weight);
+    @include token-utils.create-token-slot(letter-spacing, trigger-text-tracking);
+  }
+}
+@include token-utils.use-tokens(tokens-mat-select.$prefix, tokens-mat-select.get-token-slots()) {
+  div.mat-mdc-select-panel {
+    @include token-utils.create-token-slot(box-shadow, container-elevation-shadow);
+  }
+}
+
+.mat-mdc-select-disabled {
+  @include token-utils.use-tokens(
+    tokens-mat-select.$prefix, tokens-mat-select.get-token-slots()) {
+    @include token-utils.create-token-slot(color, disabled-trigger-text-color);
+  }
+
+  .mat-mdc-select-placeholder {
+    @include token-utils.use-tokens(
+      tokens-mat-select.$prefix, tokens-mat-select.get-token-slots()) {
+      @include token-utils.create-token-slot(color, disabled-trigger-text-color);
+    }
+  }
 }
 
 .mat-mdc-select-trigger {
@@ -57,13 +104,15 @@ $scale: 0.75 !default;
   display: inline-flex;
   align-items: center;
 
-  // When used in a fill appearance with a label, form-field the arrow should be shifted up 8px.
-  .mat-form-field-appearance-fill & {
-    transform: translateY(-8px);
-  }
-
   .mat-form-field-appearance-fill .mdc-text-field--no-label & {
     transform: none;
+  }
+}
+
+.mat-mdc-form-field .mat-mdc-select.mat-mdc-select-invalid .mat-mdc-select-arrow,
+.mat-form-field-invalid:not(.mat-form-field-disabled) .mat-mdc-form-field-infix::after {
+  @include token-utils.use-tokens(tokens-mat-select.$prefix, tokens-mat-select.get-token-slots()) {
+    @include token-utils.create-token-slot(color, invalid-arrow-color);
   }
 }
 
@@ -72,6 +121,19 @@ $scale: 0.75 !default;
   height: $mat-select-arrow-size;
   position: relative;
 
+  @include token-utils.use-tokens(
+    tokens-mat-select.$prefix, tokens-mat-select.get-token-slots()) {
+    @include token-utils.create-token-slot(color, enabled-arrow-color);
+
+    .mat-mdc-form-field.mat-focused & {
+      @include token-utils.create-token-slot(color, focused-arrow-color);
+    }
+
+    .mat-mdc-form-field .mat-mdc-select.mat-mdc-select-disabled & {
+      @include token-utils.create-token-slot(color, disabled-arrow-color);
+    }
+  }
+
   svg {
     fill: currentColor;
     position: absolute;
@@ -79,7 +141,7 @@ $scale: 0.75 !default;
     left: 50%;
     transform: translate(-50%, -50%);
 
-    @include cdk.high-contrast(active, off) {
+    @include cdk.high-contrast {
       // On Chromium browsers the `currentColor` blends in with the
       // background for SVGs so we have to fall back to `CanvasText`.
       fill: CanvasText;
@@ -91,16 +153,27 @@ $scale: 0.75 !default;
   }
 }
 
-// Note that the `.mdc-menu-surface` is here in order to bump up the specificity
-// and avoid interference with `mat-menu` which uses the same mixins from MDC.
-.mdc-menu-surface.mat-mdc-select-panel {
+// Even though we don't use the MDC styles, we need to keep the classes in the
+// DOM for the Gmat versions to work. We need to bump up the specificity here
+// so that it's higher than MDC's styles.
+div.mat-mdc-select-panel {
   width: 100%; // Ensures that the panel matches the overlay width.
   max-height: $mat-select-panel-max-height;
-  position: static; // MDC uses `absolute` by default which will throw off our positioning.
   outline: 0;
+  overflow: auto;
+  padding: 8px 0;
+  border-radius: 4px;
+  box-sizing: border-box;
 
-  @include mdc-list.list-base($query: structure);
-  @include cdk.high-contrast(active, off) {
+  // Workaround in case other MDC menu surface styles bleed in.
+  position: static;
+
+  @include token-utils.use-tokens(
+    tokens-mat-select.$prefix, tokens-mat-select.get-token-slots()) {
+    @include token-utils.create-token-slot(background-color, panel-background-color);
+  }
+
+  @include cdk.high-contrast {
     outline: solid 1px;
   }
 
@@ -115,6 +188,18 @@ $scale: 0.75 !default;
     border-bottom-right-radius: 0;
     transform-origin: bottom center;
   }
+
+  .mat-mdc-option {
+    --mdc-list-list-item-container-color: var(--mat-select-panel-background-color);
+  }
+}
+
+.mat-select-panel-animations-enabled {
+  animation: _mat-select-enter 120ms cubic-bezier(0, 0, 0.2, 1);
+
+  &.mat-select-panel-exit {
+    animation: _mat-select-exit 100ms linear;
+  }
 }
 
 .mat-mdc-select-placeholder {
@@ -124,6 +209,12 @@ $scale: 0.75 !default;
       math.div(variables.$swift-ease-out-duration, 3)
       variables.$swift-ease-out-timing-function;
 
+  @include token-utils.use-tokens(
+    tokens-mat-select.$prefix, tokens-mat-select.get-token-slots()) {
+    @include token-utils.create-token-slot(color, placeholder-text-color);
+  }
+
+  .mat-mdc-form-field:not(.mat-form-field-animations-enabled) &,
   ._mat-animation-noopable & {
     transition: none;
   }
@@ -147,6 +238,10 @@ $scale: 0.75 !default;
 // for select. The select specific styles are not present as they don't use their text field as a
 // container. Below are the styles to account for the select arrow icon at the end.
 .mat-mdc-form-field-type-mat-select {
+  &:not(.mat-form-field-disabled) .mat-mdc-text-field-wrapper {
+    cursor: pointer;
+  }
+
   &.mat-form-field-appearance-fill {
     .mat-mdc-floating-label {
       max-width: calc(100% - #{$mat-select-placeholder-arrow-space});
@@ -180,4 +275,10 @@ $scale: 0.75 !default;
   // Prevents some browsers from rendering the element in high contrast mode. Use `visibility`
   // instead of `opacity` since VoiceOver + Chrome still reads out the space with the latter.
   visibility: hidden;
+}
+
+@include token-utils.use-tokens(tokens-mat-select.$prefix, tokens-mat-select.get-token-slots()) {
+  .mat-form-field-appearance-fill .mat-mdc-select-arrow-wrapper {
+    @include token-utils.create-token-slot(transform, arrow-transform);
+  }
 }

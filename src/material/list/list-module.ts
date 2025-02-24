@@ -3,10 +3,9 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {CommonModule} from '@angular/common';
 import {NgModule} from '@angular/core';
 import {MatPseudoCheckboxModule, MatRippleModule, MatCommonModule} from '@angular/material/core';
 import {MatDividerModule} from '@angular/material/divider';
@@ -28,10 +27,21 @@ import {ObserversModule} from '@angular/cdk/observers';
 @NgModule({
   imports: [
     ObserversModule,
-    CommonModule,
     MatCommonModule,
     MatRippleModule,
     MatPseudoCheckboxModule,
+    MatList,
+    MatActionList,
+    MatNavList,
+    MatSelectionList,
+    MatListItem,
+    MatListOption,
+    MatListSubheaderCssMatStyler,
+    MatListItemAvatar,
+    MatListItemIcon,
+    MatListItemLine,
+    MatListItemTitle,
+    MatListItemMeta,
   ],
   exports: [
     MatList,
@@ -44,20 +54,6 @@ import {ObserversModule} from '@angular/cdk/observers';
     MatListItemIcon,
     MatListSubheaderCssMatStyler,
     MatDividerModule,
-    MatListItemLine,
-    MatListItemTitle,
-    MatListItemMeta,
-  ],
-  declarations: [
-    MatList,
-    MatActionList,
-    MatNavList,
-    MatSelectionList,
-    MatListItem,
-    MatListOption,
-    MatListSubheaderCssMatStyler,
-    MatListItemAvatar,
-    MatListItemIcon,
     MatListItemLine,
     MatListItemTitle,
     MatListItemMeta,

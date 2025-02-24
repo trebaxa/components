@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {Component, ViewEncapsulation, ChangeDetectionStrategy} from '@angular/core';
@@ -25,7 +25,7 @@ function removeIcons(element: Element) {
   selector: 'mat-menubar-item',
   exportAs: 'matMenubarItem',
   templateUrl: 'menubar-item.html',
-  styleUrls: ['menubar-item.css'],
+  styleUrl: 'menubar-item.css',
   encapsulation: ViewEncapsulation.None,
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {

@@ -3,12 +3,11 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {FocusKeyManager} from '@angular/cdk/a11y';
 import {Directionality} from '@angular/cdk/bidi';
-import {BooleanInput, coerceBooleanProperty} from '@angular/cdk/coercion';
 import {
   AfterViewInit,
   ChangeDetectionStrategy,
@@ -18,25 +17,16 @@ import {
   ElementRef,
   Input,
   OnDestroy,
-  Optional,
   QueryList,
   ViewEncapsulation,
+  booleanAttribute,
+  numberAttribute,
+  inject,
 } from '@angular/core';
-import {HasTabIndex, mixinTabIndex} from '@angular/material/core';
-import {merge, Observable, Subject} from 'rxjs';
+import {Observable, Subject, merge} from 'rxjs';
 import {startWith, switchMap, takeUntil} from 'rxjs/operators';
 import {MatChip, MatChipEvent} from './chip';
 import {MatChipAction} from './chip-action';
-
-/**
- * Boilerplate for applying mixins to MatChipSet.
- * @docs-private
- */
-abstract class MatChipSetBase {
-  abstract disabled: boolean;
-  constructor(_elementRef: ElementRef) {}
-}
-const _MatChipSetMixinBase = mixinTabIndex(MatChipSetBase);
 
 /**
  * Basic container component for the MatChip component.
@@ -46,11 +36,11 @@ const _MatChipSetMixinBase = mixinTabIndex(MatChipSetBase);
 @Component({
   selector: 'mat-chip-set',
   template: `
-    <span class="mdc-evolution-chip-set__chips" role="presentation">
+    <div class="mdc-evolution-chip-set__chips" role="presentation">
       <ng-content></ng-content>
-    </span>
+    </div>
   `,
-  styleUrls: ['chip-set.css'],
+  styleUrl: 'chip-set.css',
   host: {
     'class': 'mat-mdc-chip-set mdc-evolution-chip-set',
     '(keydown)': '_handleKeydown($event)',
@@ -59,10 +49,11 @@ const _MatChipSetMixinBase = mixinTabIndex(MatChipSetBase);
   encapsulation: ViewEncapsulation.None,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class MatChipSet
-  extends _MatChipSetMixinBase
-  implements AfterViewInit, HasTabIndex, OnDestroy
-{
+export class MatChipSet implements AfterViewInit, OnDestroy {
+  protected _elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
+  protected _changeDetectorRef = inject(ChangeDetectorRef);
+  private _dir = inject(Directionality, {optional: true});
+
   /** Index of the last destroyed chip that had focus. */
   private _lastDestroyedFocusedChipIndex: number | null = null;
 
@@ -80,25 +71,30 @@ export class MatChipSet
     return this._getChipStream(chip => chip._onFocus);
   }
 
-  /** Combined stream of all of the child chips' remove events. */
+  /** Combined stream of all of the child chips' destroy events. */
   get chipDestroyedChanges(): Observable<MatChipEvent> {
     return this._getChipStream(chip => chip.destroyed);
   }
 
+  /** Combined stream of all of the child chips' remove events. */
+  get chipRemovedChanges(): Observable<MatChipEvent> {
+    return this._getChipStream(chip => chip.removed);
+  }
+
   /** Whether the chip set is disabled. */
-  @Input()
+  @Input({transform: booleanAttribute})
   get disabled(): boolean {
     return this._disabled;
   }
-  set disabled(value: BooleanInput) {
-    this._disabled = coerceBooleanProperty(value);
+  set disabled(value: boolean) {
+    this._disabled = value;
     this._syncChipsState();
   }
   protected _disabled: boolean = false;
 
   /** Whether the chip list contains chips or not. */
   get empty(): boolean {
-    return this._chips.length === 0;
+    return !this._chips || this._chips.length === 0;
   }
 
   /** The ARIA role applied to the chip set. */
@@ -110,6 +106,12 @@ export class MatChipSet
 
     return this.empty ? null : this._defaultRole;
   }
+
+  /** Tabindex of the chip set. */
+  @Input({
+    transform: (value: unknown) => (value == null ? 0 : numberAttribute(value)),
+  })
+  tabIndex: number = 0;
 
   set role(value: string | null) {
     this._explicitRole = value;
@@ -132,13 +134,8 @@ export class MatChipSet
   /** Flat list of all the actions contained within the chips. */
   _chipActions = new QueryList<MatChipAction>();
 
-  constructor(
-    protected _elementRef: ElementRef<HTMLElement>,
-    protected _changeDetectorRef: ChangeDetectorRef,
-    @Optional() private _dir: Directionality,
-  ) {
-    super(_elementRef);
-  }
+  constructor(...args: unknown[]);
+  constructor() {}
 
   ngAfterViewInit() {
     this._setUpFocusManagement();
@@ -160,12 +157,10 @@ export class MatChipSet
 
   /** Syncs the chip-set's state with the individual chips. */
   protected _syncChipsState() {
-    if (this._chips) {
-      this._chips.forEach(chip => {
-        chip.disabled = this._disabled;
-        chip._changeDetectorRef.markForCheck();
-      });
-    }
+    this._chips?.forEach(chip => {
+      chip._chipListDisabled = this._disabled;
+      chip._changeDetectorRef.markForCheck();
+    });
   }
 
   /** Dummy method for subclasses to override. Base chip set cannot be focused. */
@@ -189,20 +184,22 @@ export class MatChipSet
   }
 
   /**
-   * Removes the `tabindex` from the chip grid and resets it back afterwards, allowing the
-   * user to tab out of it. This prevents the grid from capturing focus and redirecting
+   * Removes the `tabindex` from the chip set and resets it back afterwards, allowing the
+   * user to tab out of it. This prevents the set from capturing focus and redirecting
    * it back to the first chip, creating a focus trap, if it user tries to tab away.
    */
   protected _allowFocusEscape() {
-    const previousTabIndex = this.tabIndex;
+    const previous = this._elementRef.nativeElement.tabIndex;
 
-    if (this.tabIndex !== -1) {
-      this.tabIndex = -1;
+    if (previous !== -1) {
+      // Set the tabindex directly on the element, instead of going through
+      // the data binding, because we aren't guaranteed that change detection
+      // will run quickly enough to allow focus to escape.
+      this._elementRef.nativeElement.tabIndex = -1;
 
-      Promise.resolve().then(() => {
-        this.tabIndex = previousTabIndex;
-        this._changeDetectorRef.markForCheck();
-      });
+      // Note that this needs to be a `setTimeout`, because a `Promise.resolve`
+      // doesn't allow enough time for the focus to escape.
+      setTimeout(() => (this._elementRef.nativeElement.tabIndex = previous));
     }
   }
 
@@ -224,8 +221,7 @@ export class MatChipSet
     let currentElement = event.target as HTMLElement | null;
 
     while (currentElement && currentElement !== this._elementRef.nativeElement) {
-      // Null check the classList, because IE and Edge don't support it on all elements.
-      if (currentElement.classList && currentElement.classList.contains('mdc-evolution-chip')) {
+      if (currentElement.classList.contains('mat-mdc-chip')) {
         return true;
       }
       currentElement = currentElement.parentElement;

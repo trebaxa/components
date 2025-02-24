@@ -20,9 +20,8 @@ describe('BlockScrollStrategy', () => {
     documentElement.classList.remove('cdk-global-scrollblock');
 
     TestBed.configureTestingModule({
-      imports: [OverlayModule, PortalModule],
-      declarations: [FocacciaMsg],
-    }).compileComponents();
+      imports: [OverlayModule, PortalModule, FocacciaMsg],
+    });
   }));
 
   beforeEach(inject(
@@ -214,5 +213,8 @@ describe('BlockScrollStrategy', () => {
 });
 
 /** Simple component that we can attach to the overlay. */
-@Component({template: '<p>Focaccia</p>'})
+@Component({
+  template: '<p>Focaccia</p>',
+  imports: [OverlayModule, PortalModule],
+})
 class FocacciaMsg {}

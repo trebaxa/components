@@ -3,10 +3,9 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {BooleanInput, coerceBooleanProperty} from '@angular/cdk/coercion';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -16,9 +15,11 @@ import {
   ViewEncapsulation,
   OnInit,
   inject,
+  booleanAttribute,
 } from '@angular/core';
 import {MatChip} from './chip';
 import {MAT_CHIP, MAT_CHIPS_DEFAULT_OPTIONS} from './tokens';
+import {MatChipAction} from './chip-action';
 
 /** Event object emitted by MatChipOption when selected or deselected. */
 export class MatChipSelectionChange {
@@ -39,13 +40,14 @@ export class MatChipSelectionChange {
  * user cannot click disabled chips.
  */
 @Component({
-  selector: 'mat-basic-chip-option, mat-chip-option',
+  selector: 'mat-basic-chip-option, [mat-basic-chip-option], mat-chip-option, [mat-chip-option]',
   templateUrl: 'chip-option.html',
-  styleUrls: ['chip.css'],
-  inputs: ['color', 'disabled', 'disableRipple', 'tabIndex'],
+  styleUrl: 'chip.css',
   host: {
-    'class':
-      'mat-mdc-chip mat-mdc-chip-option mdc-evolution-chip mdc-evolution-chip--filter mdc-evolution-chip--selectable',
+    'class': 'mat-mdc-chip mat-mdc-chip-option',
+    '[class.mdc-evolution-chip]': '!_isBasicChip',
+    '[class.mdc-evolution-chip--filter]': '!_isBasicChip',
+    '[class.mdc-evolution-chip--selectable]': '!_isBasicChip',
     '[class.mat-mdc-chip-selected]': 'selected',
     '[class.mat-mdc-chip-multiple]': '_chipListMultiple',
     '[class.mat-mdc-chip-disabled]': 'disabled',
@@ -75,6 +77,7 @@ export class MatChipSelectionChange {
   ],
   encapsulation: ViewEncapsulation.None,
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [MatChipAction],
 })
 export class MatChipOption extends MatChip implements OnInit {
   /** Default chip options. */
@@ -97,23 +100,23 @@ export class MatChipOption extends MatChip implements OnInit {
    * ignored. By default an option chip is selectable, and it becomes
    * non-selectable if its parent chip list is not selectable.
    */
-  @Input()
+  @Input({transform: booleanAttribute})
   get selectable(): boolean {
     return this._selectable && this.chipListSelectable;
   }
-  set selectable(value: BooleanInput) {
-    this._selectable = coerceBooleanProperty(value);
+  set selectable(value: boolean) {
+    this._selectable = value;
     this._changeDetectorRef.markForCheck();
   }
   protected _selectable: boolean = true;
 
   /** Whether the chip is selected. */
-  @Input()
+  @Input({transform: booleanAttribute})
   get selected(): boolean {
     return this._selected;
   }
-  set selected(value: BooleanInput) {
-    this._setSelectedState(coerceBooleanProperty(value), false, true);
+  set selected(value: boolean) {
+    this._setSelectedState(value, false, true);
   }
   private _selected = false;
 
@@ -141,7 +144,8 @@ export class MatChipOption extends MatChip implements OnInit {
   @Output() readonly selectionChange: EventEmitter<MatChipSelectionChange> =
     new EventEmitter<MatChipSelectionChange>();
 
-  ngOnInit() {
+  override ngOnInit() {
+    super.ngOnInit();
     this.role = 'presentation';
   }
 
@@ -167,8 +171,15 @@ export class MatChipOption extends MatChip implements OnInit {
   }
 
   override _handlePrimaryActionInteraction() {
-    if (this.selectable && !this.disabled) {
-      this.toggleSelected(true);
+    if (!this.disabled) {
+      // Interacting with the primary action implies that the chip already has focus, however
+      // there's a bug in Safari where focus ends up lingering on the previous chip (see #27544).
+      // We work around it by explicitly focusing the primary action of the current chip.
+      this.focus();
+
+      if (this.selectable) {
+        this.toggleSelected(true);
+      }
     }
   }
 

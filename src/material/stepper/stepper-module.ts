@@ -3,12 +3,11 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {PortalModule} from '@angular/cdk/portal';
 import {CdkStepperModule} from '@angular/cdk/stepper';
-import {CommonModule} from '@angular/common';
 import {NgModule} from '@angular/core';
 import {ErrorStateMatcher, MatCommonModule, MatRippleModule} from '@angular/material/core';
 import {MatIconModule} from '@angular/material/icon';
@@ -23,14 +22,10 @@ import {MatStepContent} from './step-content';
 @NgModule({
   imports: [
     MatCommonModule,
-    CommonModule,
     PortalModule,
     CdkStepperModule,
     MatIconModule,
     MatRippleModule,
-  ],
-  exports: [
-    MatCommonModule,
     MatStep,
     MatStepLabel,
     MatStepper,
@@ -40,7 +35,8 @@ import {MatStepContent} from './step-content';
     MatStepperIcon,
     MatStepContent,
   ],
-  declarations: [
+  exports: [
+    MatCommonModule,
     MatStep,
     MatStepLabel,
     MatStepper,

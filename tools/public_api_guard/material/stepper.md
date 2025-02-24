@@ -4,45 +4,36 @@
 
 ```ts
 
-import { _AbstractConstructor } from '@angular/material/core';
 import { AbstractControl } from '@angular/forms';
 import { AfterContentInit } from '@angular/core';
 import { AfterViewInit } from '@angular/core';
-import { AnimationEvent as AnimationEvent_2 } from '@angular/animations';
-import { AnimationTriggerMetadata } from '@angular/animations';
-import { CanColor } from '@angular/material/core';
 import { CdkStep } from '@angular/cdk/stepper';
+import { CdkStepHeader } from '@angular/cdk/stepper';
 import { CdkStepLabel } from '@angular/cdk/stepper';
 import { CdkStepper } from '@angular/cdk/stepper';
 import { CdkStepperNext } from '@angular/cdk/stepper';
 import { CdkStepperPrevious } from '@angular/cdk/stepper';
-import { ChangeDetectorRef } from '@angular/core';
-import { _Constructor } from '@angular/material/core';
-import { Directionality } from '@angular/cdk/bidi';
 import { ElementRef } from '@angular/core';
 import { ErrorStateMatcher } from '@angular/material/core';
 import { EventEmitter } from '@angular/core';
-import { FocusMonitor } from '@angular/cdk/a11y';
 import { FocusOrigin } from '@angular/cdk/a11y';
 import { FormGroupDirective } from '@angular/forms';
 import * as i0 from '@angular/core';
-import * as i10 from '@angular/cdk/stepper';
-import * as i11 from '@angular/material/icon';
-import * as i7 from '@angular/material/core';
-import * as i8 from '@angular/common';
-import * as i9 from '@angular/cdk/portal';
+import * as i1 from '@angular/material/core';
+import * as i2 from '@angular/cdk/portal';
+import * as i3 from '@angular/cdk/stepper';
+import * as i4 from '@angular/material/icon';
 import { NgForm } from '@angular/forms';
 import { OnDestroy } from '@angular/core';
 import { Optional } from '@angular/core';
 import { QueryList } from '@angular/core';
-import { StepperOptions } from '@angular/cdk/stepper';
 import { StepperOrientation } from '@angular/cdk/stepper';
 import { StepState } from '@angular/cdk/stepper';
 import { Subject } from 'rxjs';
 import { TemplatePortal } from '@angular/cdk/portal';
 import { TemplateRef } from '@angular/core';
 import { ThemePalette } from '@angular/material/core';
-import { ViewContainerRef } from '@angular/core';
+import { WritableSignal } from '@angular/core';
 
 // @public
 export const MAT_STEPPER_INTL_PROVIDER: {
@@ -56,7 +47,6 @@ export function MAT_STEPPER_INTL_PROVIDER_FACTORY(parentIntl: MatStepperIntl): M
 
 // @public (undocumented)
 export class MatStep extends CdkStep implements ErrorStateMatcher, AfterContentInit, OnDestroy {
-    constructor(stepper: MatStepper, _errorStateMatcher: ErrorStateMatcher, _viewContainerRef: ViewContainerRef, stepperOptions?: StepperOptions);
     color: ThemePalette;
     isErrorState(control: AbstractControl | null, form: FormGroupDirective | NgForm | null): boolean;
     _lazyContent: MatStepContent;
@@ -67,26 +57,27 @@ export class MatStep extends CdkStep implements ErrorStateMatcher, AfterContentI
     _portal: TemplatePortal;
     stepLabel: MatStepLabel;
     // (undocumented)
-    static ɵcmp: i0.ɵɵComponentDeclaration<MatStep, "mat-step", ["matStep"], { "color": "color"; }, {}, ["stepLabel", "_lazyContent"], ["*"], false, never>;
+    static ɵcmp: i0.ɵɵComponentDeclaration<MatStep, "mat-step", ["matStep"], { "color": { "alias": "color"; "required": false; }; }, {}, ["stepLabel", "_lazyContent"], ["*"], true, never>;
     // (undocumented)
-    static ɵfac: i0.ɵɵFactoryDeclaration<MatStep, [null, { skipSelf: true; }, null, { optional: true; }]>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<MatStep, never>;
 }
 
 // @public
 export class MatStepContent {
-    constructor(_template: TemplateRef<any>);
+    constructor(...args: unknown[]);
     // (undocumented)
     _template: TemplateRef<any>;
     // (undocumented)
-    static ɵdir: i0.ɵɵDirectiveDeclaration<MatStepContent, "ng-template[matStepContent]", never, {}, {}, never, never, false, never>;
+    static ɵdir: i0.ɵɵDirectiveDeclaration<MatStepContent, "ng-template[matStepContent]", never, {}, {}, never, never, true, never>;
     // (undocumented)
     static ɵfac: i0.ɵɵFactoryDeclaration<MatStepContent, never>;
 }
 
 // @public (undocumented)
-export class MatStepHeader extends _MatStepHeaderBase implements AfterViewInit, OnDestroy, CanColor {
-    constructor(_intl: MatStepperIntl, _focusMonitor: FocusMonitor, _elementRef: ElementRef<HTMLElement>, changeDetectorRef: ChangeDetectorRef);
+export class MatStepHeader extends CdkStepHeader implements AfterViewInit, OnDestroy {
+    constructor(...args: unknown[]);
     active: boolean;
+    color: ThemePalette;
     disableRipple: boolean;
     errorMessage: string;
     focus(origin?: FocusOrigin, options?: FocusOptions): void;
@@ -111,7 +102,7 @@ export class MatStepHeader extends _MatStepHeaderBase implements AfterViewInit, 
     _stringLabel(): string | null;
     _templateLabel(): MatStepLabel | null;
     // (undocumented)
-    static ɵcmp: i0.ɵɵComponentDeclaration<MatStepHeader, "mat-step-header", never, { "color": "color"; "state": "state"; "label": "label"; "errorMessage": "errorMessage"; "iconOverrides": "iconOverrides"; "index": "index"; "selected": "selected"; "active": "active"; "optional": "optional"; "disableRipple": "disableRipple"; }, {}, never, never, false, never>;
+    static ɵcmp: i0.ɵɵComponentDeclaration<MatStepHeader, "mat-step-header", never, { "state": { "alias": "state"; "required": false; }; "label": { "alias": "label"; "required": false; }; "errorMessage": { "alias": "errorMessage"; "required": false; }; "iconOverrides": { "alias": "iconOverrides"; "required": false; }; "index": { "alias": "index"; "required": false; }; "selected": { "alias": "selected"; "required": false; }; "active": { "alias": "active"; "required": false; }; "optional": { "alias": "optional"; "required": false; }; "disableRipple": { "alias": "disableRipple"; "required": false; }; "color": { "alias": "color"; "required": false; }; }, {}, never, never, true, never>;
     // (undocumented)
     static ɵfac: i0.ɵɵFactoryDeclaration<MatStepHeader, never>;
 }
@@ -119,16 +110,16 @@ export class MatStepHeader extends _MatStepHeaderBase implements AfterViewInit, 
 // @public (undocumented)
 export class MatStepLabel extends CdkStepLabel {
     // (undocumented)
-    static ɵdir: i0.ɵɵDirectiveDeclaration<MatStepLabel, "[matStepLabel]", never, {}, {}, never, never, false, never>;
+    static ɵdir: i0.ɵɵDirectiveDeclaration<MatStepLabel, "[matStepLabel]", never, {}, {}, never, never, true, never>;
     // (undocumented)
     static ɵfac: i0.ɵɵFactoryDeclaration<MatStepLabel, never>;
 }
 
 // @public (undocumented)
-export class MatStepper extends CdkStepper implements AfterContentInit {
-    constructor(dir: Directionality, changeDetectorRef: ChangeDetectorRef, elementRef: ElementRef<HTMLElement>);
+export class MatStepper extends CdkStepper implements AfterViewInit, AfterContentInit, OnDestroy {
+    constructor(...args: unknown[]);
+    _animatedContainers: QueryList<ElementRef>;
     readonly animationDone: EventEmitter<void>;
-    readonly _animationDone: Subject<AnimationEvent_2>;
     get animationDuration(): string;
     set animationDuration(value: string);
     color: ThemePalette;
@@ -138,34 +129,41 @@ export class MatStepper extends CdkStepper implements AfterContentInit {
     headerPosition: 'top' | 'bottom';
     _iconOverrides: Record<string, TemplateRef<MatStepperIconContext>>;
     _icons: QueryList<MatStepperIcon>;
+    // (undocumented)
+    protected _isAnimating: WritableSignal<boolean>;
+    protected _isServer: boolean;
     labelPosition: 'bottom' | 'end';
     // (undocumented)
     ngAfterContentInit(): void;
+    // (undocumented)
+    ngAfterViewInit(): void;
+    // (undocumented)
+    ngOnDestroy(): void;
     _stepHeader: QueryList<MatStepHeader>;
     // (undocumented)
     _stepIsNavigable(index: number, step: MatStep): boolean;
     readonly steps: QueryList<MatStep>;
     _steps: QueryList<MatStep>;
     // (undocumented)
-    static ɵcmp: i0.ɵɵComponentDeclaration<MatStepper, "mat-stepper, mat-vertical-stepper, mat-horizontal-stepper, [matStepper]", ["matStepper", "matVerticalStepper", "matHorizontalStepper"], { "selectedIndex": "selectedIndex"; "disableRipple": "disableRipple"; "color": "color"; "labelPosition": "labelPosition"; "headerPosition": "headerPosition"; "animationDuration": "animationDuration"; }, { "animationDone": "animationDone"; }, ["_steps", "_icons"], never, false, never>;
+    static ɵcmp: i0.ɵɵComponentDeclaration<MatStepper, "mat-stepper, mat-vertical-stepper, mat-horizontal-stepper, [matStepper]", ["matStepper", "matVerticalStepper", "matHorizontalStepper"], { "disableRipple": { "alias": "disableRipple"; "required": false; }; "color": { "alias": "color"; "required": false; }; "labelPosition": { "alias": "labelPosition"; "required": false; }; "headerPosition": { "alias": "headerPosition"; "required": false; }; "animationDuration": { "alias": "animationDuration"; "required": false; }; }, { "animationDone": "animationDone"; }, ["_steps", "_icons"], ["*"], true, never>;
     // (undocumented)
-    static ɵfac: i0.ɵɵFactoryDeclaration<MatStepper, [{ optional: true; }, null, null]>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<MatStepper, never>;
 }
 
-// @public
+// @public @deprecated
 export const matStepperAnimations: {
-    readonly horizontalStepTransition: AnimationTriggerMetadata;
-    readonly verticalStepTransition: AnimationTriggerMetadata;
+    readonly horizontalStepTransition: any;
+    readonly verticalStepTransition: any;
 };
 
 // @public
 export class MatStepperIcon {
-    constructor(templateRef: TemplateRef<MatStepperIconContext>);
+    constructor(...args: unknown[]);
     name: StepState;
     // (undocumented)
     templateRef: TemplateRef<MatStepperIconContext>;
     // (undocumented)
-    static ɵdir: i0.ɵɵDirectiveDeclaration<MatStepperIcon, "ng-template[matStepperIcon]", never, { "name": "matStepperIcon"; }, {}, never, never, false, never>;
+    static ɵdir: i0.ɵɵDirectiveDeclaration<MatStepperIcon, "ng-template[matStepperIcon]", never, { "name": { "alias": "matStepperIcon"; "required": false; }; }, {}, never, never, true, never>;
     // (undocumented)
     static ɵfac: i0.ɵɵFactoryDeclaration<MatStepperIcon, never>;
 }
@@ -196,13 +194,13 @@ export class MatStepperModule {
     // (undocumented)
     static ɵinj: i0.ɵɵInjectorDeclaration<MatStepperModule>;
     // (undocumented)
-    static ɵmod: i0.ɵɵNgModuleDeclaration<MatStepperModule, [typeof i1.MatStep, typeof i2.MatStepLabel, typeof i1.MatStepper, typeof i3.MatStepperNext, typeof i3.MatStepperPrevious, typeof i4.MatStepHeader, typeof i5.MatStepperIcon, typeof i6.MatStepContent], [typeof i7.MatCommonModule, typeof i8.CommonModule, typeof i9.PortalModule, typeof i10.CdkStepperModule, typeof i11.MatIconModule, typeof i7.MatRippleModule], [typeof i7.MatCommonModule, typeof i1.MatStep, typeof i2.MatStepLabel, typeof i1.MatStepper, typeof i3.MatStepperNext, typeof i3.MatStepperPrevious, typeof i4.MatStepHeader, typeof i5.MatStepperIcon, typeof i6.MatStepContent]>;
+    static ɵmod: i0.ɵɵNgModuleDeclaration<MatStepperModule, never, [typeof i1.MatCommonModule, typeof i2.PortalModule, typeof i3.CdkStepperModule, typeof i4.MatIconModule, typeof i1.MatRippleModule, typeof i5.MatStep, typeof i6.MatStepLabel, typeof i5.MatStepper, typeof i7.MatStepperNext, typeof i7.MatStepperPrevious, typeof i8.MatStepHeader, typeof i9.MatStepperIcon, typeof i10.MatStepContent], [typeof i1.MatCommonModule, typeof i5.MatStep, typeof i6.MatStepLabel, typeof i5.MatStepper, typeof i7.MatStepperNext, typeof i7.MatStepperPrevious, typeof i8.MatStepHeader, typeof i9.MatStepperIcon, typeof i10.MatStepContent]>;
 }
 
 // @public
 export class MatStepperNext extends CdkStepperNext {
     // (undocumented)
-    static ɵdir: i0.ɵɵDirectiveDeclaration<MatStepperNext, "button[matStepperNext]", never, { "type": "type"; }, {}, never, never, false, never>;
+    static ɵdir: i0.ɵɵDirectiveDeclaration<MatStepperNext, "button[matStepperNext]", never, {}, {}, never, never, true, never>;
     // (undocumented)
     static ɵfac: i0.ɵɵFactoryDeclaration<MatStepperNext, never>;
 }
@@ -210,7 +208,7 @@ export class MatStepperNext extends CdkStepperNext {
 // @public
 export class MatStepperPrevious extends CdkStepperPrevious {
     // (undocumented)
-    static ɵdir: i0.ɵɵDirectiveDeclaration<MatStepperPrevious, "button[matStepperPrevious]", never, { "type": "type"; }, {}, never, never, false, never>;
+    static ɵdir: i0.ɵɵDirectiveDeclaration<MatStepperPrevious, "button[matStepperPrevious]", never, {}, {}, never, never, true, never>;
     // (undocumented)
     static ɵfac: i0.ɵɵFactoryDeclaration<MatStepperPrevious, never>;
 }

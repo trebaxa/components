@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {NgModule, Directive, ElementRef, QueryList} from '@angular/core';
@@ -51,8 +51,7 @@ function setClass(element: ElementRef<HTMLElement>, className: string, isAdd: bo
 }
 
 @NgModule({
-  imports: [MatCommonModule],
+  imports: [MatCommonModule, MatLine],
   exports: [MatLine, MatCommonModule],
-  declarations: [MatLine],
 })
 export class MatLineModule {}

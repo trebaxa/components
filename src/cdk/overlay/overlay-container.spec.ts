@@ -1,5 +1,5 @@
-import {waitForAsync, inject, TestBed} from '@angular/core/testing';
-import {Component, NgModule, ViewChild, ViewContainerRef} from '@angular/core';
+import {waitForAsync, TestBed} from '@angular/core/testing';
+import {Component, NgModule, ViewChild, ViewContainerRef, inject} from '@angular/core';
 import {PortalModule, CdkPortal} from '@angular/cdk/portal';
 import {Overlay, OverlayContainer, OverlayModule} from './index';
 
@@ -10,12 +10,10 @@ describe('OverlayContainer', () => {
   beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
       imports: [OverlayTestModule],
-    }).compileComponents();
-  }));
+    });
 
-  beforeEach(inject([Overlay, OverlayContainer], (o: Overlay, oc: OverlayContainer) => {
-    overlay = o;
-    overlayContainer = oc;
+    overlay = TestBed.inject(Overlay);
+    overlayContainer = TestBed.inject(OverlayContainer);
   }));
 
   it('should remove the overlay container element from the DOM on destruction', () => {
@@ -89,17 +87,17 @@ describe('OverlayContainer', () => {
 
 /** Test-bed component that contains a TempatePortal and an ElementRef. */
 @Component({
-  template: `<ng-template cdk-portal>Cake</ng-template>`,
+  template: `<ng-template cdkPortal>Cake</ng-template>`,
   providers: [Overlay],
+  imports: [CdkPortal],
 })
 class TestComponentWithTemplatePortals {
-  @ViewChild(CdkPortal) templatePortal: CdkPortal;
+  viewContainerRef = inject(ViewContainerRef);
 
-  constructor(public viewContainerRef: ViewContainerRef) {}
+  @ViewChild(CdkPortal) templatePortal: CdkPortal;
 }
 
 @NgModule({
-  imports: [OverlayModule, PortalModule],
-  declarations: [TestComponentWithTemplatePortals],
+  imports: [OverlayModule, PortalModule, TestComponentWithTemplatePortals],
 })
 class OverlayTestModule {}

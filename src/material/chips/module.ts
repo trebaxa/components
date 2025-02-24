@@ -3,11 +3,10 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {ENTER} from '@angular/cdk/keycodes';
-import {CommonModule} from '@angular/common';
 import {NgModule} from '@angular/core';
 import {ErrorStateMatcher, MatCommonModule, MatRippleModule} from '@angular/material/core';
 import {MatChip} from './chip';
@@ -37,9 +36,8 @@ const CHIP_DECLARATIONS = [
 ];
 
 @NgModule({
-  imports: [MatCommonModule, CommonModule, MatRippleModule],
+  imports: [MatCommonModule, MatRippleModule, MatChipAction, CHIP_DECLARATIONS],
   exports: [MatCommonModule, CHIP_DECLARATIONS],
-  declarations: [MatChipAction, CHIP_DECLARATIONS],
   providers: [
     ErrorStateMatcher,
     {

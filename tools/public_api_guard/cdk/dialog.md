@@ -6,7 +6,7 @@
 
 import { BasePortalOutlet } from '@angular/cdk/portal';
 import { CdkPortalOutlet } from '@angular/cdk/portal';
-import { ComponentFactoryResolver } from '@angular/core';
+import { ChangeDetectorRef } from '@angular/core';
 import { ComponentPortal } from '@angular/cdk/portal';
 import { ComponentRef } from '@angular/core';
 import { ComponentType } from '@angular/cdk/overlay';
@@ -14,21 +14,18 @@ import { Direction } from '@angular/cdk/bidi';
 import { DomPortal } from '@angular/cdk/portal';
 import { ElementRef } from '@angular/core';
 import { EmbeddedViewRef } from '@angular/core';
-import { FocusMonitor } from '@angular/cdk/a11y';
 import { FocusOrigin } from '@angular/cdk/a11y';
 import { FocusTrapFactory } from '@angular/cdk/a11y';
 import * as i0 from '@angular/core';
-import * as i2 from '@angular/cdk/overlay';
-import * as i3 from '@angular/cdk/portal';
-import * as i4 from '@angular/cdk/a11y';
+import * as i1 from '@angular/cdk/overlay';
+import * as i2 from '@angular/cdk/portal';
+import * as i3 from '@angular/cdk/a11y';
 import { InjectionToken } from '@angular/core';
 import { Injector } from '@angular/core';
-import { InteractivityChecker } from '@angular/cdk/a11y';
 import { NgZone } from '@angular/core';
 import { Observable } from 'rxjs';
 import { OnDestroy } from '@angular/core';
 import { Overlay } from '@angular/cdk/overlay';
-import { OverlayContainer } from '@angular/cdk/overlay';
 import { OverlayRef } from '@angular/cdk/overlay';
 import { PositionStrategy } from '@angular/cdk/overlay';
 import { ScrollStrategy } from '@angular/cdk/overlay';
@@ -44,13 +41,17 @@ export type AutoFocusTarget = 'dialog' | 'first-tabbable' | 'first-heading';
 
 // @public
 export class CdkDialogContainer<C extends DialogConfig = DialogConfig> extends BasePortalOutlet implements OnDestroy {
-    constructor(_elementRef: ElementRef, _focusTrapFactory: FocusTrapFactory, _document: any, _config: C, _interactivityChecker: InteractivityChecker, _ngZone: NgZone, _overlayRef: OverlayRef, _focusMonitor?: FocusMonitor | undefined);
-    _ariaLabelledBy: string | null;
+    constructor(...args: unknown[]);
+    // (undocumented)
+    _addAriaLabelledBy(id: string): void;
+    _ariaLabelledByQueue: string[];
     attachComponentPortal<T>(portal: ComponentPortal<T>): ComponentRef<T>;
     // @deprecated
     attachDomPortal: (portal: DomPortal) => void;
     attachTemplatePortal<T>(portal: TemplatePortal<T>): EmbeddedViewRef<T>;
     protected _captureInitialFocus(): void;
+    // (undocumented)
+    protected readonly _changeDetectorRef: ChangeDetectorRef;
     _closeInteractionType: FocusOrigin | null;
     // (undocumented)
     readonly _config: C;
@@ -59,18 +60,22 @@ export class CdkDialogContainer<C extends DialogConfig = DialogConfig> extends B
     // (undocumented)
     protected _document: Document;
     // (undocumented)
-    protected _elementRef: ElementRef;
+    protected _elementRef: ElementRef<any>;
     // (undocumented)
     protected _focusTrapFactory: FocusTrapFactory;
     // (undocumented)
     ngOnDestroy(): void;
+    // (undocumented)
+    protected _ngZone: NgZone;
     _portalOutlet: CdkPortalOutlet;
     _recaptureFocus(): void;
+    // (undocumented)
+    _removeAriaLabelledBy(id: string): void;
     protected _trapFocus(): void;
     // (undocumented)
-    static ɵcmp: i0.ɵɵComponentDeclaration<CdkDialogContainer<any>, "cdk-dialog-container", never, {}, {}, never, never, false, never>;
+    static ɵcmp: i0.ɵɵComponentDeclaration<CdkDialogContainer<any>, "cdk-dialog-container", never, {}, {}, never, never, true, never>;
     // (undocumented)
-    static ɵfac: i0.ɵɵFactoryDeclaration<CdkDialogContainer<any>, [null, null, { optional: true; }, null, null, null, null, null]>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<CdkDialogContainer<any>, never>;
 }
 
 // @public
@@ -78,7 +83,7 @@ export const DEFAULT_DIALOG_CONFIG: InjectionToken<DialogConfig<unknown, unknown
 
 // @public (undocumented)
 export class Dialog implements OnDestroy {
-    constructor(_overlay: Overlay, _injector: Injector, _defaultOptions: DialogConfig, _parentDialog: Dialog, _overlayContainer: OverlayContainer, scrollStrategy: any);
+    constructor(...args: unknown[]);
     readonly afterAllClosed: Observable<void>;
     get afterOpened(): Subject<DialogRef<any, any>>;
     closeAll(): void;
@@ -91,7 +96,7 @@ export class Dialog implements OnDestroy {
     open<R = unknown, D = unknown, C = unknown>(componentOrTemplateRef: ComponentType<C> | TemplateRef<C>, config?: DialogConfig<D, DialogRef<R, C>>): DialogRef<R, C>;
     get openDialogs(): readonly DialogRef<any, any>[];
     // (undocumented)
-    static ɵfac: i0.ɵɵFactoryDeclaration<Dialog, [null, null, { optional: true; }, { optional: true; skipSelf: true; }, null, null]>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<Dialog, never>;
     // (undocumented)
     static ɵprov: i0.ɵɵInjectableDeclaration<Dialog>;
 }
@@ -102,14 +107,14 @@ export const DIALOG_DATA: InjectionToken<any>;
 // @public
 export const DIALOG_SCROLL_STRATEGY: InjectionToken<() => ScrollStrategy>;
 
-// @public
+// @public @deprecated
 export const DIALOG_SCROLL_STRATEGY_PROVIDER: {
     provide: InjectionToken<() => ScrollStrategy>;
     deps: (typeof Overlay)[];
     useFactory: typeof DIALOG_SCROLL_STRATEGY_PROVIDER_FACTORY;
 };
 
-// @public
+// @public @deprecated
 export function DIALOG_SCROLL_STRATEGY_PROVIDER_FACTORY(overlay: Overlay): () => ScrollStrategy;
 
 // @public
@@ -127,7 +132,9 @@ export class DialogConfig<D = unknown, R = unknown, C extends BasePortalOutlet =
     backdropClass?: string | string[];
     closeOnDestroy?: boolean;
     closeOnNavigation?: boolean;
-    componentFactoryResolver?: ComponentFactoryResolver;
+    closeOnOverlayDetachments?: boolean;
+    // @deprecated
+    componentFactoryResolver?: unknown;
     container?: Type<C> | {
         type: Type<C>;
         providers: (config: DialogConfig<D, R, C>) => StaticProvider[];
@@ -161,7 +168,7 @@ export class DialogModule {
     // (undocumented)
     static ɵinj: i0.ɵɵInjectorDeclaration<DialogModule>;
     // (undocumented)
-    static ɵmod: i0.ɵɵNgModuleDeclaration<DialogModule, [typeof i1.CdkDialogContainer], [typeof i2.OverlayModule, typeof i3.PortalModule, typeof i4.A11yModule], [typeof i3.PortalModule, typeof i1.CdkDialogContainer]>;
+    static ɵmod: i0.ɵɵNgModuleDeclaration<DialogModule, never, [typeof i1.OverlayModule, typeof i2.PortalModule, typeof i3.A11yModule, typeof i4.CdkDialogContainer], [typeof i2.PortalModule, typeof i4.CdkDialogContainer]>;
 }
 
 // @public
@@ -172,6 +179,7 @@ export class DialogRef<R = unknown, C = unknown> {
     close(result?: R, options?: DialogCloseOptions): void;
     readonly closed: Observable<R | undefined>;
     readonly componentInstance: C | null;
+    readonly componentRef: ComponentRef<C> | null;
     // (undocumented)
     readonly config: DialogConfig<any, DialogRef<R, C>, BasePortalOutlet>;
     readonly containerInstance: BasePortalOutlet & {

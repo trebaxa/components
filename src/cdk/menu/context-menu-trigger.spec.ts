@@ -18,7 +18,7 @@ describe('CdkContextMenuTrigger', () => {
       TestBed.configureTestingModule({
         imports: [CdkMenuModule],
         declarations: [SimpleContextMenu],
-      }).compileComponents();
+      });
     }));
 
     beforeEach(() => {
@@ -152,7 +152,7 @@ describe('CdkContextMenuTrigger', () => {
       TestBed.configureTestingModule({
         imports: [CdkMenuModule],
         declarations: [NestedContextMenu],
-      }).compileComponents();
+      });
     }));
 
     beforeEach(() => {
@@ -213,6 +213,7 @@ describe('CdkContextMenuTrigger', () => {
         ' is disabled',
       () => {
         fixture.componentInstance.copyMenuDisabled = true;
+        fixture.changeDetectorRef.markForCheck();
         fixture.detectChanges();
         openCopyContextMenu();
 
@@ -266,7 +267,7 @@ describe('CdkContextMenuTrigger', () => {
       TestBed.configureTestingModule({
         imports: [CdkMenuModule],
         declarations: [ContextMenuWithSubmenu],
-      }).compileComponents();
+      });
     }));
 
     beforeEach(() => {
@@ -297,7 +298,7 @@ describe('CdkContextMenuTrigger', () => {
       TestBed.configureTestingModule({
         imports: [CdkMenuModule],
         declarations: [ContextMenuWithMenuBarAndInlineMenu],
-      }).compileComponents();
+      });
     }));
 
     beforeEach(() => {
@@ -401,7 +402,7 @@ describe('CdkContextMenuTrigger', () => {
       TestBed.configureTestingModule({
         imports: [CdkMenuModule],
         declarations: [componentClass],
-      }).compileComponents();
+      });
 
       const fixture = TestBed.createComponent(componentClass);
       fixture.detectChanges();
@@ -427,7 +428,7 @@ describe('CdkContextMenuTrigger', () => {
     TestBed.configureTestingModule({
       imports: [CdkMenuModule],
       declarations: [ContextTriggerWithData],
-    }).compileComponents();
+    });
 
     const fixture = TestBed.createComponent(ContextTriggerWithData);
     fixture.componentInstance.menuData = {message: 'Hello!'};
@@ -450,6 +451,7 @@ describe('CdkContextMenuTrigger', () => {
       </div>
     </ng-template>
   `,
+  standalone: false,
 })
 class SimpleContextMenu {
   @ViewChild(CdkContextMenuTrigger) trigger: CdkContextMenuTrigger;
@@ -478,6 +480,7 @@ class SimpleContextMenu {
       <div #copy_menu cdkMenu></div>
     </ng-template>
   `,
+  standalone: false,
 })
 class NestedContextMenu {
   @ViewChild('cut_trigger', {read: ElementRef}) cutContext: ElementRef<HTMLElement>;
@@ -503,6 +506,7 @@ class NestedContextMenu {
       <div #copy_menu cdkMenu></div>
     </ng-template>
   `,
+  standalone: false,
 })
 class ContextMenuWithSubmenu {
   @ViewChild(CdkContextMenuTrigger, {read: ElementRef}) context: ElementRef<HTMLElement>;
@@ -533,6 +537,7 @@ class ContextMenuWithSubmenu {
       <button #inline_menu_button cdkMenuItem></button>
     </div>
   `,
+  standalone: false,
 })
 class ContextMenuWithMenuBarAndInlineMenu {
   @ViewChild(CdkMenuBar, {read: ElementRef}) nativeMenuBar: ElementRef;
@@ -561,6 +566,7 @@ class ContextMenuWithMenuBarAndInlineMenu {
       </div>
     </ng-template>
   `,
+  standalone: false,
 })
 class MenuBarAndContextTriggerShareMenu {
   @ViewChild(CdkMenuTrigger) menuBarTrigger: CdkMenuTrigger;
@@ -576,6 +582,7 @@ class MenuBarAndContextTriggerShareMenu {
       <div cdkMenu class="test-menu">{{message}}</div>
     </ng-template>
   `,
+  standalone: false,
 })
 class ContextTriggerWithData {
   @ViewChild(CdkContextMenuTrigger, {read: ElementRef}) triggerElement: ElementRef<HTMLElement>;

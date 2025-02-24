@@ -1,4 +1,5 @@
-import {Component} from '@angular/core';
+import {ChangeDetectionStrategy, Component} from '@angular/core';
+import {MatChipsModule} from '@angular/material/chips';
 
 /**
  * @title Chips avatar
@@ -7,6 +8,8 @@ import {Component} from '@angular/core';
 @Component({
   selector: 'chips-avatar-example',
   templateUrl: 'chips-avatar-example.html',
-  styleUrls: ['chips-avatar-example.css'],
+  styleUrl: 'chips-avatar-example.css',
+  imports: [MatChipsModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ChipsAvatarExample {}

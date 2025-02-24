@@ -1,19 +1,15 @@
-import {NgZone, Component} from '@angular/core';
+import {Component, ApplicationRef} from '@angular/core';
 import {TestBed} from '@angular/core/testing';
-import {MockNgZone} from '../../testing/private';
 import {PortalModule, ComponentPortal} from '@angular/cdk/portal';
 import {OverlayModule, Overlay, OverlayConfig, OverlayRef} from '../index';
 
 describe('GlobalPositonStrategy', () => {
   let overlayRef: OverlayRef;
   let overlay: Overlay;
-  let zone: MockNgZone;
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      imports: [OverlayModule, PortalModule],
-      declarations: [BlankPortal],
-      providers: [{provide: NgZone, useFactory: () => (zone = new MockNgZone())}],
+      imports: [OverlayModule, PortalModule, BlankPortal],
     });
 
     overlay = TestBed.inject(Overlay);
@@ -30,7 +26,7 @@ describe('GlobalPositonStrategy', () => {
     const portal = new ComponentPortal(BlankPortal);
     overlayRef = overlay.create(config);
     overlayRef.attach(portal);
-    zone.simulateZoneExit();
+    TestBed.inject(ApplicationRef).tick();
     return overlayRef;
   }
 
@@ -459,5 +455,8 @@ describe('GlobalPositonStrategy', () => {
   });
 });
 
-@Component({template: ''})
+@Component({
+  template: '',
+  imports: [OverlayModule, PortalModule],
+})
 class BlankPortal {}

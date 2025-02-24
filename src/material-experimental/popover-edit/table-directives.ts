@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 import {Directive} from '@angular/core';
 import {
@@ -22,10 +22,11 @@ const POPOVER_EDIT_HOST_BINDINGS = {
 };
 
 const POPOVER_EDIT_INPUTS = [
-  'template: matPopoverEdit',
-  'context: matPopoverEditContext',
-  'colspan: matPopoverEditColspan',
-  'disabled: matPopoverEditDisabled',
+  {name: 'template', alias: 'matPopoverEdit'},
+  {name: 'context', alias: 'matPopoverEditContext'},
+  {name: 'colspan', alias: 'matPopoverEditColspan'},
+  {name: 'disabled', alias: 'matPopoverEditDisabled'},
+  {name: 'ariaLabel', alias: 'matPopoverEditAriaLabel'},
 ];
 
 const EDIT_PANE_CLASS = 'mat-edit-pane';

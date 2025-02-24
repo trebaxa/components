@@ -5,7 +5,6 @@
 ```ts
 
 import { AfterContentInit } from '@angular/core';
-import { BooleanInput } from '@angular/cdk/coercion';
 import { ConnectedPosition } from '@angular/cdk/overlay';
 import { Directionality } from '@angular/cdk/bidi';
 import { ElementRef } from '@angular/core';
@@ -19,10 +18,14 @@ import { InjectionToken } from '@angular/core';
 import { Injector } from '@angular/core';
 import { NgZone } from '@angular/core';
 import { Observable } from 'rxjs';
+import { OnChanges } from '@angular/core';
 import { OnDestroy } from '@angular/core';
 import { Optional } from '@angular/core';
 import { OverlayRef } from '@angular/cdk/overlay';
 import { QueryList } from '@angular/core';
+import { Renderer2 } from '@angular/core';
+import { ScrollStrategy } from '@angular/cdk/overlay';
+import { SimpleChanges } from '@angular/core';
 import { Subject } from 'rxjs';
 import { TemplatePortal } from '@angular/cdk/portal';
 import { TemplateRef } from '@angular/core';
@@ -35,12 +38,13 @@ export const CDK_MENU: InjectionToken<Menu>;
 export class CdkContextMenuTrigger extends CdkMenuTriggerBase implements OnDestroy {
     constructor();
     close(): void;
-    get disabled(): boolean;
-    set disabled(value: BooleanInput);
+    disabled: boolean;
+    // (undocumented)
+    static ngAcceptInputType_disabled: unknown;
     open(coordinates: ContextMenuCoordinates): void;
     _openOnContextMenu(event: MouseEvent): void;
     // (undocumented)
-    static ɵdir: i0.ɵɵDirectiveDeclaration<CdkContextMenuTrigger, "[cdkContextMenuTriggerFor]", ["cdkContextMenuTriggerFor"], { "menuTemplateRef": "cdkContextMenuTriggerFor"; "menuPosition": "cdkContextMenuPosition"; "menuData": "cdkContextMenuTriggerData"; "disabled": "cdkContextMenuDisabled"; }, { "opened": "cdkContextMenuOpened"; "closed": "cdkContextMenuClosed"; }, never, never, true, never>;
+    static ɵdir: i0.ɵɵDirectiveDeclaration<CdkContextMenuTrigger, "[cdkContextMenuTriggerFor]", ["cdkContextMenuTriggerFor"], { "menuTemplateRef": { "alias": "cdkContextMenuTriggerFor"; "required": false; }; "menuPosition": { "alias": "cdkContextMenuPosition"; "required": false; }; "menuData": { "alias": "cdkContextMenuTriggerData"; "required": false; }; "disabled": { "alias": "cdkContextMenuDisabled"; "required": false; }; }, { "opened": "cdkContextMenuOpened"; "closed": "cdkContextMenuClosed"; }, never, never, true, never>;
     // (undocumented)
     static ɵfac: i0.ɵɵFactoryDeclaration<CdkContextMenuTrigger, never>;
 }
@@ -96,12 +100,13 @@ export abstract class CdkMenuBase extends CdkMenuGroup implements Menu, AfterCon
     ngAfterContentInit(): void;
     // (undocumented)
     ngOnDestroy(): void;
+    // (undocumented)
     protected ngZone: NgZone;
     orientation: 'horizontal' | 'vertical';
     protected pointerTracker?: PointerFocusTracker<CdkMenuItem>;
     protected triggerItem?: CdkMenuItem;
     // (undocumented)
-    static ɵdir: i0.ɵɵDirectiveDeclaration<CdkMenuBase, never, never, { "id": "id"; }, {}, ["items"], never, false, never>;
+    static ɵdir: i0.ɵɵDirectiveDeclaration<CdkMenuBase, never, never, { "id": { "alias": "id"; "required": false; }; }, {}, ["items"], never, true, never>;
     // (undocumented)
     static ɵfac: i0.ɵɵFactoryDeclaration<CdkMenuBase, never>;
 }
@@ -121,17 +126,17 @@ export class CdkMenuItem implements FocusableOption, FocusableElement, Toggler, 
     protected readonly destroyed: Subject<void>;
     // (undocumented)
     protected readonly _dir: Directionality | null;
-    get disabled(): boolean;
-    set disabled(value: BooleanInput);
+    disabled: boolean;
     // (undocumented)
     readonly _elementRef: ElementRef<HTMLElement>;
     focus(): void;
     getLabel(): string;
     getMenu(): Menu | undefined;
     getMenuTrigger(): CdkMenuTrigger | null;
-    _handleClick(): void;
     get hasMenu(): boolean;
     isMenuOpen(): boolean;
+    // (undocumented)
+    static ngAcceptInputType_disabled: unknown;
     // (undocumented)
     ngOnDestroy(): void;
     // (undocumented)
@@ -146,7 +151,7 @@ export class CdkMenuItem implements FocusableOption, FocusableElement, Toggler, 
     readonly triggered: EventEmitter<void>;
     typeaheadLabel: string | null;
     // (undocumented)
-    static ɵdir: i0.ɵɵDirectiveDeclaration<CdkMenuItem, "[cdkMenuItem]", ["cdkMenuItem"], { "disabled": "cdkMenuItemDisabled"; "typeaheadLabel": "cdkMenuitemTypeaheadLabel"; }, { "triggered": "cdkMenuItemTriggered"; }, never, never, true, never>;
+    static ɵdir: i0.ɵɵDirectiveDeclaration<CdkMenuItem, "[cdkMenuItem]", ["cdkMenuItem"], { "disabled": { "alias": "cdkMenuItemDisabled"; "required": false; }; "typeaheadLabel": { "alias": "cdkMenuitemTypeaheadLabel"; "required": false; }; }, { "triggered": "cdkMenuItemTriggered"; }, never, never, true, never>;
     // (undocumented)
     static ɵfac: i0.ɵɵFactoryDeclaration<CdkMenuItem, never>;
 }
@@ -178,11 +183,12 @@ export class CdkMenuItemRadio extends CdkMenuItemSelectable implements OnDestroy
 
 // @public
 export abstract class CdkMenuItemSelectable extends CdkMenuItem {
-    get checked(): boolean;
-    set checked(value: BooleanInput);
+    checked: boolean;
     protected closeOnSpacebarTrigger: boolean;
     // (undocumented)
-    static ɵdir: i0.ɵɵDirectiveDeclaration<CdkMenuItemSelectable, never, never, { "checked": "cdkMenuItemChecked"; }, {}, never, never, false, never>;
+    static ngAcceptInputType_checked: unknown;
+    // (undocumented)
+    static ɵdir: i0.ɵɵDirectiveDeclaration<CdkMenuItemSelectable, never, never, { "checked": { "alias": "cdkMenuItemChecked"; "required": false; }; }, {}, never, never, true, never>;
     // (undocumented)
     static ɵfac: i0.ɵɵFactoryDeclaration<CdkMenuItemSelectable, never>;
 }
@@ -198,17 +204,21 @@ export class CdkMenuModule {
 }
 
 // @public
-export class CdkMenuTrigger extends CdkMenuTriggerBase implements OnDestroy {
+export class CdkMenuTrigger extends CdkMenuTriggerBase implements OnChanges, OnDestroy {
     constructor();
     close(): void;
     getMenu(): Menu | undefined;
     _handleClick(): void;
+    // (undocumented)
+    ngOnChanges(changes: SimpleChanges): void;
+    // (undocumented)
+    ngOnDestroy(): void;
     open(): void;
     _setHasFocus(hasFocus: boolean): void;
     toggle(): void;
     _toggleOnKeydown(event: KeyboardEvent): void;
     // (undocumented)
-    static ɵdir: i0.ɵɵDirectiveDeclaration<CdkMenuTrigger, "[cdkMenuTriggerFor]", ["cdkMenuTriggerFor"], { "menuTemplateRef": "cdkMenuTriggerFor"; "menuPosition": "cdkMenuPosition"; "menuData": "cdkMenuTriggerData"; }, { "opened": "cdkMenuOpened"; "closed": "cdkMenuClosed"; }, never, never, true, never>;
+    static ɵdir: i0.ɵɵDirectiveDeclaration<CdkMenuTrigger, "[cdkMenuTriggerFor]", ["cdkMenuTriggerFor"], { "menuTemplateRef": { "alias": "cdkMenuTriggerFor"; "required": false; }; "menuPosition": { "alias": "cdkMenuPosition"; "required": false; }; "menuData": { "alias": "cdkMenuTriggerData"; "required": false; }; }, { "opened": "cdkMenuOpened"; "closed": "cdkMenuClosed"; }, never, never, true, never>;
     // (undocumented)
     static ɵfac: i0.ɵɵFactoryDeclaration<CdkMenuTrigger, never>;
 }
@@ -224,6 +234,7 @@ export abstract class CdkMenuTriggerBase implements OnDestroy {
     isOpen(): boolean;
     menuData: unknown;
     menuPosition: ConnectedPosition[];
+    protected readonly menuScrollStrategy: () => ScrollStrategy;
     protected readonly menuStack: MenuStack;
     menuTemplateRef: TemplateRef<unknown> | null;
     // (undocumented)
@@ -234,7 +245,7 @@ export abstract class CdkMenuTriggerBase implements OnDestroy {
     protected readonly stopOutsideClicksListener: Observable<void>;
     protected readonly viewContainerRef: ViewContainerRef;
     // (undocumented)
-    static ɵdir: i0.ɵɵDirectiveDeclaration<CdkMenuTriggerBase, never, never, {}, {}, never, never, false, never>;
+    static ɵdir: i0.ɵɵDirectiveDeclaration<CdkMenuTriggerBase, never, never, {}, {}, never, never, true, never>;
     // (undocumented)
     static ɵfac: i0.ɵɵFactoryDeclaration<CdkMenuTriggerBase, never>;
 }
@@ -274,7 +285,7 @@ export interface FocusableElement {
 }
 
 // @public
-export const enum FocusNext {
+export enum FocusNext {
     // (undocumented)
     currentItem = 2,
     // (undocumented)
@@ -294,6 +305,9 @@ export interface Menu extends MenuStackItem {
 
 // @public
 export const MENU_AIM: InjectionToken<MenuAim>;
+
+// @public
+export const MENU_SCROLL_STRATEGY: InjectionToken<() => ScrollStrategy>;
 
 // @public
 export const MENU_STACK: InjectionToken<MenuStack>;
@@ -342,7 +356,7 @@ export interface MenuStackItem {
 }
 
 // @public
-export const PARENT_OR_NEW_INLINE_MENU_STACK_PROVIDER: (orientation: 'vertical' | 'horizontal') => {
+export const PARENT_OR_NEW_INLINE_MENU_STACK_PROVIDER: (orientation: "vertical" | "horizontal") => {
     provide: InjectionToken<MenuStack>;
     deps: Optional[][];
     useFactory: (parentMenuStack?: MenuStack) => MenuStack;
@@ -357,8 +371,7 @@ export const PARENT_OR_NEW_MENU_STACK_PROVIDER: {
 
 // @public
 export class PointerFocusTracker<T extends FocusableElement> {
-    constructor(
-    _items: QueryList<T>);
+    constructor(_renderer: Renderer2, _items: QueryList<T>);
     activeElement?: T;
     destroy(): void;
     readonly entered: Observable<T>;

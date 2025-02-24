@@ -13,11 +13,8 @@ import {dispatchFakeEvent} from '../testing/private';
 describe('ScrollDispatcher', () => {
   beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
-      imports: [ScrollingModule],
-      declarations: [ScrollingComponent, NestedScrollingComponent],
+      imports: [ScrollingModule, ScrollingComponent, NestedScrollingComponent],
     });
-
-    TestBed.compileComponents();
   }));
 
   describe('Basic usage', () => {
@@ -71,18 +68,6 @@ describe('ScrollDispatcher', () => {
       tick(throttleTime);
       expect(serviceSpy).toHaveBeenCalled();
     }));
-
-    it('should not execute the global events in the Angular zone', () => {
-      scroll.scrolled(0).subscribe(() => {});
-      dispatchFakeEvent(document, 'scroll', false);
-
-      expect(fixture.ngZone!.isStable).toBe(true);
-    });
-
-    it('should not execute the scrollable events in the Angular zone', () => {
-      dispatchFakeEvent(fixture.componentInstance.scrollingElement.nativeElement, 'scroll');
-      expect(fixture.ngZone!.isStable).toBe(true);
-    });
 
     it('should be able to unsubscribe from the global scrollable', () => {
       const spy = jasmine.createSpy('global scroll callback');
@@ -210,73 +195,73 @@ describe('ScrollDispatcher', () => {
   describe('lazy subscription', () => {
     let scroll: ScrollDispatcher;
 
-    beforeEach(inject([ScrollDispatcher], (s: ScrollDispatcher) => {
-      scroll = s;
-    }));
+    function hasGlobalListener(): boolean {
+      return !!(scroll as any)._cleanupGlobalListener;
+    }
+
+    beforeEach(() => {
+      scroll = TestBed.inject(ScrollDispatcher);
+    });
 
     it('should lazily add global listeners as service subscriptions are added and removed', () => {
-      expect(scroll._globalSubscription)
-        .withContext('Expected no global listeners on init.')
-        .toBeNull();
+      expect(hasGlobalListener()).withContext('Expected no global listeners on init.').toBe(false);
 
       const subscription = scroll.scrolled(0).subscribe(() => {});
 
-      expect(scroll._globalSubscription).toBeTruthy(
-        'Expected global listeners after a subscription has been added.',
-      );
+      expect(hasGlobalListener())
+        .withContext('Expected global listeners after a subscription has been added.')
+        .toBe(true);
 
       subscription.unsubscribe();
 
-      expect(scroll._globalSubscription).toBeNull(
-        'Expected global listeners to have been removed after the subscription has stopped.',
-      );
+      expect(hasGlobalListener())
+        .withContext(
+          'Expected global listeners to have been removed after the subscription has stopped.',
+        )
+        .toBe(false);
     });
 
     it('should remove global listeners on unsubscribe, despite any other live scrollables', () => {
       const fixture = TestBed.createComponent(NestedScrollingComponent);
       fixture.detectChanges();
 
-      expect(scroll._globalSubscription)
-        .withContext('Expected no global listeners on init.')
-        .toBeNull();
+      expect(hasGlobalListener()).withContext('Expected no global listeners on init.').toBe(false);
       expect(scroll.scrollContainers.size).withContext('Expected multiple scrollables').toBe(4);
 
       const subscription = scroll.scrolled(0).subscribe(() => {});
 
-      expect(scroll._globalSubscription)
+      expect(hasGlobalListener())
         .withContext('Expected global listeners after a subscription has been added.')
-        .toBeTruthy();
+        .toBe(true);
 
       subscription.unsubscribe();
 
-      expect(scroll._globalSubscription)
+      expect(hasGlobalListener())
         .withContext(
           'Expected global listeners to have been removed after ' + 'the subscription has stopped.',
         )
-        .toBeNull();
+        .toBe(false);
       expect(scroll.scrollContainers.size)
         .withContext('Expected scrollable count to stay the same')
         .toBe(4);
     });
 
     it('should remove the global subscription on destroy', () => {
-      expect(scroll._globalSubscription)
-        .withContext('Expected no global listeners on init.')
-        .toBeNull();
+      expect(hasGlobalListener()).withContext('Expected no global listeners on init.').toBe(false);
 
       const subscription = scroll.scrolled(0).subscribe(() => {});
 
-      expect(scroll._globalSubscription)
+      expect(hasGlobalListener())
         .withContext('Expected global listeners after a subscription has been added.')
-        .toBeTruthy();
+        .toBe(true);
 
       scroll.ngOnDestroy();
 
-      expect(scroll._globalSubscription)
+      expect(hasGlobalListener())
         .withContext(
-          'Expected global listeners to have been removed after ' + 'the subscription has stopped.',
+          'Expected global listeners to have been removed after the subscription has stopped.',
         )
-        .toBeNull();
+        .toBe(false);
 
       subscription.unsubscribe();
     });
@@ -286,6 +271,7 @@ describe('ScrollDispatcher', () => {
 /** Simple component that contains a large div and can be scrolled. */
 @Component({
   template: `<div #scrollingElement cdkScrollable style="height: 9999px"></div>`,
+  imports: [ScrollingModule],
 })
 class ScrollingComponent {
   @ViewChild(CdkScrollable) scrollable: CdkScrollable;
@@ -303,6 +289,7 @@ class ScrollingComponent {
     </div>
     <div id="scrollable-2" cdkScrollable></div>
   `,
+  imports: [ScrollingModule],
 })
 class NestedScrollingComponent {
   @ViewChild('interestingElement') interestingElement: ElementRef<HTMLElement>;

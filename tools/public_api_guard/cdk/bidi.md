@@ -17,7 +17,7 @@ export class BidiModule {
     // (undocumented)
     static ɵinj: i0.ɵɵInjectorDeclaration<BidiModule>;
     // (undocumented)
-    static ɵmod: i0.ɵɵNgModuleDeclaration<BidiModule, [typeof i1.Dir], never, [typeof i1.Dir]>;
+    static ɵmod: i0.ɵɵNgModuleDeclaration<BidiModule, never, [typeof i1.Dir], [typeof i1.Dir]>;
 }
 
 // @public
@@ -31,7 +31,7 @@ export class Dir implements Directionality, AfterContentInit, OnDestroy {
     _rawDir: string;
     get value(): Direction;
     // (undocumented)
-    static ɵdir: i0.ɵɵDirectiveDeclaration<Dir, "[dir]", ["dir"], { "dir": "dir"; }, { "change": "dirChange"; }, never, never, false, never>;
+    static ɵdir: i0.ɵɵDirectiveDeclaration<Dir, "[dir]", ["dir"], { "dir": { "alias": "dir"; "required": false; }; }, { "change": "dirChange"; }, never, never, true, never>;
     // (undocumented)
     static ɵfac: i0.ɵɵFactoryDeclaration<Dir, never>;
 }
@@ -44,13 +44,13 @@ export type Direction = 'ltr' | 'rtl';
 
 // @public
 export class Directionality implements OnDestroy {
-    constructor(_document?: any);
+    constructor(...args: unknown[]);
     readonly change: EventEmitter<Direction>;
     // (undocumented)
     ngOnDestroy(): void;
     readonly value: Direction;
     // (undocumented)
-    static ɵfac: i0.ɵɵFactoryDeclaration<Directionality, [{ optional: true; }]>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<Directionality, never>;
     // (undocumented)
     static ɵprov: i0.ɵɵInjectableDeclaration<Directionality>;
 }

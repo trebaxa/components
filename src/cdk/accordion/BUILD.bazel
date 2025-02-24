@@ -15,7 +15,7 @@ ng_module(
         exclude = ["**/*.spec.ts"],
     ),
     deps = [
-        "//src/cdk/coercion",
+        "//src/cdk/a11y",
         "//src/cdk/collections",
         "@npm//@angular/core",
         "@npm//rxjs",

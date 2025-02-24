@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -12,12 +12,13 @@ import {
   ChangeDetectorRef,
   Component,
   ElementRef,
-  Inject,
   Input,
   NgZone,
   OnDestroy,
+  Renderer2,
   ViewChild,
   ViewEncapsulation,
+  inject,
 } from '@angular/core';
 import {MatRipple, RippleAnimationConfig, RippleRef, RippleState} from '@angular/material/core';
 import {
@@ -28,6 +29,7 @@ import {
   MAT_SLIDER,
   MAT_SLIDER_VISUAL_THUMB,
 } from './slider-interface';
+import {Platform} from '@angular/cdk/platform';
 
 /**
  * The visual slider thumb.
@@ -39,15 +41,22 @@ import {
 @Component({
   selector: 'mat-slider-visual-thumb',
   templateUrl: './slider-thumb.html',
-  styleUrls: ['slider-thumb.css'],
+  styleUrl: 'slider-thumb.css',
   host: {
     'class': 'mdc-slider__thumb mat-mdc-slider-visual-thumb',
   },
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
   providers: [{provide: MAT_SLIDER_VISUAL_THUMB, useExisting: MatSliderVisualThumb}],
+  imports: [MatRipple],
 })
 export class MatSliderVisualThumb implements _MatSliderVisualThumb, AfterViewInit, OnDestroy {
+  readonly _cdr = inject(ChangeDetectorRef);
+  private readonly _ngZone = inject(NgZone);
+  private _slider = inject<_MatSlider>(MAT_SLIDER);
+  private _renderer = inject(Renderer2);
+  private _listenerCleanups: (() => void)[] | undefined;
+
   /** Whether the slider displays a numeric value label upon pressing the thumb. */
   @Input() discrete: boolean;
 
@@ -71,7 +80,7 @@ export class MatSliderVisualThumb implements _MatSliderVisualThumb, AfterViewIni
   private _sliderInput: _MatSliderThumb;
 
   /** The native html element of the slider input corresponding to this thumb. */
-  private _sliderInputEl: HTMLInputElement;
+  private _sliderInputEl: HTMLInputElement | undefined;
 
   /** The RippleRef for the slider thumbs hover state. */
   private _hoverRippleRef: RippleRef | undefined;
@@ -92,43 +101,44 @@ export class MatSliderVisualThumb implements _MatSliderVisualThumb, AfterViewIni
   _isValueIndicatorVisible: boolean = false;
 
   /** The host native HTML input element. */
-  _hostElement: HTMLElement;
+  _hostElement = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
 
-  constructor(
-    readonly _cdr: ChangeDetectorRef,
-    private readonly _ngZone: NgZone,
-    _elementRef: ElementRef<HTMLElement>,
-    @Inject(MAT_SLIDER) private _slider: _MatSlider,
-  ) {
-    this._hostElement = _elementRef.nativeElement;
-  }
+  private _platform = inject(Platform);
+
+  constructor(...args: unknown[]);
+  constructor() {}
 
   ngAfterViewInit() {
+    const sliderInput = this._slider._getInput(this.thumbPosition);
+
+    // No-op if the slider isn't configured properly. `MatSlider` will
+    // throw an error instructing the user how to set up the slider.
+    if (!sliderInput) {
+      return;
+    }
+
     this._ripple.radius = 24;
-    this._sliderInput = this._slider._getInput(this.thumbPosition)!;
+    this._sliderInput = sliderInput;
     this._sliderInputEl = this._sliderInput._hostElement;
-    const input = this._sliderInputEl;
 
     // These listeners don't update any data bindings so we bind them outside
     // of the NgZone to prevent Angular from needlessly running change detection.
     this._ngZone.runOutsideAngular(() => {
-      input.addEventListener('pointermove', this._onPointerMove);
-      input.addEventListener('pointerdown', this._onDragStart);
-      input.addEventListener('pointerup', this._onDragEnd);
-      input.addEventListener('pointerleave', this._onMouseLeave);
-      input.addEventListener('focus', this._onFocus);
-      input.addEventListener('blur', this._onBlur);
+      const input = this._sliderInputEl!;
+      const renderer = this._renderer;
+      this._listenerCleanups = [
+        renderer.listen(input, 'pointermove', this._onPointerMove),
+        renderer.listen(input, 'pointerdown', this._onDragStart),
+        renderer.listen(input, 'pointerup', this._onDragEnd),
+        renderer.listen(input, 'pointerleave', this._onMouseLeave),
+        renderer.listen(input, 'focus', this._onFocus),
+        renderer.listen(input, 'blur', this._onBlur),
+      ];
     });
   }
 
   ngOnDestroy() {
-    const input = this._sliderInputEl;
-    input.removeEventListener('pointermove', this._onPointerMove);
-    input.removeEventListener('pointerdown', this._onDragStart);
-    input.removeEventListener('pointerup', this._onDragEnd);
-    input.removeEventListener('pointerleave', this._onMouseLeave);
-    input.removeEventListener('focus', this._onFocus);
-    input.removeEventListener('blur', this._onBlur);
+    this._listenerCleanups?.forEach(cleanup => cleanup());
   }
 
   private _onPointerMove = (event: PointerEvent): void => {
@@ -137,7 +147,7 @@ export class MatSliderVisualThumb implements _MatSliderVisualThumb, AfterViewIni
     }
 
     const rect = this._hostElement.getBoundingClientRect();
-    const isHovered = this._isSliderThumbHovered(event, rect);
+    const isHovered = this._slider._isCursorOnSliderThumb(event, rect);
     this._isHovered = isHovered;
 
     if (isHovered) {
@@ -172,7 +182,10 @@ export class MatSliderVisualThumb implements _MatSliderVisualThumb, AfterViewIni
     this._hostElement.classList.remove('mdc-slider__thumb--focused');
   };
 
-  private _onDragStart = (): void => {
+  private _onDragStart = (event: PointerEvent): void => {
+    if (event.button !== 0) {
+      return;
+    }
     this._isActive = true;
     this._showActiveRipple();
   };
@@ -183,6 +196,12 @@ export class MatSliderVisualThumb implements _MatSliderVisualThumb, AfterViewIni
     // Happens when the user starts dragging a thumb, tabs away, and then stops dragging.
     if (!this._sliderInput._isFocused) {
       this._hideRipple(this._focusRippleRef);
+    }
+
+    // On Safari we need to immediately re-show the hover ripple because
+    // sliders do not retain focus from pointer events on that platform.
+    if (this._platform.SAFARI) {
+      this._showHoverRipple();
     }
   };
 
@@ -295,14 +314,5 @@ export class MatSliderVisualThumb implements _MatSliderVisualThumb, AfterViewIni
       this._isShowingRipple(this._focusRippleRef) ||
       this._isShowingRipple(this._activeRippleRef)
     );
-  }
-
-  private _isSliderThumbHovered(event: PointerEvent, rect: DOMRect) {
-    const radius = rect.width / 2;
-    const centerX = rect.x + radius;
-    const centerY = rect.y + radius;
-    const dx = event.clientX - centerX;
-    const dy = event.clientY - centerY;
-    return Math.pow(dx, 2) + Math.pow(dy, 2) < Math.pow(radius, 2);
   }
 }

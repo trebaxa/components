@@ -1,7 +1,7 @@
 import {A11yModule, CDK_DESCRIBEDBY_HOST_ATTRIBUTE} from '../index';
 import {AriaDescriber} from './aria-describer';
 import {ComponentFixture, TestBed} from '@angular/core/testing';
-import {Component, ElementRef, ViewChild, Provider} from '@angular/core';
+import {Component, ElementRef, ViewChild, Provider, inject} from '@angular/core';
 
 describe('AriaDescriber', () => {
   let ariaDescriber: AriaDescriber;
@@ -10,10 +10,9 @@ describe('AriaDescriber', () => {
 
   function createFixture(providers: Provider[] = []) {
     TestBed.configureTestingModule({
-      imports: [A11yModule],
-      declarations: [TestApp],
+      imports: [A11yModule, TestApp],
       providers: [AriaDescriber, ...providers],
-    }).compileComponents();
+    });
 
     fixture = TestBed.createComponent(TestApp);
     component = fixture.componentInstance;
@@ -401,8 +400,11 @@ function expectMessage(el: Element, message: string) {
     <div id="description-with-existing-id">Hello</div>
     <div description-without-id>Hey</div>
   `,
+  imports: [A11yModule],
 })
 class TestApp {
+  ariaDescriber = inject(AriaDescriber);
+
   @ViewChild('element1') _element1: ElementRef<HTMLElement>;
   get element1(): Element {
     return this._element1.nativeElement;
@@ -422,6 +424,4 @@ class TestApp {
   get element4(): Element {
     return this._element4.nativeElement;
   }
-
-  constructor(public ariaDescriber: AriaDescriber) {}
 }

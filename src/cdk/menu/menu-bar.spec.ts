@@ -46,9 +46,8 @@ describe('MenuBar', () => {
 
     beforeEach(waitForAsync(() => {
       TestBed.configureTestingModule({
-        imports: [CdkMenuModule],
-        declarations: [MenuBarRadioGroup],
-      }).compileComponents();
+        imports: [CdkMenuModule, MenuBarRadioGroup],
+      });
 
       fixture = TestBed.createComponent(MenuBarRadioGroup);
       fixture.detectChanges();
@@ -107,9 +106,8 @@ describe('MenuBar', () => {
 
       beforeEach(waitForAsync(() => {
         TestBed.configureTestingModule({
-          imports: [CdkMenuModule],
-          declarations: [MultiMenuWithSubmenu],
-        }).compileComponents();
+          imports: [CdkMenuModule, MultiMenuWithSubmenu],
+        });
       }));
 
       beforeEach(() => {
@@ -532,9 +530,8 @@ describe('MenuBar', () => {
 
       beforeEach(waitForAsync(() => {
         TestBed.configureTestingModule({
-          imports: [CdkMenuModule],
-          declarations: [MultiMenuWithSubmenu],
-        }).compileComponents();
+          imports: [CdkMenuModule, MultiMenuWithSubmenu],
+        });
       }));
 
       beforeEach(() => {
@@ -660,9 +657,8 @@ describe('MenuBar', () => {
 
       beforeEach(waitForAsync(() => {
         TestBed.configureTestingModule({
-          imports: [CdkMenuModule],
-          declarations: [MenuWithCheckboxes],
-        }).compileComponents();
+          imports: [CdkMenuModule, MenuWithCheckboxes],
+        });
       }));
 
       beforeEach(() => {
@@ -727,9 +723,8 @@ describe('MenuBar', () => {
 
       beforeEach(waitForAsync(() => {
         TestBed.configureTestingModule({
-          imports: [CdkMenuModule],
-          declarations: [MenuWithRadioButtons],
-        }).compileComponents();
+          imports: [CdkMenuModule, MenuWithRadioButtons],
+        });
       }));
 
       beforeEach(() => {
@@ -783,9 +778,8 @@ describe('MenuBar', () => {
 
     beforeEach(waitForAsync(() => {
       TestBed.configureTestingModule({
-        imports: [CdkMenuModule],
-        declarations: [MenuBarWithMenusAndInlineMenu],
-      }).compileComponents();
+        imports: [CdkMenuModule, MenuBarWithMenusAndInlineMenu],
+      });
     }));
 
     beforeEach(() => {
@@ -903,9 +897,8 @@ describe('MenuBar', () => {
 
     beforeEach(waitForAsync(() => {
       TestBed.configureTestingModule({
-        imports: [CdkMenuModule],
-        declarations: [MultiMenuWithSubmenu],
-      }).compileComponents();
+        imports: [CdkMenuModule, MultiMenuWithSubmenu],
+      });
     }));
 
     beforeEach(() => {
@@ -1037,11 +1030,11 @@ describe('MenuBar', () => {
 
       dispatchKeyboardEvent(nativeMenus[0], 'keydown', DOWN_ARROW);
       detectChanges();
-      expect(document.activeElement).toEqual(fileMenuNativeItems[0]);
+      expect(document.activeElement).toEqual(fileMenuNativeItems[1]);
 
       dispatchKeyboardEvent(nativeMenus[0], 'keydown', DOWN_ARROW);
       detectChanges();
-      expect(document.activeElement).toEqual(fileMenuNativeItems[1]);
+      expect(document.activeElement).toEqual(fileMenuNativeItems[2]);
     });
 
     it(
@@ -1123,6 +1116,7 @@ describe('MenuBar', () => {
       </li>
     </ul>
   `,
+  imports: [CdkMenuModule],
 })
 class MenuBarRadioGroup {}
 
@@ -1157,6 +1151,7 @@ class MenuBarRadioGroup {}
       </ng-template>
     </div>
   `,
+  imports: [CdkMenuModule],
 })
 class MultiMenuWithSubmenu {
   clickEmitter = new EventEmitter<void>();
@@ -1182,6 +1177,7 @@ class MultiMenuWithSubmenu {
       </ng-template>
     </div>
   `,
+  imports: [CdkMenuModule],
 })
 class MenuWithCheckboxes {
   @ViewChild(CdkMenuBar, {read: ElementRef}) nativeMenuBar: ElementRef;
@@ -1208,6 +1204,7 @@ class MenuWithCheckboxes {
       </ng-template>
     </div>
   `,
+  imports: [CdkMenuModule],
 })
 class MenuWithRadioButtons {
   @ViewChild(CdkMenuBar, {read: ElementRef}) nativeMenuBar: ElementRef;
@@ -1240,6 +1237,7 @@ class MenuWithRadioButtons {
       <button #inline_menu_item cdkMenuItem></button>
     </div>
   `,
+  imports: [CdkMenuModule],
 })
 class MenuBarWithMenusAndInlineMenu {
   @ViewChildren(CdkMenu) menus: QueryList<CdkMenu>;

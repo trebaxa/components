@@ -1,22 +1,19 @@
-import {Component} from '@angular/core';
-import {waitForAsync, ComponentFixture, TestBed, fakeAsync, flush} from '@angular/core/testing';
+import {ENTER, SPACE} from '@angular/cdk/keycodes';
 import {dispatchKeyboardEvent, dispatchMouseEvent} from '@angular/cdk/testing/private';
+import {Component} from '@angular/core';
+import {ComponentFixture, TestBed, fakeAsync, flush, waitForAsync} from '@angular/core/testing';
 import {By} from '@angular/platform-browser';
-import {SPACE, ENTER} from '@angular/cdk/keycodes';
 import {MatChip, MatChipsModule} from './index';
 
-describe('MDC-based Chip Remove', () => {
+describe('Chip Remove', () => {
   let fixture: ComponentFixture<TestChip>;
   let testChip: TestChip;
   let chipNativeElement: HTMLElement;
 
   beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
-      imports: [MatChipsModule],
-      declarations: [TestChip],
+      imports: [MatChipsModule, TestChip],
     });
-
-    TestBed.compileComponents();
   }));
 
   beforeEach(waitForAsync(() => {
@@ -46,6 +43,7 @@ describe('MDC-based Chip Remove', () => {
 
     it('should emit (removed) event when exit animation is complete', fakeAsync(() => {
       testChip.removable = true;
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
 
       chipNativeElement.querySelector('button')!.click();
@@ -66,6 +64,7 @@ describe('MDC-based Chip Remove', () => {
       const buttonElement = chipNativeElement.querySelector('button')!;
 
       testChip.removable = true;
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
 
       const event = dispatchKeyboardEvent(buttonElement, 'keydown', SPACE);
@@ -79,6 +78,7 @@ describe('MDC-based Chip Remove', () => {
       const buttonElement = chipNativeElement.querySelector('button')!;
 
       testChip.removable = true;
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
 
       const event = dispatchKeyboardEvent(buttonElement, 'keydown', ENTER);
@@ -90,7 +90,7 @@ describe('MDC-based Chip Remove', () => {
 
     it('should have a focus indicator', fakeAsync(() => {
       const buttonElement = chipNativeElement.querySelector('.mdc-evolution-chip__icon--trailing')!;
-      expect(buttonElement.classList.contains('mat-mdc-focus-indicator')).toBe(true);
+      expect(buttonElement.classList.contains('mat-focus-indicator')).toBe(true);
     }));
 
     it('should prevent the default click action', fakeAsync(() => {
@@ -116,6 +116,7 @@ describe('MDC-based Chip Remove', () => {
       </mat-chip>
     </mat-chip-set>
   `,
+  imports: [MatChipsModule],
 })
 class TestChip {
   removable: boolean;

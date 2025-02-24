@@ -29,7 +29,7 @@ Both`<mat-select>` and `<select>` support all of the form directives from the co
 `ReactiveFormsModule` (`FormControl`, `FormGroup`, etc.) As with native `<select>`, `<mat-select>`
 also supports a `compareWith` function. (Additional information about using a custom `compareWith`
 function can be found in the
-[Angular forms documentation](https://angular.io/api/forms/SelectControlValueAccessor#caveat-option-selection)).
+[Angular forms documentation](https://angular.dev/api/forms/SelectControlValueAccessor#compareWith)).
 
 <!-- example(select-form) -->
 
@@ -65,6 +65,15 @@ This can be accomplished by creating a `FormControl` with the disabled property
 If you want one of your options to reset the select's value, you can omit specifying its value.
 
 <!-- example(select-reset) -->
+
+### Allowing nullable options to be selected
+
+By default any options with a `null` or `undefined` value will reset the select's value. If instead
+you want the nullable options to be selectable, you can enable the `canSelectNullableOptions` input.
+The default value for the input can be controlled application-wide through the `MAT_SELECT_CONFIG`
+injection token.
+
+<!-- example(select-selectable-null) -->
 
 ### Creating groups of options
 
@@ -165,21 +174,29 @@ this interferes with most assistive technology.
 Always provide an accessible label for the select. This can be done by adding a `<mat-label>`
 inside of `<mat-form-field>`, the `aria-label` attribute, or the `aria-labelledby` attribute.
 
+By default, `MatSelect` displays a checkmark to identify selected items. While you can hide the
+checkmark indicator for single-selection via `hideSingleSelectionIndicator`, this makes the
+component less accessible by making it harder or impossible for users to visually identify selected
+items.
+
 ### Troubleshooting
 
 #### Error: Cannot change `multiple` mode of select after initialization
 
 This error is thrown if you attempt to bind the `multiple` property on `<mat-select>` to a dynamic
 value. (e.g. `[multiple]="isMultiple"` where the value of `isMultiple` changes over the course of
-the component's lifetime). If you need to change this dynamically, use `ngIf` or `ngSwitch` instead:
+the component's lifetime). If you need to change this dynamically, use `@if` or `@switch` instead:
 
 ```html
-<mat-select *ngIf="isMultiple" multiple>
-  ...
-</mat-select>
-<mat-select *ngIf="!isMultiple">
-  ...
-</mat-select>
+@if (isMultiple) {
+  <mat-select multiple>
+    ...
+  </mat-select>
+} @else {
+  <mat-select>
+    ...
+  </mat-select>
+}
 ```
 
 #### Error: Value must be an array in multiple-selection mode
@@ -192,4 +209,4 @@ meant to do was `mySelect.value = ['option1']`.
 
 This error occurs if you attempt to assign something other than a function to the `compareWith`
 property. For more information on proper usage of `compareWith` see the
-[Angular forms documentation](https://angular.io/api/forms/SelectControlValueAccessor#caveat-option-selection)).
+[Angular forms documentation](https://angular.dev/api/forms/SelectControlValueAccessor#compareWith)).

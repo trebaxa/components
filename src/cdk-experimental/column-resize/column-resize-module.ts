@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {NgModule} from '@angular/core';
@@ -18,7 +18,7 @@ import {CdkDefaultEnabledColumnResizeFlex} from './column-resize-directives/defa
  * When using this module, columns are resizable by default.
  */
 @NgModule({
-  declarations: [CdkDefaultEnabledColumnResize, CdkDefaultEnabledColumnResizeFlex],
+  imports: [CdkDefaultEnabledColumnResize, CdkDefaultEnabledColumnResizeFlex],
   exports: [CdkDefaultEnabledColumnResize, CdkDefaultEnabledColumnResizeFlex],
 })
 export class CdkColumnResizeDefaultEnabledModule {}
@@ -28,7 +28,7 @@ export class CdkColumnResizeDefaultEnabledModule {}
  * When using this module, columns are not resizable by default.
  */
 @NgModule({
-  declarations: [CdkColumnResize, CdkColumnResizeFlex],
+  imports: [CdkColumnResize, CdkColumnResizeFlex],
   exports: [CdkColumnResize, CdkColumnResizeFlex],
 })
 export class CdkColumnResizeModule {}

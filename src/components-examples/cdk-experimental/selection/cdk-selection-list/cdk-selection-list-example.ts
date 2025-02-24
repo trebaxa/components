@@ -1,5 +1,7 @@
-import {SelectionChange} from '@angular/cdk-experimental/selection';
 import {Component} from '@angular/core';
+import {AsyncPipe} from '@angular/common';
+import {SelectionChange, CdkSelectionModule} from '@angular/cdk-experimental/selection';
+import {MatCheckboxModule} from '@angular/material/checkbox';
 
 /**
  * @title CDK Selection on a simple list.
@@ -7,6 +9,7 @@ import {Component} from '@angular/core';
 @Component({
   selector: 'cdk-selection-list-example',
   templateUrl: 'cdk-selection-list-example.html',
+  imports: [CdkSelectionModule, MatCheckboxModule, AsyncPipe],
 })
 export class CdkSelectionListExample {
   data = ELEMENT_NAMES;

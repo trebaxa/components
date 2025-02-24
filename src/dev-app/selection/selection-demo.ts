@@ -3,12 +3,18 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {Component} from '@angular/core';
-import {CdkSelectionExamplesModule} from '@angular/components-examples/cdk-experimental/selection';
-import {MatSelectionExamplesModule} from '@angular/components-examples/material-experimental/selection';
+import {
+  CdkSelectionColumnExample,
+  CdkSelectionListExample,
+} from '@angular/components-examples/cdk-experimental/selection';
+import {
+  MatSelectionColumnExample,
+  MatSelectionListExample,
+} from '@angular/components-examples/material-experimental/selection';
+import {ChangeDetectionStrategy, Component} from '@angular/core';
 import {FormsModule} from '@angular/forms';
 
 @Component({
@@ -25,7 +31,13 @@ import {FormsModule} from '@angular/forms';
     <h3>Mat selection column and Mat row selection with Mat table</h3>
     <mat-selection-column-example></mat-selection-column-example>
   `,
-  standalone: true,
-  imports: [CdkSelectionExamplesModule, MatSelectionExamplesModule, FormsModule],
+  imports: [
+    CdkSelectionColumnExample,
+    CdkSelectionListExample,
+    MatSelectionColumnExample,
+    MatSelectionListExample,
+    FormsModule,
+  ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SelectionDemo {}

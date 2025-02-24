@@ -1,3 +1,6 @@
+@use '../core/tokens/m2/mat/datepicker' as tokens-mat-datepicker;
+@use '../core/tokens/token-utils';
+
 $calendar-padding: 8px;
 $non-touch-calendar-cell-size: 40px;
 $non-touch-calendar-width:
@@ -21,10 +24,55 @@ $touch-min-height: 312px;
 $touch-max-width: 750px;
 $touch-max-height: 788px;
 
+@keyframes _mat-datepicker-content-dropdown-enter {
+  from {
+    opacity: 0;
+    transform: scaleY(0.8);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes _mat-datepicker-content-dialog-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes _mat-datepicker-content-exit {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
 
 .mat-datepicker-content {
   display: block;
   border-radius: 4px;
+
+  @include token-utils.use-tokens(
+    tokens-mat-datepicker.$prefix, tokens-mat-datepicker.get-token-slots()) {
+    @include token-utils.create-token-slot(background-color, calendar-container-background-color);
+    @include token-utils.create-token-slot(color, calendar-container-text-color);
+    @include token-utils.create-token-slot(box-shadow, calendar-container-elevation-shadow);
+    @include token-utils.create-token-slot(border-radius, calendar-container-shape);
+  }
+
+  &.mat-datepicker-content-animations-enabled {
+    animation: _mat-datepicker-content-dropdown-enter 120ms cubic-bezier(0, 0, 0.2, 1);
+  }
 
   .mat-calendar {
     width: $non-touch-calendar-width;
@@ -48,7 +96,7 @@ $touch-max-height: 788px;
 
     // Hide the button while the overlay is animating, because it's rendered
     // outside of it and it seems to cause scrollbars in some cases (see #21493).
-    .ng-animating & {
+    .mat-datepicker-content-animating & {
       display: none;
     }
   }
@@ -66,11 +114,21 @@ $touch-max-height: 788px;
   display: block;
   max-height: 80vh;
 
+  @include token-utils.use-tokens(
+      tokens-mat-datepicker.$prefix, tokens-mat-datepicker.get-token-slots()) {
+    @include token-utils.create-token-slot(box-shadow, calendar-container-touch-elevation-shadow);
+    @include token-utils.create-token-slot(border-radius, calendar-container-touch-shape);
+  }
+
   // Allows for the screen reader close button to be seen in touch UI mode.
   position: relative;
 
   // Prevents the content from jumping around on Windows while the animation is running.
   overflow: visible;
+
+  &.mat-datepicker-content-animations-enabled {
+    animation: _mat-datepicker-content-dialog-enter 150ms cubic-bezier(0, 0, 0.2, 1);
+  }
 
   .mat-datepicker-content-container {
     min-height: $touch-min-height;
@@ -83,6 +141,10 @@ $touch-max-height: 788px;
     width: 100%;
     height: auto;
   }
+}
+
+.mat-datepicker-content-exit.mat-datepicker-content-animations-enabled {
+  animation: _mat-datepicker-content-exit 100ms linear;
 }
 
 @media all and (orientation: landscape) {

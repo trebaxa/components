@@ -3,11 +3,11 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 // Workaround for: https://github.com/bazelbuild/rules_nodejs/issues/1265
-/// <reference types="google.maps" />
+/// <reference types="google.maps" preserve="true" />
 
 import {
   ChangeDetectionStrategy,
@@ -19,15 +19,16 @@ import {
   OnInit,
   Output,
   ViewEncapsulation,
-  Inject,
   PLATFORM_ID,
   NgZone,
   SimpleChanges,
   EventEmitter,
+  inject,
 } from '@angular/core';
 import {isPlatformBrowser} from '@angular/common';
 import {Observable} from 'rxjs';
 import {MapEventManager} from '../map-event-manager';
+import {take} from 'rxjs/operators';
 
 interface GoogleMapsWindow extends Window {
   gm_authFailure?: () => void;
@@ -56,11 +57,13 @@ export const DEFAULT_WIDTH = '500px';
   selector: 'google-map',
   exportAs: 'googleMap',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: '<div class="map-container"></div><ng-content></ng-content>',
+  template: '<div class="map-container"></div><ng-content />',
   encapsulation: ViewEncapsulation.None,
 })
 export class GoogleMap implements OnChanges, OnInit, OnDestroy {
-  private _eventManager: MapEventManager = new MapEventManager(this._ngZone);
+  private readonly _elementRef = inject(ElementRef);
+  private _ngZone = inject(NgZone);
+  private _eventManager = new MapEventManager(inject(NgZone));
   private _mapEl: HTMLElement;
   private _existingAuthFailureCallback: GoogleMapsWindow['gm_authFailure'];
 
@@ -79,6 +82,12 @@ export class GoogleMap implements OnChanges, OnInit, OnDestroy {
 
   /** Width of the map. Set this to `null` if you'd like to control the width through CSS. */
   @Input() width: string | number | null = DEFAULT_WIDTH;
+
+  /**
+   * The Map ID of the map. This parameter cannot be set or changed after a map is instantiated.
+   * See: https://developers.google.com/maps/documentation/javascript/reference/map#MapOptions.mapId
+   */
+  @Input() mapId: string | undefined;
 
   /**
    * Type of map that should be rendered. E.g. hybrid map, terrain map etc.
@@ -241,11 +250,10 @@ export class GoogleMap implements OnChanges, OnInit, OnDestroy {
   @Output() readonly zoomChanged: Observable<void> =
     this._eventManager.getLazyEmitter<void>('zoom_changed');
 
-  constructor(
-    private readonly _elementRef: ElementRef,
-    private _ngZone: NgZone,
-    @Inject(PLATFORM_ID) platformId: Object,
-  ) {
+  constructor(...args: unknown[]);
+
+  constructor() {
+    const platformId = inject<Object>(PLATFORM_ID);
     this._isBrowser = isPlatformBrowser(platformId);
 
     if (this._isBrowser) {
@@ -305,15 +313,28 @@ export class GoogleMap implements OnChanges, OnInit, OnDestroy {
       // Create the object outside the zone so its events don't trigger change detection.
       // We'll bring it back in inside the `MapEventManager` only for the events that the
       // user has subscribed to.
-      this._ngZone.runOutsideAngular(() => {
-        this.googleMap = new google.maps.Map(this._mapEl, this._combineOptions());
-      });
-      this._eventManager.setTarget(this.googleMap);
-      this.mapInitialized.emit(this.googleMap);
+      if (google.maps.Map) {
+        this._initialize(google.maps.Map);
+      } else {
+        this._ngZone.runOutsideAngular(() => {
+          google.maps
+            .importLibrary('maps')
+            .then(lib => this._initialize((lib as google.maps.MapsLibrary).Map));
+        });
+      }
     }
   }
 
+  private _initialize(mapConstructor: typeof google.maps.Map) {
+    this._ngZone.runOutsideAngular(() => {
+      this.googleMap = new mapConstructor(this._mapEl, this._combineOptions());
+      this._eventManager.setTarget(this.googleMap);
+      this.mapInitialized.emit(this.googleMap);
+    });
+  }
+
   ngOnDestroy() {
+    this.mapInitialized.complete();
     this._eventManager.destroy();
 
     if (this._isBrowser) {
@@ -476,9 +497,16 @@ export class GoogleMap implements OnChanges, OnInit, OnDestroy {
    * See
    * https://developers.google.com/maps/documentation/javascript/reference/map#Map.overlayMapTypes
    */
-  get overlayMapTypes(): google.maps.MVCArray<google.maps.MapType> {
+  get overlayMapTypes(): google.maps.MVCArray<google.maps.MapType | null> {
     this._assertInitialized();
     return this.googleMap.overlayMapTypes;
+  }
+
+  /** Returns a promise that resolves when the map has been initialized. */
+  _resolveMap(): Promise<google.maps.Map> {
+    return this.googleMap
+      ? Promise.resolve(this.googleMap)
+      : this.mapInitialized.pipe(take(1)).toPromise();
   }
 
   private _setSize() {
@@ -502,6 +530,7 @@ export class GoogleMap implements OnChanges, OnInit, OnDestroy {
       // Passing in an undefined `mapTypeId` seems to break tile loading
       // so make sure that we have some kind of default (see #22082).
       mapTypeId: this.mapTypeId || options.mapTypeId || DEFAULT_OPTIONS.mapTypeId,
+      mapId: this.mapId || options.mapId,
     };
   }
 

@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {ENTER, SPACE} from '@angular/cdk/keycodes';
@@ -62,7 +62,7 @@ export class MatChipTrailingIcon extends MatChipAction {
   selector: '[matChipRemove]',
   host: {
     'class':
-      'mat-mdc-chip-remove mat-mdc-chip-trailing-icon mat-mdc-focus-indicator ' +
+      'mat-mdc-chip-remove mat-mdc-chip-trailing-icon mat-focus-indicator ' +
       'mdc-evolution-chip__icon mdc-evolution-chip__icon--trailing',
     'role': 'button',
     '[attr.aria-hidden]': 'null',
